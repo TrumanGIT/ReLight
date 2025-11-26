@@ -3,22 +3,22 @@
 #include <vector>
 #include <cstdint>
 
-struct LightConfig{
-std::string nodeName;
-float fade; // TESObjectLIGH->fade
-std::uint32_t radius; // TESObjectLIGH->data.radius
-std::array<int, 3> RGBvalues; // TESObjectLIGH->data.color.red, blue green 
-std::array<float, 3> position; // RE::NiPointLight->local.translate.x, y z
-std::vector<std::string> flags; // TES::ObjectLigh->data.flags
-}
+struct LightConfig {
+    std::string nodeName;
+    float fade; // TESObjectLIGH->fade
+    std::uint32_t radius; // TESObjectLIGH->data.radius
+    std::array<int, 3> RGBvalues; // TESObjectLIGH->data.color.red, blue green 
+    std::array<float, 3> position; // RE::NiPointLight->local.translate.x, y z
+    std::vector<std::string> flags; // TES::ObjectLigh->data.flags
+};
 
 // I use this unused TESObject::Ligh
-struct LoadScreenLightMainBackupData{
-   float fade;  
-   std::uint32_t radius;
-   std::array<int, 3> RGBvalues
-   std::vector<std::string> flags;
-}
+struct LoadScreenLightMainBackupData {
+    float fade;
+    std::uint32_t radius;
+    std::array<int, 3> RGBvalues;
+        std::vector<std::string> flags;
+};
 
 inline LoadScreenLightMainBackupData g_backup;
 

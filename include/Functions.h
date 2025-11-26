@@ -241,18 +241,18 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
     return false;
 }
 
-// TO DO:: I may delete this or repurpose this. 
-inline RE::NiPointer<RE::NiPointLight> cloneNPointLight(RE::NiPointLight NiPointLight) {
+// TODO:: I may delete this or repurpose this. 
+inline RE::NiPointer<RE::NiObject> CloneNiPointLight(RE::NiPointLight NiPointLight) {
 
     RE::NiCloningProcess cloningProcess;
-    auto NiPointLightClone = NiPointLight->CreateClone(cloningProcess);
+    auto NiPointLightClone = NiPointLight.CreateClone(cloningProcess);
     if (!NiPointLightClone) {
         logger::error("Failed to clone NiNode");
         return nullptr;
     }
 
     // Successfully cloned node
-    return RE::NiPointer<RE::NiObject>(yourGlowNodePrototype);
+    return RE::NiPointer<RE::NiObject>(NiPointLightClone);
 }
 
 inline void glowOrbRemover(RE::NiNode* node)
@@ -262,9 +262,9 @@ inline void glowOrbRemover(RE::NiNode* node)
 
     // Copy raw pointers to avoid iterator invalidation
     std::vector<RE::NiAVObject*> childrenCopy;
-    childrenCopy.reserve(node->children.size());
+    childrenCopy.reserve(node->GetChildren().size());
 
-    for (auto& c : node->children) {
+    for (auto& c : node->GetChildren()) {
         childrenCopy.push_back(c.get());
     }
 
@@ -289,7 +289,7 @@ inline void glowOrbRemover(RE::NiNode* node)
     }
 }
 
-// TO DO:: Rework well probobly move this to ini file since were done with masterlist
+// TODO:: Rework well probobly move this to ini file since were done with masterlist
 inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNode* root)
 {
     if (nodeName == "mpscandleflame01.nif" && removeFakeGlowOrbs) {
@@ -354,10 +354,11 @@ inline std::string matchedKeyword(const std::string& nodeName)
 }
 
 //TODO:: rework this for the ni light pointer node bank
-//we clone and store ni nodes in a bank on startup to help with performance 
-inline RE::NiPointer<RE::NiNode> getNextNodeFromBank(const std::string& keyword)
+
+//we clone and store NIpointLight nodes in bank 
+/*inline RE::NiPointer<RE::NiNode> getNextNodeFromBank(const std::string& keyword)
 {
-    auto it = keywordNodeBank.find(keyword);
+    auto it = niPointLightNodeBank.find(keyword);
 
     if (it == keywordNodeBank.end() || it->second.empty()) {
         logger::warn("getNextNodeFromBank: '{}' has no nodes available", keyword);
@@ -383,36 +384,23 @@ inline RE::NiPointer<RE::NiNode> getNextNodeFromBank(const std::string& keyword)
     count++;
 
     return node;
-}
+}*/
+
 // TODO:: implement a functiuon that can read light flags and turn into vector of strings. 
-uint32_t ParseLightFlagsFromString(const LightConfig& j)
+uint32_t ParseLightFlagsFromLightConfig(const LightConfig& j)
 {
-    // Start with all bits OFF
     uint32_t flags = 0;
 
-    // If no "flags" key or not an array -> nothing to do
-    if (!j.contains("flags") || !j["flags"].is_array())
+    if (j.flags.empty())
         return flags;
 
-    // Loop every flag string ("kDynamic", "kFlicker", etc)
-    for (auto& f : j["flags"]) {
-
-        // Convert JSON value to std::string
-        std::string name = f.get<std::string>();
-
-        // Find the enum in the lookup table
-        if (auto it = kLightFlagMap.find(name); it != kLightFlagMap.end()) {
-
-            // Turn ON the corresponding bits using bitwise OR
-            flags |= static_cast<uint32_t>(it->second);
-
-        } else {
-            // Flag string not recognized
-            logger::warn("Unknown TES_LIGHT_FLAGS '{}'", name);
+    for (const auto& flagStr : j.flags) {
+        auto it = kLightFlagMap.find(flagStr);
+        if (it != kLightFlagMap.end()) {
+            flags |= static_cast<uint32_t>(it->second); // set the corresponding bit
         }
     }
 
-    // Return the combined bitmask
     return flags;
 }
 
@@ -420,13 +408,13 @@ uint32_t ParseLightFlagsFromString(const LightConfig& j)
 
 // on startup store a bunch of cloned nodes so we dont have to clone from disk during gameplay
 inline void CreateNiPointLightsFromJSONAndFillBank() {
-    logger::info("Assigning niPointLight... total groups: {}", keywordNodeBank.size());
+    logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
 
     BackupLightData(); 
 
-    for (auto& [jsonConfig, bankedNodes] : NiPointLightNodeBank) {
+    for (auto& [jsonConfig, bankedNodes] : niPointLightNodeBank) {
 
-        for (auto& cfg : jsonConfigs) {
+        for (auto& cfg : jsonConfig) {
             // Apply current config data to the template light
             SetTESObjectLIGHData(cfg); 
 
@@ -448,7 +436,7 @@ inline void CreateNiPointLightsFromJSONAndFillBank() {
 
             for (size_t i = 0; i < maxNodes; ++i) {
                 // Clone the NiPointLight as a NiObject
-                auto clonedNiPointLightAsNiObject = cloneNiPointLight(niPointLight);
+                auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
                 
                 // Add the cloned light to the bank
                 bankedNodes.push_back(clonedNiPointLightAsNiObject);

@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_set>
 #include <unordered_map>
+#include "LightData.h"
 
 extern bool disableShadowCasters;
 extern bool disableTorchLights;
@@ -29,7 +30,7 @@ extern std::vector<std::string> priorityList;
 
 //extern std::unordered_map<std::string, std::string> baseMeshesAndTemplateToAttach;
 
-extern std::map<std::vector<LightConfig, std::vector<RE::NiPointer<RE::NiPointLight>>> NiPointLightNodeBank;
+extern std::map<std::vector<LightConfig>, std::vector<RE::NiPointer<RE::NiPointLight>>> niPointLightNodeBank;
 
 // defined as static const for potential caching
 static const std::unordered_map<std::string, std::string> nordicHallMeshesAndTemplates = {

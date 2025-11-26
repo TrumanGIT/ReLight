@@ -88,7 +88,7 @@ namespace Hooks {
         std::string nodeName = a_root->name.c_str();  // grab name of NiNode (usually 1:1 with mesh names)
         toLower(nodeName);
 
-        // Try specific meshes first
+		//TO DO:: Rprobobly remove this function all together (no more specfic meshes / partial but just partial)
         if (cloneAndAttachNodesForSpecificMeshes(nodeName, a_root, a_nifPath))
             return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
 
@@ -104,13 +104,14 @@ namespace Hooks {
             if (removeFakeGlowOrbs) 
                 glowOrbRemover(a_root.get());
 
-            if (TorchHandler(nodeName, a_root)) //TO DO:: Replace with ni point light instead of ni node
+            //TO DO:: Replace with ni point light instead of ni node
+            if (TorchHandler(nodeName, a_root)) 
                return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
-
-            if (applyCorrectNordicHallTemplate(nodeName, a_root)) //TO DO:: Replace with ni point light instead of ni node
+            //TO DO:: Replace with ni point light instead of ni node
+            if (applyCorrectNordicHallTemplate(nodeName, a_root)) 
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
-
-            RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank(match); //TO DO:: Replace with ni point light instead of ni node
+            //TO DO:: Replace with ni point light instead of ni node
+            RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank(match); 
             if (nodePtr) { // scene is apart of the nodebank but we do not want to attach nodes for scene. 
                 a_root->AttachChild(nodePtr.get());
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);

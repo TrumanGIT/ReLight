@@ -4,6 +4,8 @@
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
+
 
 bool disableShadowCasters = true;
 bool disableTorchLights = true;
@@ -28,7 +30,7 @@ std::vector<std::string> exclusionListPartialMatch;
 
 std::vector<std::string> priorityList = {};
 
-std::map<std::vector<LightConfig, std::vector<RE::NiPointer<RE::NiPointLight>>> NiPointLightNodeBank = {};
+std::map<std::vector<LightConfig>, std::vector<RE::NiPointer<RE::NiPointLight>>> niPointLightNodeBank = {};
 
 // nodeName (lowercased) -> template mesh path
 //std::unordered_map<std::string, std::string>
