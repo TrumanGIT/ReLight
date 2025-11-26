@@ -1,0 +1,40 @@
+#include "global.h"
+#include <map>
+#include <array>
+#include <string>
+#include <unordered_set>
+#include <unordered_map>
+
+bool disableShadowCasters = true;
+bool disableTorchLights = true;
+bool removeFakeGlowOrbs = true;
+
+uint8_t red = 255;
+uint8_t green = 161;
+uint8_t blue = 60;
+
+bool dataHasLoaded = false;
+
+RE::FormID soulCairnFormID = 0x2001408;
+RE::FormID apocryphaFormID = 0x0401C0B2;
+
+RE::TESObjectLIGH* LoadScreenLightMain = nullptr; 
+
+std::vector<std::string> whitelist; // to whitelist light refs from mods by plugin name
+
+std::vector<std::string> exclusionList; 
+
+std::vector<std::string> exclusionListPartialMatch;
+
+std::vector<std::string> priorityList = {};
+
+std::map<std::vector<LightConfig, std::vector<RE::NiPointer<RE::NiPointLight>>> NiPointLightNodeBank = {};
+
+// nodeName (lowercased) -> template mesh path
+//std::unordered_map<std::string, std::string>
+ //   baseMeshesAndTemplateToAttach = {};
+
+//std::unordered_map<std::string, std::string> keywordTemplateMap = {};
+
+
+
