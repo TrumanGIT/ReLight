@@ -30,7 +30,7 @@ extern std::vector<std::string> priorityList;
 
 //extern std::unordered_map<std::string, std::string> baseMeshesAndTemplateToAttach;
 
-extern std::map<std::vector<LightConfig>, std::vector<RE::NiPointer<RE::NiPointLight>>> niPointLightNodeBank;
+extern std::map<std::vector<LightConfig>, std::vector<RE::NiPointer<RE::NiObject>>> niPointLightNodeBank;
 
 // defined as static const for potential caching
 static const std::unordered_map<std::string, std::string> nordicHallMeshesAndTemplates = {

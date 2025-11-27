@@ -107,9 +107,11 @@ namespace Hooks {
             //TO DO:: Replace with ni point light instead of ni node
             if (TorchHandler(nodeName, a_root)) 
                return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+
             //TO DO:: Replace with ni point light instead of ni node
             if (applyCorrectNordicHallTemplate(nodeName, a_root)) 
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+
             //TO DO:: Replace with ni point light instead of ni node
             RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank(match); 
             if (nodePtr) { // scene is apart of the nodebank but we do not want to attach nodes for scene. 
@@ -119,8 +121,8 @@ namespace Hooks {
             }
         
         }
-
-        dummyHandler(a_root.get(), nodeName); //TO DO:: Replace with ni point light instead of ni node
+        //TO DO:: Replace with ni point light instead of ni node
+        dummyHandler(a_root.get(), nodeName); 
 
         // Always call original func if nothing handled
         return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
