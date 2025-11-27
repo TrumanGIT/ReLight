@@ -39,9 +39,7 @@ inline void Initialize() {
     auto dataHandler = RE::TESDataHandler::GetSingleton(); // single instance
 
     // below is a unused light base object . I need it to pass as arguments for ni point light generator function
- // the ni point light will inherit the data from this object, We will make a copy of this object so we dont not modify the original and update the data of the copy
- // depending on the ni point light we are creating. (see assignNiPointLightsToBank())
-
+ // the ni point light will inherit the data from this object like color size brighness ect. 
     LoadScreenLightMain = dataHandler->LookupForm<RE::TESObjectLIGH>(0x00105300, "Skyrim.esm");
     if (!LoadScreenLightMain) {
         logger::info("TESObjectLIGH LoadScreenLightMain (0x00105300) not found");
