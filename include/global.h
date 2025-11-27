@@ -54,24 +54,13 @@ static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
     {"loadscreen"}      
 };
 
-static const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
-    { "kNone",          RE::TES_LIGHT_FLAGS::kNone },
-    { "kDynamic",       RE::TES_LIGHT_FLAGS::kDynamic },
-    { "kCanCarry",      RE::TES_LIGHT_FLAGS::kCanCarry },
-    { "kNegative",      RE::TES_LIGHT_FLAGS::kNegative },
-    { "kFlicker",       RE::TES_LIGHT_FLAGS::kFlicker },
-    { "kDeepCopy",      RE::TES_LIGHT_FLAGS::kDeepCopy },
-    { "kOffByDefault",  RE::TES_LIGHT_FLAGS::kOffByDefault },
-    { "kFlickerSlow",   RE::TES_LIGHT_FLAGS::kFlickerSlow },
-    { "kPulse",         RE::TES_LIGHT_FLAGS::kPulse },
-    { "kPulseSlow",     RE::TES_LIGHT_FLAGS::kPulseSlow },
-    { "kSpotlight",     RE::TES_LIGHT_FLAGS::kSpotlight },
-    { "kSpotShadow",    RE::TES_LIGHT_FLAGS::kSpotShadow },
-    { "kHemiShadow",    RE::TES_LIGHT_FLAGS::kHemiShadow },
-    { "kOmniShadow",    RE::TES_LIGHT_FLAGS::kOmniShadow },
-    { "kPortalStrict",  RE::TES_LIGHT_FLAGS::kPortalStrict },
+#define FLAGS2MAP(F) { #F, RE::TES_LIGHT_FLAGS::F },
 
+static const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
+    FOREACH_LIGHTFLAG(FLAGS2MAP)
     //  idk what ktype flag is, mabye it sets multiple flags? //kOmniShadow, kHemiShadow & kSpotShadow ??
     { "kType",          RE::TES_LIGHT_FLAGS::kType }
 };
+
+
 

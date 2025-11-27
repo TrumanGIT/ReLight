@@ -2,25 +2,43 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <RE/T/TESObjectLIGH.h>
+#include "config.hpp"
 
-struct LightConfig {
-    std::string nodeName;
-    float fade; // TESObjectLIGH->fade
-    std::uint32_t radius; // TESObjectLIGH->data.radius
-    std::array<int, 3> RGBvalues; // TESObjectLIGH->data.color.red, blue green 
-    std::array<float, 3> position; // RE::NiPointLight->local.translate.x, y z
-    std::vector<std::string> flags; // TES::ObjectLigh->data.flags
-};
+#define FOREACH_LIGHTFLAG(F) \
+F(kNone) \
+F(kDynamic) \
+F(kCanCarry) \
+F(kNegative) \
+F(kFlicker) \
+F(kDeepCopy) \
+F(kOffByDefault) \
+F(kFlickerSlow) \
+F(kPulse) \
+F(kPulseSlow) \
+F(kSpotlight) \
+F(kSpotShadow) \
+F(kHemiShadow) \
+F(kOmniShadow) \
+F(kPortalStrict) \
 
 // I use this unused TESObject::Ligh
 struct LoadScreenLightMainBackupData {
     float fade;
     std::uint32_t radius;
     std::array<int, 3> RGBvalues;
-        std::vector<std::string> flags;
+    std::vector<std::string> flags;
 };
 
 inline LoadScreenLightMainBackupData g_backup;
+
+inline std::vector<std::string> LightFlagsToStrings(const REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t>& flags) {
+    
+}
+
+inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlagsFromString(const std::vector<std::string>& flags) {
+
+}
 
 inline void BackupLightData()
 {
@@ -52,9 +70,9 @@ inline void RestoreLightData()
 inline void SetTESObjectLIGHData(LightConfig& config){
 LoadScreenLightMain->fade = config.fade;
     LoadScreenLightMain->data.radius = config.radius;
-    LoadScreenLightMain->data.color.red   = config.RGBvalues[0];
-    LoadScreenLightMain->data.color.green = config.RGBvalues[1];
-    LoadScreenLightMain->data.color.blue  = config.RGBvalues[2];
+    LoadScreenLightMain->data.color.red   = config.RGBValues[0];
+    LoadScreenLightMain->data.color.green = config.RGBValues[1];
+    LoadScreenLightMain->data.color.blue  = config.RGBValues[2];
 LoadScreenLightMain->data.flags = ParseLightFlagsFromString(config.flags);
 }
 
