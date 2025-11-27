@@ -2,6 +2,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include "ClibUtil/EditorID.hpp"
 #include "LightData.h"
+#include "Hooks.h"
 #include "global.h"
 #include <fstream>
 #include <unordered_map>
@@ -55,23 +56,6 @@ inline bool containsAll(std::string ID,
             return false;
     }
     return true;
-}
-
-// Try to exclude light by editorID.
-inline bool excludeLightEditorID(const RE::TESObjectLIGH* light) {
-
-    std::string edid = clib_util::editorID::get_editorID(light);
-
-    if (!edid.empty()) {
-        for (const auto& group : keywordLightGroups) {
-            if (containsAll(edid, group)) {
-                logger::info("Excluding light by editorID: {}", edid);
-                return true;
-            }
-        }
-    }
-
-    return false;
 }
 
 inline void IniParser() {
@@ -242,10 +226,10 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 }
 
 // TODO:: I may delete this or repurpose this. 
-inline RE::NiPointer<RE::NiObject> CloneNiPointLight(RE::NiPointLight NiPointLight) {
+inline RE::NiPointer<RE::NiObject> CloneNiPointLight(RE::NiPointLight* NiPointLight) {
 
     RE::NiCloningProcess cloningProcess;
-    auto NiPointLightClone = NiPointLight.CreateClone(cloningProcess);
+    auto NiPointLightClone = NiPointLight->CreateClone(cloningProcess);
     if (!NiPointLightClone) {
         logger::error("Failed to clone NiNode");
         return nullptr;
@@ -304,7 +288,7 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
                 if (auto* glowEmitter = flameNiNode->GetObjectByName("CandleGlow01-Emitter")) {
                     if (auto* emitterNode = glowEmitter->AsNode()) {
                         emitterNode->SetAppCulled(true);
-                        logger::info("Culled CandleGlow01 emitter safely (no iteration)");
+                        logger::info("Culled CandleGlow01 MPS emitter ");
                         return true;
                     }
                 }
@@ -328,7 +312,6 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
     if (!nifPath)
         return false;
 
-
     std::string path = nifPath;
     toLower(path);
 
@@ -339,7 +322,7 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
     return false;
 }
 
-//TODO:: delete or reimplement for new ni node bank 
+//TODO:: delete or reimplement for new ni pointLightBank bank 
 // finds if a incoming node name matches any of our partial search keywords
 inline std::string matchedKeyword(const std::string& nodeName)
 {
@@ -353,7 +336,7 @@ inline std::string matchedKeyword(const std::string& nodeName)
     return {};
 }
 
-//TODO:: rework this for the ni light pointer node bank
+//TODO:: rework this for the ni light pointer node bank using the map and config.nodeName = nodeName (from the hook)
 
 //we clone and store NIpointLight nodes in bank 
 /*inline RE::NiPointer<RE::NiNode> getNextNodeFromBank(const std::string& keyword)
@@ -386,7 +369,7 @@ inline std::string matchedKeyword(const std::string& nodeName)
     return node;
 }*/
 
-// TODO:: implement a functiuon that can read light flags and turn into vector of strings. 
+// TODO:: implement a function that can read light flags and turn into vector of strings. 
 uint32_t ParseLightFlagsFromLightConfig(const LightConfig& j)
 {
     uint32_t flags = 0;
@@ -404,7 +387,7 @@ uint32_t ParseLightFlagsFromLightConfig(const LightConfig& j)
     return flags;
 }
 
-//TO DO:: change to use ni point lights
+
 
 // on startup store a bunch of cloned nodes so we dont have to clone from disk during gameplay
 inline void CreateNiPointLightsFromJSONAndFillBank() {
@@ -412,9 +395,9 @@ inline void CreateNiPointLightsFromJSONAndFillBank() {
 
     BackupLightData(); 
 
-    for (auto& [jsonConfig, bankedNodes] : niPointLightNodeBank) {
+    for (auto& [jsonConfigs, bankedNodes] : niPointLightNodeBank) {
 
-        for (auto& cfg : jsonConfig) {
+        for (auto& cfg : jsonConfigs) {
             // Apply current config data to the template light
             SetTESObjectLIGHData(cfg); 
 
@@ -437,7 +420,14 @@ inline void CreateNiPointLightsFromJSONAndFillBank() {
             for (size_t i = 0; i < maxNodes; ++i) {
                 // Clone the NiPointLight as a NiObject
                 auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
+
+                if (!clonedNiPointLightAsNiObject) {
+                    logger::error("Failed to clone NiPointLight for node '{}'", cfg.nodeName);
+                    continue;
+				}
                 
+                RE::NiPointer<RE::NiObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
+
                 // Add the cloned light to the bank
                 bankedNodes.push_back(clonedNiPointLightAsNiObject);
             }
@@ -449,7 +439,6 @@ inline void CreateNiPointLightsFromJSONAndFillBank() {
 }
 
 // stole this from somewhere Po3 or thiago99,
-
 template <class T, std::size_t size = 5>
 inline void write_thunk_call(std::uintptr_t a_src) {
     auto& trampoline = SKSE::GetTrampoline();
@@ -522,7 +511,7 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
 
         // must null check everything or crash city. 
 
-        for (auto& child : a_root->children) {
+        for (auto& child : a_root->GetChildren()) {
             if (!child) continue; // 
             auto childNode = child->AsNode();
             if (childNode && childNode->name == "TorchFire") {
@@ -532,7 +521,7 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
         }
 
         if (torchFire) {
-            for (auto& child : torchFire->children) {
+            for (auto& child : torchFire->GetChildren()) {
                 if (!child) continue;
                 auto childNode = child->AsNode();
                 if (childNode && childNode->name == "AttachLight") {
@@ -585,7 +574,7 @@ inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<R
 
     RE::NiCloningProcess cloneProc;
 
-    for (const auto& child : fadeNode->children) {
+    for (const auto& child : fadeNode->GetChildren()) {
         if (!child) {
             return true;
         }
@@ -666,7 +655,7 @@ inline void dummyHandler(RE::NiNode* root, std::string nodeName)
         glowOrbRemover(root);
 
     // Search children for a NiNode whose name contains "candle"
-    for (auto& child : root->children) {
+    for (auto& child : root->GetChildren()) {
         if (!child) continue;
 
         auto childAsNode = child->AsNode();
@@ -732,7 +721,7 @@ inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
 
     // recurse if node
     if (auto node = obj->AsNode()) {
-        for (auto& child : node->children) {
+        for (auto& child : node->GetChildren()) {
             DumpFullTree(child.get(), depth + 1);
         }
     }

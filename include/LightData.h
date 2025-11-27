@@ -1,4 +1,5 @@
 #pragma once
+
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -29,6 +30,23 @@ struct LoadScreenLightMainBackupData {
     std::array<int, 3> RGBvalues;
     std::vector<std::string> flags;
 };
+
+// Try to exclude light by editorID.
+inline bool excludeLightEditorID(const RE::TESObjectLIGH* light) {
+
+    std::string edid = clib_util::editorID::get_editorID(light);
+
+    if (!edid.empty()) {
+        for (const auto& group : keywordLightGroups) {
+            if (containsAll(edid, group)) {
+                logger::info("Excluding light by editorID: {}", edid);
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 
 inline LoadScreenLightMainBackupData g_backup;
 
@@ -67,7 +85,7 @@ inline void RestoreLightData()
     LoadScreenLightMain->data.flags = ParseLightFlagsFromString(g_backup.flags);
 }
 
-inline void SetTESObjectLIGHData(LightConfig& config){
+inline void SetTESObjectLIGHData(const LightConfig& config){
 LoadScreenLightMain->fade = config.fade;
     LoadScreenLightMain->data.radius = config.radius;
     LoadScreenLightMain->data.color.red   = config.RGBValues[0];
