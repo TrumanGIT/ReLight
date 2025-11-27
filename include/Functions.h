@@ -25,7 +25,6 @@ inline std::string trim(const std::string& s) {
     return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
 }
 
-
 inline void splitString(const std::string& input, char delimiter, std::vector<std::string>& listToSplit)
 {
     std::stringstream ss(input);
@@ -191,20 +190,6 @@ inline void ReadMasterListAndFillExcludes() {
     iniFile.close();
 }
 
-inline void Initialize() {
-     logger::info("loading forms");
-    auto dataHandler = RE::TESDataHandler::GetSingleton(); // single instance
-
-    // below is a unused light base object . I need it to pass as arguments for ni point light generator function
- // the ni point light will inherit the data from this object, We will make a copy of this object so we dont not modify the original and update the data of the copy
- // depending on the ni point light we are creating. (see assignNiPointLightsToBank())
-
-    LoadScreenLightMain = dataHandler->LookupForm<RE::TESObjectLIGH>(0x00105300, "Skyrim.esm");
-    if (!LoadScreenLightMain) {
-        logger::info("TESObjectLIGH LoadScreenLightMain (0x00105300) not found");
-    }
-} 
-
 inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
     if (!player) {
         return false;
@@ -308,7 +293,6 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
             return true;
     }
 
-
     if (!nifPath)
         return false;
 
@@ -369,74 +353,7 @@ inline std::string matchedKeyword(const std::string& nodeName)
     return node;
 }*/
 
-// TODO:: implement a function that can read light flags and turn into vector of strings. 
-uint32_t ParseLightFlagsFromLightConfig(const LightConfig& j)
-{
-    uint32_t flags = 0;
 
-    if (j.flags.empty())
-        return flags;
-
-    for (const auto& flagStr : j.flags) {
-        auto it = kLightFlagMap.find(flagStr);
-        if (it != kLightFlagMap.end()) {
-            flags |= static_cast<uint32_t>(it->second); // set the corresponding bit
-        }
-    }
-
-    return flags;
-}
-
-
-
-// on startup store a bunch of cloned nodes so we dont have to clone from disk during gameplay
-inline void CreateNiPointLightsFromJSONAndFillBank() {
-    logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
-
-    BackupLightData(); 
-
-    for (auto& [jsonConfigs, bankedNodes] : niPointLightNodeBank) {
-
-        for (auto& cfg : jsonConfigs) {
-            // Apply current config data to the template light
-            SetTESObjectLIGHData(cfg); 
-
-            // Create NiPointLight 
-            RE::NiPointLight* niPointLight = Hooks::TESObjectLIGH_GenDynamic::func(
-                LoadScreenLightMain,   // Template TESObjectLIGH
-                nullptr,               // Reference to attach to (none for now)
-                nullptr,               // Node to attach to (none for now)
-                false,                 // forceDynamic
-                true,                  // useLightRadius
-                false                  // affectRequesterOnly
-            );
-
-            // Apply position from the JSON config
-            ApplyLightPosition(niPointLight, cfg);
-
-            // Determine max nodes based on nodeName
-            const size_t maxNodes = (cfg.nodeName == "candle") ? 65 : 25;
-
-            for (size_t i = 0; i < maxNodes; ++i) {
-                // Clone the NiPointLight as a NiObject
-                auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
-
-                if (!clonedNiPointLightAsNiObject) {
-                    logger::error("Failed to clone NiPointLight for node '{}'", cfg.nodeName);
-                    continue;
-				}
-                
-                RE::NiPointer<RE::NiObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
-
-                // Add the cloned light to the bank
-                bankedNodes.push_back(clonedNiPointLightAsNiObject);
-            }
-        }
-    }
-
-    RestoreLightData();
-    logger::info("Finished assignClonedNodes");
-}
 
 // stole this from somewhere Po3 or thiago99,
 template <class T, std::size_t size = 5>
@@ -450,42 +367,6 @@ inline void write_thunk_call(std::uintptr_t a_src) {
     }
 }
 
-// checs if fake lights should be disabled by checking some user settings. and excluding dynamicform lights
-// or whitelisted lights by checking the plugin name or carryable or shadowcasters lol
-
-inline bool should_disable_light(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string modName)
-{
-    if (!ref || !light || ref->IsDynamicForm()) {
-        return false;
-    }
-
-    auto player = RE::PlayerCharacter::GetSingleton();
-
-    if (IsInSoulCairnOrApocrypha(player)) {
-        logger::info("player is in apocrypha or soul cairn so we should not disable light");
-        return false;
-    }
-    if (disableShadowCasters == false &&
-        light->data.flags.any(RE::TES_LIGHT_FLAGS::kOmniShadow,
-            RE::TES_LIGHT_FLAGS::kHemiShadow, RE::TES_LIGHT_FLAGS::kSpotShadow))
-    {
-        return false;
-    }
-
-    if (disableTorchLights == false &&
-        light->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry))
-    {
-        return false;
-    }
-
-    for (const auto& whitelistedMod : whitelist) {
-        if (modName.find(whitelistedMod) != std::string::npos) {
-            return false;
-        }
-    }
-
-    return true;
-}
 // method to swap fire color models not used anymore see below
 
 /*inline void ApplyColorSwitch(RE::TESModel* bm, const std::string& newPath) {
@@ -547,7 +428,7 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
 }
 
 
-//TO DO:: change to use ni point lights
+//TODO:: change to use niObjects
 inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
 {
     auto it = nordicHallMeshesAndTemplates.find(nodeName);
@@ -594,8 +475,6 @@ inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<R
 // some nodes are called scene root this is to take care of them. 
 inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, std::string nodeName)
 {
-
-
     if (nodeName.find("scene") == std::string::npos)
         return false;
 
@@ -643,6 +522,7 @@ inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_ro
         return true;
     }
 }
+
 // some nodes are called dummy this is to take care of them.
 inline void dummyHandler(RE::NiNode* root, std::string nodeName)
 {
@@ -700,6 +580,7 @@ inline void dummyHandler(RE::NiNode* root, std::string nodeName)
     }
 }
 
+// this was made for debugging 
 inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
 {
     if (!obj) return;
