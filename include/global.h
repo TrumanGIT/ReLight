@@ -28,24 +28,31 @@ extern std::unordered_set<RE::FormID> excludedLightFormIDs;
 
 extern std::vector<std::string> priorityList;
 
-//extern std::unordered_map<std::string, std::string> baseMeshesAndTemplateToAttach;
+//backup light data for a unsused tesobjectligh we change values of.
+extern LightConfig g_backup;
 
-extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiObject>>> niPointLightNodeBank;
+extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiAVObject>>> niPointLightNodeBank;
 
 // defined as static const for potential caching
-static const std::unordered_map<std::string, std::string> nordicHallMeshesAndTemplates = {
-	{ "norcathallsm1way01", "Nordic Cata 1way01 Candles_NOT Animated.nif" },
-	{ "norcathallsm1way02", "Nordic Cata 1way02 Candles_NOT Animated.nif" },
-	{ "norcathallsm1way03", "Nordic Cata 1way03 Candles_NOT Animated.nif" },
-	{ "norcathallsm2way01", "Nordic Cata 2way01 Candles_NOT Animated.nif" },
-	{ "norcathallsm3way01", "Nordic Cata 3way01 Candles_NOT Animated.nif" },
-	{ "norcathallsm3way02", "Nordic Cata 3way02 Candles_NOT Animated.nif" },
-	{ "norcathallsm4way01", "Nordic Cata 4way01 Candles_NOT Animated.nif" },
-	{ "norcathallsm4way02", "Nordic Cata 4way02 Candles_NOT Animated.nif" },
-	{ "nortmphallbgcolumnsm01", "Nordic ColumnSM01 Candles_NOT Animated.nif" },
-	{ "nortmphallbgcolumnsm02", "Nordic ColumnSM02 Candles_NOT Animated.nif" },
-	{ "nortmphallbgcolumn01", "Nordic Column Candles 01 03_NOT Animated.nif" },
-	{ "nortmphallbgcolumn03", "Nordic Column Candles 01 03_NOT Animated.nif"}
+static const std::vector<std::pair<std::string, std::string>> childBankMap = { // not a map for priority
+       { "chandel", "chandel" },                          // handle 'chandel' substring
+       { "ruins_floorcandlelampmid", "ruinsfloorcandlelampmidon" },
+       { "candle", "candle" }
+};
+
+static const std::unordered_set<std::string> nordicHallMeshes = {
+    "norcathallsm1way01",
+    "norcathallsm1way02",
+    "norcathallsm1way03",
+    "norcathallsm2way01",
+    "norcathallsm3way01",
+    "norcathallsm3way02",
+    "norcathallsm4way01",
+    "norcathallsm4way02",
+    "nortmphallbgcolumnsm01",
+    "nortmphallbgcolumnsm02",
+    "nortmphallbgcolumn01",
+    "nortmphallbgcolumn03"
 };
 
 static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
@@ -59,6 +66,6 @@ static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
 
 static const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
 	FOREACH_LIGHTFLAG(FLAGS2MAP)
-	//  idk what ktype flag is, mabye it sets multiple flags? //kOmniShadow, kHemiShadow & kSpotShadow ??
+    //  idk what ktype flag is, mabye its to check if a light object has one of these flags //kOmniShadow, kHemiShadow & kSpotShadow ??
 	{"kType",          RE::TES_LIGHT_FLAGS::kType}
 };

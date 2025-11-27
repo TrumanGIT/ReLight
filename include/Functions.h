@@ -211,7 +211,7 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 }
 
 // TODO:: I may delete this or repurpose this. 
-inline RE::NiPointer<RE::NiObject> CloneNiPointLight(RE::NiPointLight* NiPointLight) {
+inline RE::NiPointer<RE::NiAVObject> CloneNiPointLight(RE::NiPointLight* NiPointLight) {
 
     RE::NiCloningProcess cloningProcess;
     auto NiPointLightClone = NiPointLight->CreateClone(cloningProcess);
@@ -220,8 +220,10 @@ inline RE::NiPointer<RE::NiObject> CloneNiPointLight(RE::NiPointLight* NiPointLi
         return nullptr;
     }
 
+    auto NiPointLightCloneAsAv = static_cast<RE::NiAVObject*>(NiPointLightClone);
+
     // Successfully cloned node
-    return RE::NiPointer<RE::NiObject>(NiPointLightClone);
+    return RE::NiPointer<RE::NiAVObject>(NiPointLightCloneAsAv);
 }
 
 inline void glowOrbRemover(RE::NiNode* node)
@@ -269,7 +271,7 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
         if (auto* flameNode = root->GetObjectByName("mpscandleflame01")) {
             if (auto* flameNiNode = flameNode->AsNode()) {
 
-               
+
                 if (auto* glowEmitter = flameNiNode->GetObjectByName("CandleGlow01-Emitter")) {
                     if (auto* emitterNode = glowEmitter->AsNode()) {
                         emitterNode->SetAppCulled(true);
@@ -306,85 +308,67 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
     return false;
 }
 
-//TODO:: delete or reimplement for new ni pointLightBank bank 
-// finds if a incoming node name matches any of our partial search keywords
-inline std::string matchedKeyword(const std::string& nodeName)
-{
+//TODO:: reimplement for new ni pointLightBank ban, we need to find a way to have priority for nodes coming in so
+// so chandeliers overtake candles ect (some chandeliers have candle in node name) 
 
-    for (const auto& keyword : priorityList) {
-        if (nodeName.find(keyword) != std::string::npos) {
-            return keyword;
-        }
+std::string findPriorityMatch(const std::string& nodeName)
+{
+    //  Check priority list created from ini file first
+    for (auto& nodeNameInPriorityList : priorityList) {
+        if (nodeName.find(nodeNameInPriorityList) != std::string::npos)
+            return nodeName;
     }
 
-    return {};
-}
+    // No priority specified
+    for (auto& pair : niPointLightNodeBank) {
+        const auto& jsonCfg = pair.first;
 
-//TODO:: rework this for the ni light pointer node bank using the map and config.nodeName = nodeName (from the hook)
+        if (nodeName.find(jsonCfg.nodeName) != std::string::npos)
+            return jsonCfg.nodeName;
+    }
+
+    return ""; // no match
+}
 
 //we clone and store NIpointLight nodes in bank 
-/*inline RE::NiPointer<RE::NiNode> getNextNodeFromBank(const std::string& keyword)
+inline RE::NiPointer<RE::NiAVObject> getNextNodeFromBank(const std::string& nodeName)
 {
-    auto it = niPointLightNodeBank.find(keyword);
+    for (auto& [cfg, bank] : niPointLightNodeBank) {
 
-    if (it == keywordNodeBank.end() || it->second.empty()) {
-        logger::warn("getNextNodeFromBank: '{}' has no nodes available", keyword);
-        return nullptr;
+        // Check if this config applies to the requested nodeName
+        if (nodeName.find(cfg.nodeName) == std::string::npos)
+            continue;
+
+        if (bank.empty()) {
+            logger::warn("getNextNodeFromBank: '{}' has no nodes available", nodeName);
+            return nullptr;
+        }
+
+        static std::unordered_map<std::string, std::size_t> counters;
+        auto& count = counters[nodeName];
+
+        if (count >= bank.size())
+            count = 0;
+
+        RE::NiPointer<RE::NiAVObject> obj = bank[count];
+        if (!obj) {
+            logger::warn("getNextNodeFromBank: '{}' index {} is null", nodeName, count);
+            return nullptr;
+        }
+
+        count++;
+        return obj;
     }
 
-    auto& bank = it->second; // keywords nodebank array
-
-    // static here means initialised once and map contents survive each call (personal note)
-    static std::unordered_map<std::string, std::size_t> counters;
-    auto& count = counters[keyword];                                 // index for the next node to use in bank
-
-    if (count >= bank.size())
-        count = 0; // resets bank to 0 if we passed the limit (likely fine to recycle the nodes)
-
-    RE::NiPointer<RE::NiNode> node = bank[count];
-
-    if (!node) {
-        logger::warn("getNextNodeFromBank: '{}' node index {} is null", keyword, count);
-        return nullptr;
-    }
-
-    count++;
-
-    return node;
-}*/
-
-
-
-// stole this from somewhere Po3 or thiago99,
-template <class T, std::size_t size = 5>
-inline void write_thunk_call(std::uintptr_t a_src) {
-    auto& trampoline = SKSE::GetTrampoline();
-    if constexpr (size == 6) {
-        T::func = *(uintptr_t*)trampoline.write_call<6>(a_src, T::thunk);
-    }
-    else {
-        T::func = trampoline.write_call<size>(a_src, T::thunk);
-    }
+    logger::warn("getNextNodeFromBank: '{}' no matching LightConfig found", nodeName);
+    return nullptr;
 }
 
-// method to swap fire color models not used anymore see below
-
-/*inline void ApplyColorSwitch(RE::TESModel* bm, const std::string& newPath) {
-    if (!bm) return;
-    auto currentModel = bm->GetModel();
-    if (currentModel != newPath) {
-        if (ModelsAndOriginalFilePaths.find(bm) == ModelsAndOriginalFilePaths.end()) {
-            ModelsAndOriginalFilePaths[bm] = currentModel;
-        }
-        bm->SetModel(newPath.c_str());
-    }
-}*/
 
 
 //TO DO:: change to use ni point lights
 // torches need special placement of light so they dont light up when not equipped. 
 inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>& a_root)
-
 {
     if (nodeName == "torch") {
         RE::NiNode* attachLight = nullptr;
@@ -413,7 +397,7 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
         }
 
         if (attachLight) {
-            RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank("torch");
+            RE::NiPointer<RE::NiAVObject> nodePtr = getNextNodeFromBank("torch");
             if (nodePtr) {
                 attachLight->AttachChild(nodePtr.get());
                 // logger::info("attached light to torch at specific spot {}", nodeName);
@@ -427,114 +411,74 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
     return false;
 }
 
+bool IsNordicHallMesh(const std::string& nodeName)
+{
+    return nordicHallMeshes.contains(nodeName);
+}
 
-//TODO:: change to use niObjects
 inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
 {
-    auto it = nordicHallMeshesAndTemplates.find(nodeName);
-    if (it == nordicHallMeshesAndTemplates.end() || it->second.empty()) {
+    if (!IsNordicHallMesh(nodeName))
         return false;
-    }
 
-    //std::string templatePath = "Meshes\\MLO\\Templates\\" + it->second;
-
-    RE::NiPointer<RE::NiNode> loaded;
-    auto args = RE::BSModelDB::DBTraits::ArgsType();
-
-    auto result = RE::BSModelDB::Demand(templatePath.c_str(), loaded, args);
-    if (result != RE::BSResource::ErrorCode::kNone || !loaded) {
-        logger::warn("Failed to load NIF file {}", templatePath);
-        return false;
-    }
-
-    auto fadeNode = loaded->AsNode();
-    if (!fadeNode) {
-        logger::warn("Loaded NIF has no root node: {}", templatePath);
-        return false;
-    }
-
-    RE::NiCloningProcess cloneProc;
-
-    for (const auto& child : fadeNode->GetChildren()) {
-        if (!child) {
-            return true;
-        }
-
-        auto childAsNode = child->AsNode();
-        if (childAsNode) {
-            auto clone = childAsNode->CreateClone(cloneProc);
-            if (clone) {
-                a_root->AttachChild(clone->AsNode());
-            }
-        }
-    }
+    //TODO:: we need a way to apply multiple lights to nordic hall meshes
+//before we iterated through each node in a template wired gave us, now we only have single json objects, we will have to think of something
 
     return true;
 }
 
 // some nodes are called scene root this is to take care of them. 
-inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, std::string nodeName)
+inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, const std::string& nodeName)
 {
+    // Skip if nodeName does not contain "scene"
     if (nodeName.find("scene") == std::string::npos)
         return false;
 
-    if (!nifPath) {
+    if (!nifPath)
         return true;
-    }
 
     std::string path = nifPath;
-
     toLower(path);
 
     logger::info("scene root node detected, checking path: {}", path);
 
+    // Determine bankType based on path
     std::string bankType;
-
-    if (path.find("candlehornfloor") != std::string::npos || path.find("mwcandle01") != std::string::npos)
-    {
+    if (path.find("candlehornfloor") != std::string::npos || path.find("mwcandle01") != std::string::npos) {
         bankType = "candlehornfloor01";
     }
-
-
-    else if (path.find("candle") != std::string::npos)
-    {
+    else if (path.find("candle") != std::string::npos) {
         logger::info("handleSceneRootByPath: matched candlehorntable/wall or mwcandle01 in path");
         bankType = "candle";
     }
-
-    else
-    {
+    else {
         return true; // not a relevant mesh
     }
 
-    RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank(bankType);
-
-    if (nodePtr) {
+    // Get the next node from the bank
+    if (auto nodePtr = getNextNodeFromBank(bankType); nodePtr) {
         if (removeFakeGlowOrbs)
             glowOrbRemover(a_root.get());
+
         a_root->AttachChild(nodePtr.get());
         logger::info("Attached '{}' node to '{}'", bankType, a_root->name.c_str());
-        return true;
     }
-    else
-    {
+    else {
         logger::warn("handleSceneRootByPath: Attach target or nodePtr was null for '{}'", bankType);
-        return true;
     }
+
+    return true;
 }
 
 // some nodes are called dummy this is to take care of them.
-inline void dummyHandler(RE::NiNode* root, std::string nodeName)
+inline void dummyHandler(RE::NiNode* root, const std::string& nodeName)
 {
-    // Only operate on nodes whose own name contains "dummy"
-
     if (nodeName.find("dummy") == std::string::npos)
         return;
 
     if (removeFakeGlowOrbs)
         glowOrbRemover(root);
 
-    // Search children for a NiNode whose name contains "candle"
     for (auto& child : root->GetChildren()) {
         if (!child) continue;
 
@@ -547,36 +491,17 @@ inline void dummyHandler(RE::NiNode* root, std::string nodeName)
         std::string childName = childAsNode->name.c_str();
         toLower(childName);
 
-        if (childName.find("chandel") != std::string::npos) { // skyrim spells chandelier wrong sometimes so "chandel" (for example sometimes chandelier has 2 'L's in its name, thanks bethesda)
-            RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank("chandel");
-            if (!nodePtr) {
-                logger::info("DummyHandler: chandelier node from bank was null");
-                return;
+        for (auto& [substr, bankType] : childBankMap) {
+            if (childName.find(substr) != std::string::npos) {
+                if (auto nodePtr = getNextNodeFromBank(bankType); nodePtr) {
+                    root->AttachChild(nodePtr.get());
+                }
+                else {
+                    logger::info("DummyHandler: '{}' node from bank was null", bankType);
+                }
+                return; // stop after first match
             }
-            root->AttachChild(nodePtr.get());
-            return;
         }
-
-        if (childName.find("ruins_floorcandlelampmid") != std::string::npos) {
-            RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank("ruinsfloorcandlelampmidon");
-            if (!nodePtr) {
-                logger::info("DummyHandler: ruinsfloorcandlelampmidon node from bank was null");
-                return;
-            }
-            root->AttachChild(nodePtr.get());
-            return;
-        }
-
-        if (childName.find("candle") != std::string::npos) {
-            RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank("candle");
-            if (!nodePtr) {
-                logger::info("DummyHandler: candle node from bank was null");
-                return;
-            }
-            root->AttachChild(nodePtr.get());
-            return;
-        }
-
     }
 }
 

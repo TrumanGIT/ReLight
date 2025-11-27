@@ -113,7 +113,6 @@ ParseLightFlags(const T& obj)
             flags.set(it->second);
         }
     }
-
     return flags;
 }
 
@@ -141,7 +140,7 @@ inline void RestoreLightData()
     LoadScreenLightMain->data.color.red   = g_backup.RGBvalues[0];
     LoadScreenLightMain->data.color.green = g_backup.RGBvalues[1];
     LoadScreenLightMain->data.color.blue  = g_backup.RGBvalues[2];
-    //TODO":
+   
     LoadScreenLightMain->data.flags = ParseLightFlags(g_backup.flags); 
 }
 
@@ -202,7 +201,7 @@ inline void CreateNiPointLightsFromJSONAndFillBank() {
                     continue;
                 }
 
-                RE::NiPointer<RE::NiObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
+                RE::NiPointer<RE::NiAVObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
 
                 // Add the cloned light to the bank, we will attach it to meshes later
                 bankedNodes.push_back(clonedNiPointLightAsNiObjectPtr);

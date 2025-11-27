@@ -6,7 +6,6 @@
 #include <string>
 #include <unordered_set>
 
-
 namespace Hooks {
 
     //Po3's
@@ -18,7 +17,7 @@ namespace Hooks {
         bool useLightRadius,
         bool affectRequesterOnly)
     {
-        
+
         if (!ref || !light)
             return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
@@ -33,13 +32,13 @@ namespace Hooks {
         const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
         std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
-		toLower(modName);
+        toLower(modName);
 
         if (should_disable_light(light, ref, modName))
             return nullptr;
 
-         // if whitelisted, change rgb values to whatever we want    
-        //doint want to change color of lights that change color based on time of day. 
+        // if whitelisted, change rgb values to whatever we want    
+       //doint want to change color of lights that change color based on time of day. 
         if (modName.find("window shadows ultimate") == std::string::npos)
         {
             light->data.color.red = red;
@@ -60,7 +59,8 @@ namespace Hooks {
 
         for (const auto& [address, offset] : targets) {
             REL::Relocation<std::uintptr_t> target{ address, offset };
-            write_thunk_call<TESObjectLIGH_GenDynamic>(target.address());
+            auto& trampoline = SKSE::GetTrampoline();
+            TESObjectLIGH_GenDynamic::func = trampoline.write_call<5>(target.address(), TESObjectLIGH_GenDynamic::thunk);
         }
 
         logger::info("Installed TESObjectLIGH::GenDynamic patch");
@@ -85,14 +85,12 @@ namespace Hooks {
             return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
         }
 
-        std::string nodeName = a_root->name.c_str();  // grab name of NiNode (usually 1:1 with mesh names)
+        // grab name of NiNode (usually 1:1 with mesh names)
+        std::string nodeName = a_root->name.c_str();
         toLower(nodeName);
 
-		//TO DO:: Rprobobly remove this function all together (no more specfic meshes / partial but just partial)
-        if (cloneAndAttachNodesForSpecificMeshes(nodeName, a_root, a_nifPath))
-            return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
-
-        auto match = matchedKeyword(nodeName);
+        // some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
+        auto match = findPriorityMatch(nodeName);
 
         if (!match.empty() || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos) {
 
@@ -101,32 +99,26 @@ namespace Hooks {
             if (handleSceneRoot(a_nifPath, a_root, nodeName)) //TO DO:: Replace with ni point light instead of ni node
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
 
-            if (removeFakeGlowOrbs) 
+            if (removeFakeGlowOrbs)
                 glowOrbRemover(a_root.get());
 
-            //TO DO:: Replace with ni point light instead of ni node
-            if (TorchHandler(nodeName, a_root)) 
-               return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
-
-            //TO DO:: Replace with ni point light instead of ni node
-            if (applyCorrectNordicHallTemplate(nodeName, a_root)) 
+            if (TorchHandler(nodeName, a_root))
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
 
-            //TO DO:: Replace with ni point light instead of ni node
-            RE::NiPointer<RE::NiNode> nodePtr = getNextNodeFromBank(match); 
-            if (nodePtr) { // scene is apart of the nodebank but we do not want to attach nodes for scene. 
+            //TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
+           /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
+                return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
+
+            RE::NiPointer<RE::NiAVObject> nodePtr = getNextNodeFromBank(match);
+            if (nodePtr) {
                 a_root->AttachChild(nodePtr.get());
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
                 //    logger::info("attached light to keyword mesh {}", nodeName);
             }
-        
         }
-        //TO DO:: Replace with ni point light instead of ni node
-        dummyHandler(a_root.get(), nodeName); 
+        dummyHandler(a_root.get(), nodeName);
 
-        // Always call original func if nothing handled
         return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
-
     }
 
     void PostCreate::Install() {
@@ -142,7 +134,6 @@ namespace Hooks {
     void Install() {
         SKSE::AllocTrampoline(1 << 8);
         TESObjectLIGH_GenDynamic::Install();
-        //  ReplaceTextureOnObjectsHook::Install();
         PostCreate::Install();
     }
 
