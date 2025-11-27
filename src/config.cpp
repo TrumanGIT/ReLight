@@ -4,10 +4,10 @@
 
 using json = nlohmann::json;
 
-bool LoadConfiguration(LightConfig& config) {
-    try {
-        const std::string configPath = GetConfigPath();
+std::vector<LightConfig> lightConfigs;
 
+bool loadConfiguration(LightConfig& config, const std::string& configPath) {
+    try {
         std::ifstream configFile(configPath);
         if (!configFile.is_open()) {
             logger::error("Failed to open config file: {}", ToUTF8(configPath));
@@ -73,5 +73,18 @@ bool LoadConfiguration(LightConfig& config) {
     catch (const std::exception& e) {
         logger::error("cannot read JSON file due to {}", std::string(e.what()));
         return false;
+    }
+}
+
+void parseTemplates() {
+    logger::info("Parsing light templates..");
+    std::vector<std::string> paths = GetConfigPaths();
+
+    for (const auto& p : paths) {
+        logger::info(" reading.. {}", p);
+        LightConfig cfg;
+        loadConfiguration(cfg, p);
+        cfg.print();
+        lightConfigs.push_back(std::move(cfg));
     }
 }

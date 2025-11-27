@@ -1,6 +1,7 @@
 ﻿
 #include "plugin.hpp"
 #include "logger.hpp"
+#include "config.hpp"
 #include "hooks.h"
 #include "Functions.h"
 
@@ -43,7 +44,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     setupLog(spdlog::level::info);
     logger::info("Relight Plugin is Loaded");
     ReadMasterListAndFillExcludes(); // need to change this func to read from ini file
-
+    parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     Hooks::Install(); 
 

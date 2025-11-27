@@ -60,7 +60,5 @@ static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
 static const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
 	FOREACH_LIGHTFLAG(FLAGS2MAP)
 	//  idk what ktype flag is, mabye it sets multiple flags? //kOmniShadow, kHemiShadow & kSpotShadow ??
-	{
- "kType",          RE::TES_LIGHT_FLAGS::kType
-}
+	{"kType",          RE::TES_LIGHT_FLAGS::kType}
 };
