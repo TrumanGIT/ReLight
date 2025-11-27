@@ -204,12 +204,10 @@ inline void CreateNiPointLightsFromJSONAndFillBank() {
 
                 RE::NiPointer<RE::NiObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
 
-                // Add the cloned light to the bank
+                // Add the cloned light to the bank, we will attach it to meshes later
                 bankedNodes.push_back(clonedNiPointLightAsNiObjectPtr);
             }
     }
     logger::info("Finished assignClonedNodes");
 }
-
-
 
