@@ -1,10 +1,9 @@
 ﻿#include "nlohmann/json.hpp"
 #include "config.hpp"
 #include "logger.hpp"
+#include "global.h"
 
 using json = nlohmann::json;
-
-std::vector<LightConfig> lightConfigs;
 
 bool loadConfiguration(LightConfig& config, const std::string& configPath) {
     try {
@@ -85,6 +84,7 @@ void parseTemplates() {
         LightConfig cfg;
         loadConfiguration(cfg, p);
         cfg.print();
-        lightConfigs.push_back(std::move(cfg));
+        std::vector<RE::NiPointer<RE::NiAVObject>> objs{};
+        niPointLightNodeBank[std::move(cfg)] = objs;
     }
 }

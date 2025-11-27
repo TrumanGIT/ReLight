@@ -37,8 +37,6 @@ struct LightConfig {
     }
 };
 
-extern std::vector<LightConfig> lightConfigs;
-
 inline std::string ToUTF8(const fs::path& p) {
     auto u8 = p.u8string();
     return std::string(reinterpret_cast<const char*>(u8.c_str()));
@@ -51,6 +49,7 @@ inline std::string GetConfigDir() {
 
 inline std::vector<std::string> GetConfigPaths() {
     const fs::path dir = GetConfigDir();
+
 #define DIR2PATH(T) (dir / #T / #T "cfg.json").string(),
 
     static std::vector<std::string> paths = {
