@@ -30,7 +30,7 @@ extern std::vector<std::string> priorityList;
 
 //extern std::unordered_map<std::string, std::string> baseMeshesAndTemplateToAttach;
 
-extern std::map<std::vector<LightConfig>, std::vector<RE::NiPointer<RE::NiObject>>> niPointLightNodeBank;
+extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiObject>>> niPointLightNodeBank;
 
 // defined as static const for potential caching
 static const std::unordered_map<std::string, std::string> nordicHallMeshesAndTemplates = {
@@ -54,13 +54,13 @@ static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
     {"loadscreen"}      
 };
 
+
 #define FLAGS2MAP(F) { #F, RE::TES_LIGHT_FLAGS::F },
 
 static const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
-    FOREACH_LIGHTFLAG(FLAGS2MAP)
-    //  idk what ktype flag is, mabye it sets multiple flags? //kOmniShadow, kHemiShadow & kSpotShadow ??
-    { "kType",          RE::TES_LIGHT_FLAGS::kType }
+	FOREACH_LIGHTFLAG(FLAGS2MAP)
+	//  idk what ktype flag is, mabye it sets multiple flags? //kOmniShadow, kHemiShadow & kSpotShadow ??
+	{
+ "kType",          RE::TES_LIGHT_FLAGS::kType
+}
 };
-
-
-
