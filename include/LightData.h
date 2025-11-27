@@ -163,7 +163,8 @@ inline void ApplyLightPosition(RE::NiPointLight* light, const LightConfig& cfg)
     light->local.translate.z = cfg.position[2];
 }
 
-// on startup store a bunch of cloned nodes so we dont have to clone from disk during gameplay
+// on startup store a bunch of niobects that are nipoint lights wrapped in ni pointers (safety) in a bank before main menu loads
+// this way no lights are genereated during gameplay
 inline void CreateNiPointLightsFromJSONAndFillBank() {
     logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
 
