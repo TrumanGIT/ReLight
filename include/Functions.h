@@ -58,7 +58,7 @@ inline bool containsAll(std::string ID,
 }
 
 inline void IniParser() {
-    std::ifstream iniFile("Data\\SKSE\\Plugins\\MLO.ini");
+    std::ifstream iniFile("Data\\SKSE\\Plugins\\ReLight.ini");
     std::string line;
 
     while (std::getline(iniFile, line)) {
@@ -141,7 +141,7 @@ inline void IniParser() {
 
 //TODO:: move this to ini file? 
 inline void ReadMasterListAndFillExcludes() {
-    std::string path = "Data\\SKSE\\Plugins\\Masterlist.ini";
+    std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
 
     if (!std::filesystem::exists(path)) {
         logger::warn("INI file not found: {}", path);
@@ -174,10 +174,10 @@ inline void ReadMasterListAndFillExcludes() {
         }
 
         if (section == 1) {
-            line = trim(line);  // already trimming, good
-            toLower(line);      // lowercase for consistency
+            line = trim(line);  
+            toLower(line);      
             exclusionList.push_back(line);
-            logger::info("Added exact exclude: '{}'", line);  // wrap in quotes to see trailing whitespace
+            logger::info("Added exact exclude: '{}'", line); 
         }
         else if (section == 2) {
             line = trim(line);
@@ -311,7 +311,7 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
 //TODO:: reimplement for new ni pointLightBank ban, we need to find a way to have priority for nodes coming in so
 // so chandeliers overtake candles ect (some chandeliers have candle in node name) 
 
-std::string findPriorityMatch(const std::string& nodeName)
+inline std::string findPriorityMatch(const std::string& nodeName)
 {
     //  Check priority list created from ini file first
     for (auto& nodeNameInPriorityList : priorityList) {
@@ -411,7 +411,7 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
     return false;
 }
 
-bool IsNordicHallMesh(const std::string& nodeName)
+inline bool IsNordicHallMesh(const std::string& nodeName)
 {
     return nordicHallMeshes.contains(nodeName);
 }

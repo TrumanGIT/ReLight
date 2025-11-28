@@ -30,6 +30,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     case SKSE::MessagingInterface::kDataLoaded:
     {
          Initialize();
+         CreateNiPointLightsFromJSONAndFillBank();
         dataHasLoaded = true; 
       //   assignClonedNodesToBank(); working on renewing this function
         break;
@@ -45,6 +46,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     logger::info("Relight Plugin is Loaded");
     ReadMasterListAndFillExcludes(); // need to change this func to read from ini file
     parseTemplates();
+	IniParser();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     Hooks::Install(); 
 

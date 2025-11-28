@@ -1,6 +1,6 @@
 ﻿#include "nlohmann/json.hpp"
 #include "config.hpp"
-#include "logger.hpp"
+#include "LightData.h"
 #include "global.h"
 
 using json = nlohmann::json;

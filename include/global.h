@@ -1,7 +1,7 @@
 #pragma once
 #include <unordered_set>
 #include <unordered_map>
-#include "LightData.h"
+#include "config.hpp"
 
 extern bool disableShadowCasters;
 extern bool disableTorchLights;
@@ -27,9 +27,6 @@ extern std::vector<std::string> exclusionListPartialMatch;
 extern std::unordered_set<RE::FormID> excludedLightFormIDs;
 
 extern std::vector<std::string> priorityList;
-
-//backup light data for a unsused tesobjectligh we change values of.
-extern LightConfig g_backup;
 
 extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiAVObject>>> niPointLightNodeBank;
 

@@ -5,6 +5,7 @@
 #include <array>
 #include <string>
 #include <unordered_set>
+#include "lightdata.h"
 
 namespace Hooks {
 

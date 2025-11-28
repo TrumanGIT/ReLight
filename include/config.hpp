@@ -35,6 +35,9 @@ struct LightConfig {
             logger::info("  {}", f);
         }
     }
+    bool operator<(const LightConfig& other) const {
+        return nodeName < other.nodeName;
+    }
 };
 
 inline std::string ToUTF8(const fs::path& p) {
