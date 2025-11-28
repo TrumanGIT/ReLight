@@ -9,6 +9,8 @@
 #include "Functions.h"
 #include "config.hpp"
 
+
+
 #define FOREACH_LIGHTFLAG(F) \
 F(kNone) \
 F(kDynamic) \
@@ -25,6 +27,16 @@ F(kSpotShadow) \
 F(kHemiShadow) \
 F(kOmniShadow) \
 F(kPortalStrict) 
+
+#define FLAGS2MAP(F) { #F, RE::TES_LIGHT_FLAGS::F },
+
+static const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
+    FOREACH_LIGHTFLAG(FLAGS2MAP)
+    //  idk what ktype flag is, mabye its to check if a light object has one of these flags //kOmniShadow, kHemiShadow & kSpotShadow ??
+    {
+"kType",          RE::TES_LIGHT_FLAGS::kType
+}
+};
 
 // I use this seemingly unused TESObject::Ligh form to temporarily hold light data while creating ni point lights
 struct LoadScreenLightMainBackupData {
@@ -116,7 +128,7 @@ ParseLightFlags(const T& obj)
     return flags;
 }
 
-inline void BackupLightData()
+/*inline void BackupLightData()
 {
     if (!LoadScreenLightMain) return;
 
@@ -129,7 +141,7 @@ inline void BackupLightData()
     };
 	//TODO:: Implement function to parse RE::TESObjectLIGH flags to string vector
 	g_backup.flags = LoadScreenLightMain->data.flags
-}
+} */
 
 inline void RestoreLightData()    
 {
@@ -167,11 +179,11 @@ inline void ApplyLightPosition(RE::NiPointLight* light, const LightConfig& cfg)
 inline void CreateNiPointLightsFromJSONAndFillBank() {
     logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
 
-    BackupLightData();
+   // BackupLightData();
 
     for (auto& pair : niPointLightNodeBank) {
        const auto& jsonCfg = pair.first;
-        auto bankedNodes = pair.second;
+        auto& bankedNodes = pair.second;
 
 		// Apply current config data to the template light so nipoint light will inherit it
             SetTESObjectLIGHData(jsonCfg);

@@ -62,10 +62,4 @@ static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
 };
 
 
-#define FLAGS2MAP(F) { #F, RE::TES_LIGHT_FLAGS::F },
 
-static const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
-	FOREACH_LIGHTFLAG(FLAGS2MAP)
-    //  idk what ktype flag is, mabye its to check if a light object has one of these flags //kOmniShadow, kHemiShadow & kSpotShadow ??
-	{"kType",          RE::TES_LIGHT_FLAGS::kType}
-};
