@@ -79,7 +79,9 @@
 
     RE::NiPointLight* LightData::createNiPointLight() {
         auto* niPointLight = RE::NiPointLight::Create();
-        if (niPointLight) {
+        if (!niPointLight) {
+            logger::info("nipoint light creation failed"); 
+            return nullptr;
         }
         return niPointLight; // returns nullptr if create failed
     }

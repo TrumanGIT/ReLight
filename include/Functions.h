@@ -221,6 +221,9 @@ inline void ReadiniAndFillExcludes() {
             else if (line.find("EXCLUDE PARTIAL NODES BY NAME") != std::string::npos) {
                 section = 2;
             }
+            else if (line.find("PRIORITY NODES BY NAME") != std::string::npos) {
+                break;
+            }
             continue;
         }
 
@@ -384,11 +387,14 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 //we clone and store NIpointLight nodes in bank 
 inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
 {
+    logger::info("test get next ndoe from bank");
     for (auto& [cfg, bank] : niPointLightNodeBank) {
 
-        // Check if this config applies to the requested nodeName
+      
         if (nodeName.find(cfg.nodeName) == std::string::npos)
             continue;
+
+        logger::info("node name found in a config ");
 
         if (bank.empty()) {
             logger::warn("getNextNodeFromBank: '{}' has no nodes available", nodeName);
