@@ -28,7 +28,7 @@ extern std::unordered_set<RE::FormID> excludedLightFormIDs;
 
 extern std::vector<std::string> priorityList;
 
-extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiAVObject>>> niPointLightNodeBank;
+extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiPointLight>>> niPointLightNodeBank;
 
 // i dont remember what this was for, 
 static const std::vector<std::pair<std::string, std::string>> childBankMap = { // not a map for priority

@@ -99,6 +99,7 @@
         data.diffuse.blue = cfg.RGBValues[2] / 255.0f;
 
 		// idk about ambient after a quick google search it seems ambient is usually a fraction of diffuse
+        // we could prolly research futher and get better results but for now good enough
         data.ambient.red = data.diffuse.red * ambientRatio;
         data.ambient.green = data.diffuse.green * ambientRatio;
         data.ambient.blue = data.diffuse.blue * ambientRatio;
@@ -117,8 +118,9 @@
         data.fade = cfg.fade;
         data.radius = getNiPointLightRadius(cfg);
         setNiPointLightPos(niPointLight, cfg); 
-		// light flags are not used in niPointLight 
-            //  niPointLight->data.flags = ParseLightFlags(config);
+		
+      //  auto flags = niPointLight->GetFlags(); 
+       // flags.set()
     }
 
     void LightData::assignNiPointLightsToBank() {
@@ -146,17 +148,75 @@
                     logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
                     continue;
                 }
+
                 //logger::info("wrapping in pointers");
-                RE::NiPointer<RE::NiAVObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
-                if (!clonedNiPointLightAsNiObjectPtr) {
+                RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject.get());
+                if (!clonedNiPointLight) {
                     logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
                     continue;
                 }
+
+                //wrap in ni pointer again 
+                RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr (clonedNiPointLight); 
+
               // logger::info("adding to bank. ");
-                bankedNodes.push_back(clonedNiPointLightAsNiObjectPtr);
-                logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
+                bankedNodes.push_back(clonedNiPointLightPtr);
+              //logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
             }
         }
         logger::info("Finished assignClonedNodes");
     }
+
+
+    //TODO:: make this changeable
+    RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams()
+    {
+        RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
+        p.dynamic = true;    // dynamic = game updates it every frame so yes
+        p.shadowLight = false;   // obvious enough
+        p.portalStrict = false; // idk 
+		p.affectLand = true; // obvious enough
+        p.affectWater = true; // obvious enough
+        p.neverFades = true; // obvious enough
+
+        p.fov = 90.0f;   // idk
+        p.falloff = 1.0f;    // idk 
+        p.nearDistance = 5.0f; // idk
+        p.depthBias = 0.0005f; // idk 
+
+        p.sceneGraphIndex = 0;      // always use 0 
+
+        p.restrictedNode = nullptr; //idk
+        p.lensFlareData = nullptr; //idk 
+
+        return p;
+    }
+
+    void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight) {
+
+        logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
+
+        if (!niPointLight) {
+            logger::error("createShadowSceneNode: niPointLight is null");
+            return;
+        }
+        RE::ShadowSceneNode::LIGHT_CREATE_PARAMS params = makeLightParams();
+      
+        auto* shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+
+        if (!shadowSceneNode) {
+             logger::info("no shadow scene node to grab in (createShadowSceneNode()");
+             return;
+        }
+
+        // we should capture this in a map or convert the bank map to a pair so we can 
+        //keep track of what bslight belongs to what ni point light if we need to remove it later
+        RE::BSLight* BsLight = shadowSceneNode->AddLight(niPointLight, params); 
+        
+        //TODO:: we should name NiPointLight nodes after creating them so we can debugg easier
+        if (!BsLight) {
+            logger::info("no BSLight created in (createShadowSceneNode() for {}", niPointLight->name);
+            return;
+        }
+	}
 
