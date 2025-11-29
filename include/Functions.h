@@ -411,15 +411,29 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
     return false;
 }
 
-inline bool IsNordicHallMesh(const std::string& nodeName)
-{
-    return nordicHallMeshes.contains(nodeName);
-}
+
 
 inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
 {
-    if (!IsNordicHallMesh(nodeName))
+    static const std::unordered_set<std::string> nordicHallMeshes = {
+    "norcathallsm1way01",
+    "norcathallsm1way02",
+    "norcathallsm1way03",
+    "norcathallsm2way01",
+    "norcathallsm3way01",
+    "norcathallsm3way02",
+    "norcathallsm4way01",
+    "norcathallsm4way02",
+    "nortmphallbgcolumnsm01",
+    "nortmphallbgcolumnsm02",
+    "nortmphallbgcolumn01",
+    "nortmphallbgcolumn03"
+    };
+
+    if (!nordicHallMeshes.contains(nodeName))
         return false;
+
+
 
     //TODO:: we need a way to apply multiple lights to nordic hall meshes
 //before we iterated through each node in a template wired gave us, now we only have single json objects, we will have to think of something

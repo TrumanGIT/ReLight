@@ -12,46 +12,47 @@
 
 
 // Backup light data for unused TESObjectLIGH
-extern LightConfig g_backup;
 
-// Bank of NiPointLight objects wrapped in NiPointers
-//extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiAVObject>>> niPointLightNodeBank;
+struct LightData {
 
-// Light flags
-#define FOREACH_LIGHTFLAG(F) \
-F(kNone) \
-F(kDynamic) \
-F(kCanCarry) \
-F(kNegative) \
-F(kFlicker) \
-F(kDeepCopy) \
-F(kOffByDefault) \
-F(kFlickerSlow) \
-F(kPulse) \
-F(kPulseSlow) \
-F(kSpotlight) \
-F(kSpotShadow) \
-F(kHemiShadow) \
-F(kOmniShadow) \
-F(kPortalStrict)
+    float ambientRatio;
 
-#define FLAGS2MAP(F) { #F, RE::TES_LIGHT_FLAGS::F },
+    // Light flags
+    /*#define FOREACH_LIGHTFLAG(F) \
+    F(kNone) \
+    F(kDynamic) \
+    F(kCanCarry) \
+    F(kNegative) \
+    F(kFlicker) \
+    F(kDeepCopy) \
+    F(kOffByDefault) \
+    F(kFlickerSlow) \
+    F(kPulse) \
+    F(kPulseSlow) \
+    F(kSpotlight) \
+    F(kSpotShadow) \
+    F(kHemiShadow) \
+    F(kOmniShadow) \
+    F(kPortalStrict)
 
-inline const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
-    FOREACH_LIGHTFLAG(FLAGS2MAP)
-    {
-"kType", RE::TES_LIGHT_FLAGS::kType
-}
+    #define FLAGS2MAP(F) { #F, RE::TES_LIGHT_FLAGS::F },
+
+    inline const std::unordered_map<std::string, RE::TES_LIGHT_FLAGS> kLightFlagMap{
+        FOREACH_LIGHTFLAG(FLAGS2MAP)
+        {
+    "kType", RE::TES_LIGHT_FLAGS::kType
+    }
+    };*/
+    static void assignNiPointLightsToBank();
+
+    static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName);
+    static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
+   // template <class T>
+   // inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
+   static void setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg, float ambientRatio);
+   static void setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg);
+   static void setNiPointLightPos(RE::NiPointLight* light, const LightConfig& cfg);
+   static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
+   static RE::NiPointLight* createNiPointLight();
+   // void initialize();
 };
-
-// Utility functions (inline for header-only)
-bool should_disable_light(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName);
-bool excludeLightEditorID(const RE::TESObjectLIGH* light);
-template <class T>
-inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
-
-//inline void RestoreLightData();
- void SetTESObjectLIGHData(const LightConfig& config);
- void ApplyLightPosition(RE::NiPointLight* light, const LightConfig& cfg);
- void CreateNiPointLightsFromJSONAndFillBank();
- void Initialize();

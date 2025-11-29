@@ -30,26 +30,11 @@ extern std::vector<std::string> priorityList;
 
 extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiAVObject>>> niPointLightNodeBank;
 
-// defined as static const for potential caching
+// i dont remember what this was for, 
 static const std::vector<std::pair<std::string, std::string>> childBankMap = { // not a map for priority
-       { "chandel", "chandel" },                          // handle 'chandel' substring
+       { "chandel", "chandel" },                          
        { "ruins_floorcandlelampmid", "ruinsfloorcandlelampmidon" },
        { "candle", "candle" }
-};
-
-static const std::unordered_set<std::string> nordicHallMeshes = {
-    "norcathallsm1way01",
-    "norcathallsm1way02",
-    "norcathallsm1way03",
-    "norcathallsm2way01",
-    "norcathallsm3way01",
-    "norcathallsm3way02",
-    "norcathallsm4way01",
-    "norcathallsm4way02",
-    "nortmphallbgcolumnsm01",
-    "nortmphallbgcolumnsm02",
-    "nortmphallbgcolumn01",
-    "nortmphallbgcolumn03"
 };
 
 static const std::vector<std::vector<std::string_view>> keywordLightGroups = {

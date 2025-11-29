@@ -6,246 +6,158 @@
 #include "Functions.h"
 #include "config.hpp"
 #include "LightData.h"
-
-
 #include <string>
 #include <vector>
-//backup light data for a unsused tesobjectligh we change values of.
-extern LightConfig g_backup = {};
 
-//extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiAVObject>>> niPointLightNodeBank;
 
- void Initialize() {
-    logger::info("loading forms");
-    auto dataHandler = RE::TESDataHandler::GetSingleton(); // single instance
+    float ambientRatio = 0.1;
 
-    // below is a unused light base object . I need it to pass as arguments for ni point light generator function
- // the ni point light will inherit the data from this object like color size brighness ect. 
-    LoadScreenLightMain = dataHandler->LookupForm<RE::TESObjectLIGH>(0x00105300, "Skyrim.esm");
-    if (!LoadScreenLightMain) {
-        logger::info("TESObjectLIGH LoadScreenLightMain (0x00105300) not found");
-    }
-}
-// checs if fake lights should be disabled by checking some user settings. and excluding dynamicform lights
-// or whitelisted lights by checking the plugin name or carryable or shadowcasters lol
- bool should_disable_light(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref,const std::string& modName)
-{
-    if (!ref || !light || ref->IsDynamicForm()) {
-        return false;
-    }
-
-    auto player = RE::PlayerCharacter::GetSingleton();
-
-    if (IsInSoulCairnOrApocrypha(player)) {
-        logger::info("player is in apocrypha or soul cairn so we should not disable light");
-        return false;
-    }
-    if (disableShadowCasters == false &&
-        light->data.flags.any(RE::TES_LIGHT_FLAGS::kOmniShadow,
-            RE::TES_LIGHT_FLAGS::kHemiShadow, RE::TES_LIGHT_FLAGS::kSpotShadow))
+     bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
     {
-        return false;
-    }
-
-    if (disableTorchLights == false &&
-        light->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry))
-    {
-        return false;
-    }
-
-    for (const auto& whitelistedMod : whitelist) {
-        if (modName.find(whitelistedMod) != std::string::npos) {
+        if (!ref || !light || ref->IsDynamicForm()) {
             return false;
         }
-    }
-    return true;
- }
 
-// Try to exclude light by editorID.
- bool excludeLightEditorID(const RE::TESObjectLIGH* light) {
+        auto player = RE::PlayerCharacter::GetSingleton();
 
-    std::string edid = clib_util::editorID::get_editorID(light);
+        if (IsInSoulCairnOrApocrypha(player)) {
+            logger::info("player is in apocrypha or soul cairn so we should not disable light");
+            return false;
+        }
+        if (disableShadowCasters == false &&
+            light->data.flags.any(RE::TES_LIGHT_FLAGS::kOmniShadow,
+                RE::TES_LIGHT_FLAGS::kHemiShadow, RE::TES_LIGHT_FLAGS::kSpotShadow))
+        {
+            return false;
+        }
 
-    if (!edid.empty()) {
-        for (const auto& group : keywordLightGroups) {
-            if (containsAll(edid, group)) {
-                logger::info("Excluding light by editorID: {}", edid);
-                return true;
+        if (disableTorchLights == false &&
+            light->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry))
+        {
+            return false;
+        }
+
+        for (const auto& whitelistedMod : whitelist) {
+            if (modName.find(whitelistedMod) != std::string::npos) {
+                return false;
             }
         }
+        return true;
     }
-    return false;
-}
 
-// TODO:: implement a function that can read light flags and turn into vector of strings. 
-template <class T>
-REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t>
-ParseLightFlags(const T& obj)
-{
-    REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> flags;
+    // Try to exclude light by editorID.
+     bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
 
-    for (const auto& flagStr : obj.flags) {
-        auto it = kLightFlagMap.find(flagStr);
-        if (it != kLightFlagMap.end()) {
-            flags.set(it->second);
+        std::string edid = clib_util::editorID::get_editorID(light);
+
+        if (!edid.empty()) {
+            for (const auto& group : keywordLightGroups) {
+                if (containsAll(edid, group)) {
+                    logger::info("Excluding light by editorID: {}", edid);
+                    return true;
+                }
+            }
         }
+        return false;
     }
-    return flags;
-}
 
-/* void BackupLightData()
-{
-    if (!LoadScreenLightMain) return;
+    /* // were not using tesobject ligh flags anymore need to reimplement this.
+    template <class T>
+    REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t>
+    parseLightFlags(const T& obj)
+    {
+        REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> flags;
 
-    g_backup.fade = LoadScreenLightMain->fade;
-    g_backup.radius = LoadScreenLightMain->data.radius;
-    g_backup.RGBvalues = {
-        static_cast<int>(LoadScreenLightMain->data.color.red),
-        static_cast<int>(LoadScreenLightMain->data.color.green),
-        static_cast<int>(LoadScreenLightMain->data.color.blue)
-    };
-    //TODO:: Implement function to parse RE::TESObjectLIGH flags to string vector
-    g_backup.flags = LoadScreenLightMain->data.flags
-} */
+        for (const auto& flagStr : obj.flags) {
+            auto it = kLightFlagMap.find(flagStr);
+            if (it != kLightFlagMap.end()) {
+                flags.set(it->second);
+            }
+        }
+        return flags;
+    }*/
 
-/*void RestoreLightData()
-{
-    if (!LoadScreenLightMain) return;
+    RE::NiPointLight* LightData::createNiPointLight() {
+        auto* niPointLight = RE::NiPointLight::Create();
+        if (niPointLight) {
+        }
+        return niPointLight; // returns nullptr if create failed
+    }
 
-    LoadScreenLightMain->fade = g_backup.fade;
-    LoadScreenLightMain->data.radius = g_backup.radius;
-    LoadScreenLightMain->data.color.red = g_backup.RGBValues[0];
-    LoadScreenLightMain->data.color.green = g_backup.RGBValues[1];
-    LoadScreenLightMain->data.color.blue = g_backup.RGBValues[2];
+     RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
+    {
+        return RE::NiPoint3(cfg.radius, cfg.radius, cfg.radius);
+    }
 
-    LoadScreenLightMain->data.flags = ParseLightFlags(g_backup.flags);
- }*/
+     void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg, float ambientRatio) {
+        if (!niPointLight) return;
+        auto& data = niPointLight->GetLightRuntimeData();
 
- void SetTESObjectLIGHData(const LightConfig& config) {
-    LoadScreenLightMain->fade = config.fade;
-    LoadScreenLightMain->data.radius = config.radius;
-    LoadScreenLightMain->data.color.red = config.RGBValues[0];
-    LoadScreenLightMain->data.color.green = config.RGBValues[1];
-    LoadScreenLightMain->data.color.blue = config.RGBValues[2];
-    LoadScreenLightMain->data.flags = ParseLightFlags(config);
-}
+      // supposedly main color of light 
+        data.diffuse.red = cfg.RGBValues[0] / 255.0f;
+        data.diffuse.green = cfg.RGBValues[1] / 255.0f;
+        data.diffuse.blue = cfg.RGBValues[2] / 255.0f;
 
- void ApplyLightPosition(RE::NiPointLight* light, const LightConfig& cfg)
-{
-    if (!light) return;  // safety check
+		// idk about ambient after a quick google search it seems ambient is usually a fraction of diffuse
+        data.ambient.red = data.diffuse.red * ambientRatio;
+        data.ambient.green = data.diffuse.green * ambientRatio;
+        data.ambient.blue = data.diffuse.blue * ambientRatio;
+    }
 
-    light->local.translate.x = cfg.position[0];
-    light->local.translate.y = cfg.position[1];
-    light->local.translate.z = cfg.position[2];
-}
+     void LightData::setNiPointLightPos(RE::NiPointLight* niPointLight, const LightConfig& cfg)
+    {
+        if (!niPointLight) return;  // safety check
+        niPointLight->local.translate.x = cfg.position[0];
+        niPointLight->local.translate.y = cfg.position[1];
+        niPointLight->local.translate.z = cfg.position[2];
+    }
 
-/*// on startup store a bunch of niobects that are nipoint lights wrapped in ni pointers (safety) in a bank before main menu loads
-// this way no lights are genereated during gameplay
- void CreateNiPointLightsFromJSONAndFillBank() {
-    logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
+     void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+        auto& data = niPointLight->GetLightRuntimeData();
+        data.fade = cfg.fade;
+        data.radius = getNiPointLightRadius(cfg);
+        setNiPointLightPos(niPointLight, cfg); 
+		// light flags are not used in niPointLight 
+            //  niPointLight->data.flags = ParseLightFlags(config);
+    }
 
-    // BackupLightData();
+    void LightData::assignNiPointLightsToBank() {
+        logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
 
-    for (auto& pair : niPointLightNodeBank) {
-        const auto& jsonCfg = pair.first;
-        auto& bankedNodes = pair.second;
+        for (auto& pair : niPointLightNodeBank) {
+            const auto& cfg = pair.first;
+            auto& bankedNodes = pair.second;
 
-        // Apply current config data to the template light so nipoint light will inherit it
-        SetTESObjectLIGHData(jsonCfg);
+            // Create NiPointLight 
+            auto niPointLight = createNiPointLight();
 
-        // Create NiPointLight 
-        RE::NiPointLight* niPointLight = Hooks::TESObjectLIGH_GenDynamic::func(
-            LoadScreenLightMain,   // Template TESObjectLIGH
-            nullptr,               // Reference to attach to (we attach later and to meshes not refs)
-            nullptr,               // Node to attach to ( this is more specifically where on the ref mabye?)
-            false,                 // forceDynamic
-            true,                  // useLightRadius
-            false                  // affectRequesterOnly
-        );
-
-        // Apply position from the JSON config
-        ApplyLightPosition(niPointLight, jsonCfg);
-
-        // how many nodes to create based on type, tends to be alot of candles 25 is overkill for others. 
-        const size_t maxNodes = (jsonCfg.nodeName == "candle") ? 60 : 20;
-
-        for (size_t i = 0; i < maxNodes; ++i) {
-            // Clone the NiPointLight as a NiObject
-            auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
-
-            if (!clonedNiPointLightAsNiObject) {
-                logger::error("Failed to clone NiPointLight for node '{}'", jsonCfg.nodeName);
+            if (!niPointLight) {
+                logger::error("failed to create ni point light for '{} Json config'", cfg.nodeName);
                 continue;
             }
 
-            RE::NiPointer<RE::NiAVObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
+            setNiPointLightData(niPointLight, cfg);
 
-            // Add the cloned light to the bank, we will attach it to meshes later
-            bankedNodes.push_back(clonedNiPointLightAsNiObjectPtr);
+            logger::info("fsetting up max nodes");
+            const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
+
+            for (size_t i = 0; i < maxNodes; ++i) {
+                auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
+                if (!clonedNiPointLightAsNiObject) {
+                    logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
+                    continue;
+                }
+                logger::info("wrapping in pointers");
+                RE::NiPointer<RE::NiAVObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
+                if (!clonedNiPointLightAsNiObjectPtr) {
+                    logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
+                    continue;
+                }
+                logger::info("fadding to bank. ");
+                bankedNodes.push_back(clonedNiPointLightAsNiObjectPtr);
+                logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
+            }
         }
+        logger::info("Finished assignClonedNodes");
     }
-    logger::info("Finished assignClonedNodes");
-}*/
-
- void CreateNiPointLightsFromJSONAndFillBank() {
-     logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
-
-     if (!LoadScreenLightMain) {
-         logger::error("LoadScreenLightMain is null! Cannot generate lights.");
-         return;
-     }
-
-     for (auto& pair : niPointLightNodeBank) {
-         const auto& jsonCfg = pair.first;
-         auto& bankedNodes = pair.second;
-
-         logger::info("attempting to set data");
-         // Apply current config data to the template light
-         SetTESObjectLIGHData(jsonCfg);
-         
-         logger::info("finished setting light data.. creating light");
-
-         // Create NiPointLight 
-         RE::NiPointLight* niPointLight = Hooks::TESObjectLIGH_GenDynamic::func(
-             LoadScreenLightMain, // Template TESObjectLIGH
-             nullptr,             // Reference to attach to ? 
-             nullptr,             // Node to attach to ? 
-             false,               // forceDynamic
-             true,                // useLightRadius
-             false                // affectRequesterOnly
-         );
-
-         if (!niPointLight) {
-             logger::error("TESObjectLIGH_GenDynamic returned null for node '{}'", jsonCfg.nodeName);
-             continue;
-         }
-
-         // Apply position from the JSON config
-         ApplyLightPosition(niPointLight, jsonCfg);
-         
-         logger::info("fsetting up max nodes");
-         const size_t maxNodes = (jsonCfg.nodeName == "candle") ? 60 : 20;
-
-         for (size_t i = 0; i < maxNodes; ++i) {
-             auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
-             if (!clonedNiPointLightAsNiObject) {
-                 logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", jsonCfg.nodeName, i);
-                 continue;
-             }
-             logger::info("wrapping in pointers");
-             RE::NiPointer<RE::NiAVObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
-             if (!clonedNiPointLightAsNiObjectPtr) {
-                 logger::error("Cloned NiPointer is null for node '{}' (iteration {})", jsonCfg.nodeName, i);
-                 continue;
-             }
-             logger::info("fadding to bank. ");
-             bankedNodes.push_back(clonedNiPointLightAsNiObjectPtr);
-             logger::debug("Added cloned light for node '{}' (iteration {})", jsonCfg.nodeName, i);
-         }
-     }
-
-     logger::info("Finished assignClonedNodes");
- }
-
-
 

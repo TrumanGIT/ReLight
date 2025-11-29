@@ -5,6 +5,7 @@
 #include "hooks.h"
 #include "Functions.h"
 
+
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     switch (msg->type) {
     case SKSE::MessagingInterface::kPostLoad:
@@ -29,8 +30,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
-         Initialize();
-         CreateNiPointLightsFromJSONAndFillBank();
+         //initialize();
+        LightData::assignNiPointLightsToBank();
         dataHasLoaded = true; 
       //   assignClonedNodesToBank(); working on renewing this function
         break;

@@ -22,7 +22,7 @@ namespace Hooks {
         if (!ref || !light)
             return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-        if (excludeLightEditorID(light))
+        if (LightData::excludeLightEditorID(light))
             return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
         RE::FormID refFormID = ref->GetFormID();
@@ -35,7 +35,7 @@ namespace Hooks {
 
         toLower(modName);
 
-        if (should_disable_light(light, ref, modName))
+        if (LightData::shouldDisableLight(light, ref, modName))
             return nullptr;
 
         // if whitelisted, change rgb values to whatever we want    
