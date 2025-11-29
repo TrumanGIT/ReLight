@@ -94,7 +94,7 @@ namespace Hooks {
         auto match = findPriorityMatch(nodeName);
 
         if (!match.empty() || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos) {
-
+			logger::info("PostCreate matched node name: {}", nodeName);
             if (isExclude(nodeName, a_nifPath, a_root.get())) return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
 
             if (handleSceneRoot(a_nifPath, a_root, nodeName)) //TO DO:: Replace with ni point light instead of ni node

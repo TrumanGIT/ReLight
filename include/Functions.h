@@ -57,7 +57,7 @@ inline bool containsAll(std::string ID,
     return true;
 }
 
-inline void IniParser() {
+inline void iniParser() {
     std::ifstream iniFile("Data\\SKSE\\Plugins\\ReLight.ini");
     std::string line;
 
@@ -135,12 +135,19 @@ inline void IniParser() {
             splitString(line, ',', whitelist);
         }
 
-    }
+        else if (line.starts_with("priority list=")) {
+            std::string prefix = "whitelist=";
 
+            line.erase(0, prefix.length());
+
+            splitString(line, ',', priorityList);
+        }
+    }
+    ReadIniAndFillPriorityList(); 
 }
 
 //TODO:: move this to ini file? 
-inline void ReadMasterListAndFillExcludes() {
+inline void ReadiniAndFillExcludes() {
     std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
 
     if (!std::filesystem::exists(path)) {
@@ -184,6 +191,50 @@ inline void ReadMasterListAndFillExcludes() {
             toLower(line);
             exclusionListPartialMatch.push_back(line);
             logger::info("Added partial exclude: '{}'", line);
+        }
+    }
+
+    iniFile.close();
+}
+
+inline void ReadIniAndFillPriorityList() {
+    std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
+
+    if (!std::filesystem::exists(path)) {
+        logger::warn("INI file not found: {}", path);
+        return;
+    }
+
+    std::ifstream iniFile(path);
+    if (!iniFile.is_open()) {
+        logger::warn("Failed to open INI file: {}", path);
+        return;
+    }
+
+    std::string line;
+    int section = 0; // 0=normal, 1=priority section
+
+    while (std::getline(iniFile, line)) {
+        line = trim(line);
+        if (line.empty())
+            continue;
+
+        if (line.starts_with(";")) {
+            // detect the section header for priority nodes
+            if (line.find("PRIORITY NODES BY NAME") != std::string::npos) {
+                section = 1;
+            }
+            else {
+                section = 0; // other sections ignored
+            }
+            continue;
+        }
+
+        if (section == 1) {
+            line = trim(line);
+            toLower(line); // normalize casing
+            priorityList.push_back(line);
+            logger::info("Added to priority list: '{}'", line);
         }
     }
 
@@ -411,9 +462,7 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>&
     return false;
 }
 
-
-
-inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
+/*inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
 {
     static const std::unordered_set<std::string> nordicHallMeshes = {
     "norcathallsm1way01",
@@ -432,14 +481,11 @@ inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<R
 
     if (!nordicHallMeshes.contains(nodeName))
         return false;
-
-
-
     //TODO:: we need a way to apply multiple lights to nordic hall meshes
 //before we iterated through each node in a template wired gave us, now we only have single json objects, we will have to think of something
 
     return true;
-}
+}*/
 
 // some nodes are called scene root this is to take care of them. 
 inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, const std::string& nodeName)

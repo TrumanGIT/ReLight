@@ -10,7 +10,7 @@
 #include <vector>
 
 
-    float ambientRatio = 0.1;
+    float ambientRatio = 0.1f;
 
      bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
     {
@@ -138,7 +138,6 @@
 
             setNiPointLightData(niPointLight, cfg);
 
-            logger::info("fsetting up max nodes");
             const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
 
             for (size_t i = 0; i < maxNodes; ++i) {
@@ -147,13 +146,13 @@
                     logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
                     continue;
                 }
-                logger::info("wrapping in pointers");
+                //logger::info("wrapping in pointers");
                 RE::NiPointer<RE::NiAVObject> clonedNiPointLightAsNiObjectPtr = clonedNiPointLightAsNiObject;
                 if (!clonedNiPointLightAsNiObjectPtr) {
                     logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
                     continue;
                 }
-                logger::info("fadding to bank. ");
+              // logger::info("adding to bank. ");
                 bankedNodes.push_back(clonedNiPointLightAsNiObjectPtr);
                 logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
             }
