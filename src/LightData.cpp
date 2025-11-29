@@ -106,7 +106,7 @@
 
      void LightData::setNiPointLightPos(RE::NiPointLight* niPointLight, const LightConfig& cfg)
     {
-        if (!niPointLight) return;  // safety check
+        if (!niPointLight) return;
         niPointLight->local.translate.x = cfg.position[0];
         niPointLight->local.translate.y = cfg.position[1];
         niPointLight->local.translate.z = cfg.position[2];
