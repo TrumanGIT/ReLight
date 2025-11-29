@@ -97,11 +97,11 @@ namespace Hooks {
 			logger::info("PostCreate matched node name: {}", nodeName);
             if (isExclude(nodeName, a_nifPath, a_root.get())) return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
 
-            if (handleSceneRoot(a_nifPath, a_root, nodeName)) //TO DO:: Replace with ni point light instead of ni node
+            if (handleSceneRoot(a_nifPath, a_root, nodeName)) 
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
 
-            if (removeFakeGlowOrbs)
-                glowOrbRemover(a_root.get());
+           if (removeFakeGlowOrbs)
+               glowOrbRemover(a_root.get());
 
             if (TorchHandler(nodeName, a_root))
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
@@ -109,10 +109,11 @@ namespace Hooks {
             //TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
            /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
-
-            RE::NiPointer<RE::NiAVObject> nodePtr = getNextNodeFromBank(match);
+            logger::info("test log before get next node from bank" );
+            RE::NiPointer<RE::NiPointLight> nodePtr = getNextNodeFromBank(match);
             if (nodePtr) {
                 a_root->AttachChild(nodePtr.get());
+                LightData::attachNiPointLightToShadowSceneNode(nodePtr.get());
                 return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
                 //    logger::info("attached light to keyword mesh {}", nodeName);
             }
@@ -137,5 +138,4 @@ namespace Hooks {
         TESObjectLIGH_GenDynamic::Install();
         PostCreate::Install();
     }
-
 }

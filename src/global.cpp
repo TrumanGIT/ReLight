@@ -30,7 +30,7 @@ std::vector<std::string> exclusionListPartialMatch;
 
 std::vector<std::string> priorityList = {};
 
-std::map<LightConfig, std::vector<RE::NiPointer<RE::NiAVObject>>> niPointLightNodeBank = {};
+std::map<LightConfig, std::vector<RE::NiPointer<RE::NiPointLight>>> niPointLightNodeBank = {};
 
 // nodeName (lowercased) -> template mesh path
 //std::unordered_map<std::string, std::string>

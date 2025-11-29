@@ -57,6 +57,50 @@ inline bool containsAll(std::string ID,
     return true;
 }
 
+inline void ReadIniAndFillPriorityList() {
+    std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
+
+    if (!std::filesystem::exists(path)) {
+        logger::warn("INI file not found: {}", path);
+        return;
+    }
+
+    std::ifstream iniFile(path);
+    if (!iniFile.is_open()) {
+        logger::warn("Failed to open INI file: {}", path);
+        return;
+    }
+
+    std::string line;
+    int section = 0; // 0=normal, 1=priority section
+
+    while (std::getline(iniFile, line)) {
+        line = trim(line);
+        if (line.empty())
+            continue;
+
+        if (line.starts_with(";")) {
+            // detect the section header for priority nodes
+            if (line.find("PRIORITY NODES BY NAME") != std::string::npos) {
+                section = 1;
+            }
+            else {
+                section = 0; // other sections ignored
+            }
+            continue;
+        }
+
+        if (section == 1) {
+            line = trim(line);
+            toLower(line); // normalize casing
+            priorityList.push_back(line);
+            logger::info("Added to priority list: '{}'", line);
+        }
+    }
+
+    iniFile.close();
+}
+
 inline void iniParser() {
     std::ifstream iniFile("Data\\SKSE\\Plugins\\ReLight.ini");
     std::string line;
@@ -177,6 +221,9 @@ inline void ReadiniAndFillExcludes() {
             else if (line.find("EXCLUDE PARTIAL NODES BY NAME") != std::string::npos) {
                 section = 2;
             }
+            else if (line.find("PRIORITY NODES BY NAME") != std::string::npos) {
+                break;
+            }
             continue;
         }
 
@@ -191,50 +238,6 @@ inline void ReadiniAndFillExcludes() {
             toLower(line);
             exclusionListPartialMatch.push_back(line);
             logger::info("Added partial exclude: '{}'", line);
-        }
-    }
-
-    iniFile.close();
-}
-
-inline void ReadIniAndFillPriorityList() {
-    std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
-
-    if (!std::filesystem::exists(path)) {
-        logger::warn("INI file not found: {}", path);
-        return;
-    }
-
-    std::ifstream iniFile(path);
-    if (!iniFile.is_open()) {
-        logger::warn("Failed to open INI file: {}", path);
-        return;
-    }
-
-    std::string line;
-    int section = 0; // 0=normal, 1=priority section
-
-    while (std::getline(iniFile, line)) {
-        line = trim(line);
-        if (line.empty())
-            continue;
-
-        if (line.starts_with(";")) {
-            // detect the section header for priority nodes
-            if (line.find("PRIORITY NODES BY NAME") != std::string::npos) {
-                section = 1;
-            }
-            else {
-                section = 0; // other sections ignored
-            }
-            continue;
-        }
-
-        if (section == 1) {
-            line = trim(line);
-            toLower(line); // normalize casing
-            priorityList.push_back(line);
-            logger::info("Added to priority list: '{}'", line);
         }
     }
 
@@ -382,13 +385,16 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 }
 
 //we clone and store NIpointLight nodes in bank 
-inline RE::NiPointer<RE::NiAVObject> getNextNodeFromBank(const std::string& nodeName)
+inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
 {
+    logger::info("test get next ndoe from bank");
     for (auto& [cfg, bank] : niPointLightNodeBank) {
 
-        // Check if this config applies to the requested nodeName
+      
         if (nodeName.find(cfg.nodeName) == std::string::npos)
             continue;
+
+        logger::info("node name found in a config ");
 
         if (bank.empty()) {
             logger::warn("getNextNodeFromBank: '{}' has no nodes available", nodeName);
@@ -401,7 +407,7 @@ inline RE::NiPointer<RE::NiAVObject> getNextNodeFromBank(const std::string& node
         if (count >= bank.size())
             count = 0;
 
-        RE::NiPointer<RE::NiAVObject> obj = bank[count];
+        RE::NiPointer<RE::NiPointLight> obj = bank[count];
         if (!obj) {
             logger::warn("getNextNodeFromBank: '{}' index {} is null", nodeName, count);
             return nullptr;
@@ -415,9 +421,6 @@ inline RE::NiPointer<RE::NiAVObject> getNextNodeFromBank(const std::string& node
     return nullptr;
 }
 
-
-
-//TO DO:: change to use ni point lights
 // torches need special placement of light so they dont light up when not equipped. 
 inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>& a_root)
 {

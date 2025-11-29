@@ -84,7 +84,7 @@ void parseTemplates() {
         LightConfig cfg;
         loadConfiguration(cfg, p);
         cfg.print();
-        std::vector<RE::NiPointer<RE::NiAVObject>> objs{};
+        std::vector<RE::NiPointer<RE::NiPointLight>> objs{};
         niPointLightNodeBank[std::move(cfg)] = objs;
     }
 }
