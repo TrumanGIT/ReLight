@@ -41,7 +41,7 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
             auto& arr = data["position"];
             for (size_t i = 0; i < std::min(arr.size(), size_t(POS_SIZE)); ++i) {
                 auto val = arr[i].get<int>();
-                config.RGBValues[i] = val > 255 ? val - 255 : val;
+                config.position[i] = val;
             }
         }
 

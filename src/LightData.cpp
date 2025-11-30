@@ -10,7 +10,7 @@
 #include <vector>
 
 
-    float ambientRatio = 0.1f;
+     float LightData::ambientRatio = 0.1f;
 
      bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
     {
@@ -120,7 +120,7 @@
         data.fade = cfg.fade;
         data.radius = getNiPointLightRadius(cfg);
         setNiPointLightPos(niPointLight, cfg); 
-		
+        setNiPointLightAmbientAndDiffuse(niPointLight, cfg, ambientRatio);
       //  auto flags = niPointLight->GetFlags(); 
        // flags.set()
     }
@@ -190,7 +190,7 @@
 
         p.restrictedNode = nullptr; //idk
         p.lensFlareData = nullptr; //idk 
-
+        
         return p;
     }
 

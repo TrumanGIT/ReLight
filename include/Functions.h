@@ -370,7 +370,7 @@ inline std::string findPriorityMatch(const std::string& nodeName)
     //  Check priority list created from ini file first
     for (auto& nodeNameInPriorityList : priorityList) {
         if (nodeName.find(nodeNameInPriorityList) != std::string::npos)
-            return nodeName;
+            return nodeNameInPriorityList;
     }
 
     // No priority specified
@@ -389,7 +389,6 @@ inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& no
 {
     logger::info("test get next ndoe from bank");
     for (auto& [cfg, bank] : niPointLightNodeBank) {
-
       
         if (nodeName.find(cfg.nodeName) == std::string::npos)
             continue;

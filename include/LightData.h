@@ -15,8 +15,8 @@
 
 struct LightData {
 
-    float ambientRatio;
 
+    static float ambientRatio; 
     // Light flags
     /*#define FOREACH_LIGHTFLAG(F) \
     F(kNone) \

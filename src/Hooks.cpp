@@ -136,6 +136,6 @@ namespace Hooks {
     void Install() {
         SKSE::AllocTrampoline(1 << 8);
         TESObjectLIGH_GenDynamic::Install();
-        PostCreate::Install();
+        PostCreate::Install();       
     }
 }
