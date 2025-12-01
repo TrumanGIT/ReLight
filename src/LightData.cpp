@@ -191,16 +191,6 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	p.restrictedNode = nullptr; //idk
 	p.lensFlareData = nullptr; //idk 
 
-	logger::debug(" set shadowLight to	{}", p.shadowLight);
-	logger::debug(" set portalStrict to {}", p.portalStrict);
-	logger::debug(" set affectLand to	{}", p.affectLand);
-	logger::debug(" set affectWater to	{}", p.affectWater);
-	logger::debug(" set neverFades to	{}", p.neverFades);
-	logger::debug(" set fov to			{}", p.fov);
-	logger::debug(" set falloff to		{}", p.falloff);
-	logger::debug(" set nearDistance to {}", p.nearDistance);
-	logger::debug(" set depthBias to	{}", p.depthBias);
-
 	return p;
 }
 
@@ -214,6 +204,10 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLig
 	}
 
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS params = makeLightParams(cfg);
+
+	logger::debug("Light paramaters for {}", niPointLight->name);
+
+	printLightParams(params);
 
 	auto* shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 

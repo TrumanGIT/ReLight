@@ -56,5 +56,16 @@ struct LightData {
    static RE::NiPointLight* createNiPointLight();
    static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
    static void attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg);
+   static void printLightParams(const RE::ShadowSceneNode::LIGHT_CREATE_PARAMS& params) {
+       logger::debug(" shadowLight	 {}", params.shadowLight);
+       logger::debug(" portalStrict  {}", params.portalStrict);
+       logger::debug(" affectLand	 {}", params.affectLand);
+       logger::debug(" affectWater	 {}", params.affectWater);
+       logger::debug(" neverFades	 {}", params.neverFades);
+       logger::debug(" fov			 {}", params.fov);
+       logger::debug(" falloff		 {}", params.falloff);
+       logger::debug(" nearDistance  {}", params.nearDistance);
+       logger::debug(" depthBias	 {}", params.depthBias);
+   }
    // void initialize();
 };
