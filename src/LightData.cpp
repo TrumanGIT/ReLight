@@ -95,9 +95,9 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight,
 	auto& data = niPointLight->GetLightRuntimeData();
 
 	// supposedly main color of light 
-	data.diffuse.red = cfg.DiffuseColor[0] / 255.0f;
-	data.diffuse.green = cfg.DiffuseColor[1] / 255.0f;
-	data.diffuse.blue = cfg.DiffuseColor[2] / 255.0f;
+	data.diffuse.red = cfg.diffuseColor[0] / 255.0f;
+	data.diffuse.green = cfg.diffuseColor[1] / 255.0f;
+	data.diffuse.blue = cfg.diffuseColor[2] / 255.0f;
 
 	// idk about ambient after a quick google search it seems ambient is usually a fraction of diffuse
 	// we could prolly research futher and get better results but for now good enough

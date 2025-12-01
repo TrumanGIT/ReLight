@@ -5,6 +5,22 @@
 
 using json = nlohmann::json;
 
+#define BOOL2JSON_READ(C, I) \
+if (data.contains(#C)) { \
+    config.C = data[#C].get<bool>(); \
+} \
+else { \
+    config.C = I; \
+} \
+
+#define FLOAT2JSON_READ(C, I) \
+if (data.contains(#C)) { \
+    config.C = data[#C].get<float>(); \
+} \
+else { \
+    config.C = I; \
+} \
+
 bool loadConfiguration(LightConfig& config, const std::string& configPath) {
     try {
         std::ifstream configFile(configPath);
@@ -21,19 +37,15 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
             config.nodeName = data["nodeName"].get<std::string>();
         }
 
-        if (data.contains("fade")) {
-            config.fade = data["fade"].get<float>();
-        }
+        FOREACH_BOOL(BOOL2JSON_READ)
 
-        if (data.contains("radius")) {
-            config.radius = data["radius"].get<uint32_t>();
-        }
+        FOREACH_FLOAT(FLOAT2JSON_READ)
 
         if (data.contains("emittanceColor") && data["emittanceColor"].is_array()) {
             auto& arr = data["emittanceColor"];
             for (size_t i = 0; i < std::min(arr.size(), size_t(COL_SIZE)); ++i) {
                 auto val = arr[i].get<int>();
-                config.DiffuseColor[i] = val > 255 ? val - 255 : val;
+                config.diffuseColor[i] = val > 255 ? val - 255 : val;
             }
         }
 

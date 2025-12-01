@@ -6,6 +6,8 @@
 #include <fstream>
 #include <array>
 
+#include "logger.hpp"
+
 namespace fs = std::filesystem;
 
 constexpr int COL_SIZE = 3;
@@ -16,21 +18,41 @@ T(candle) \
 T(chandelier) \
 T(fires) \
 
+#define FOREACH_BOOL(B) \
+B(shadowLight, false) \
+B(portalStrict, false) \
+B(affectLand, true) \
+B(affectWater, true) \
+B(neverFades, true) \
+
+#define FOREACH_FLOAT(F) \
+F(fade, 0) \
+F(radius, 0) \
+F(ambientRatio, 0.1) \
+F(fov, 90.f) \
+F(falloff, 1.f) \
+F(nearDistance, 5.f) \
+F(depthBias, 0.0005f) \
+
+#define BOOL2DEF(B, I) bool B{I};
+#define FLOAT2DEF(B, I) float B{I};
+#define BOOL2PRINT(C, I) logger::info(" {:30s} : {:s}", #C, C ? "true" : "false");
+#define FLOAT2PRINT(C, I) logger::info(" {:30s} : {:.2f}", #C, C);
+
 struct LightConfig {
-    std::string nodeName{};
-    float fade{0.0};                              // TESObjectLIGH->fade
-    float ambientRatio;                           // dampens ambient colors
-    std::uint32_t radius{0};                      // TESObjectLIGH->data.radius
-    std::array<int, COL_SIZE> DiffuseColor{};        // TESObjectLIGH->data.color.red, blue green 
+    FOREACH_BOOL(BOOL2DEF);
+    FOREACH_FLOAT(FLOAT2DEF);
+    std::string nodeName{};                  // TESObjectLIGH->data.radius
+    std::array<int, COL_SIZE> diffuseColor{};     // TESObjectLIGH->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
     std::vector<std::string> flags{};             // TES::ObjectLigh->data.flags
 
     void print() {
-        logger::info("Node name : {}", nodeName);
-        logger::info(" fade     : {}", fade);
-        logger::info(" radius   : {}", radius);
-        logger::info(" position : [{}, {}, {}] ", position[0], position[1], position[2]);
-        logger::info(" color    : [{}, {}, {}] ", DiffuseColor[0], DiffuseColor[1], DiffuseColor[2]);
+        logger::info("Node name          : {}", nodeName);
+        FOREACH_BOOL(BOOL2PRINT);
+        FOREACH_FLOAT(FLOAT2PRINT);
+        logger::info(" position          : [{}, {}, {}] ", position[0], position[1], position[2]);
+        logger::info(" color             : [{}, {}, {}] ", diffuseColor[0], diffuseColor[1], diffuseColor[2]);
         logger::info(" flags    :");
         for (const auto& f: flags) {
             logger::info("  {}", f);
