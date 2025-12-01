@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 
-
      float LightData::ambientRatio = 0.1f;
 
      bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
@@ -83,7 +82,7 @@
             logger::info("nipoint light creation failed"); 
             return nullptr;
         }
-        return niPointLight; // returns nullptr if create failed
+        return niPointLight;
     }
 
      RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
@@ -151,7 +150,8 @@
                     continue;
                 }
 
-                //logger::info("wrapping in pointers");
+                
+		// cast from niobject to nipoint light and extract from ni pointer 
                 RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject.get());
                 if (!clonedNiPointLight) {
                     logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
@@ -210,9 +210,6 @@
              logger::info("no shadow scene node to grab in (createShadowSceneNode()");
              return;
         }
-
-        // we should capture this in a map or convert the bank map to a pair so we can 
-        //keep track of what bslight belongs to what ni point light if we need to remove it later
         RE::BSLight* BsLight = shadowSceneNode->AddLight(niPointLight, params); 
         
         //TODO:: we should name NiPointLight nodes after creating them so we can debugg easier
