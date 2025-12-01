@@ -54,7 +54,7 @@ struct LightData {
    static void setNiPointLightPos(RE::NiPointLight* light, const LightConfig& cfg);
    static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
    static RE::NiPointLight* createNiPointLight();
-   static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams();
-   static void attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight);
+   static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
+   static void attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg);
    // void initialize();
 };

@@ -170,31 +170,43 @@ void LightData::assignNiPointLightsToBank() {
 }
 
 
-//TODO:: make this changeable
-RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams()
+RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
-	p.dynamic = true;    // dynamic = game updates it every frame so yes
-	p.shadowLight = false;   // obvious enough
-	p.portalStrict = false; // idk 
-	p.affectLand = true; // obvious enough
-	p.affectWater = true; // obvious enough
-	p.neverFades = true; // obvious enough
 
-	p.fov = 90.0f;   // idk
-	p.falloff = 1.0f;    // idk 
-	p.nearDistance = 5.0f; // idk
-	p.depthBias = 0.0005f; // idk 
+	// Couldn't do it with a macro as not all config. variables can be used with LIGHT_CREATE_PARAMS.
+
+	p.dynamic = true;    // dynamic = game updates it every frame so yes
+	p.shadowLight = cfg.shadowLight;   // obvious enough
+	p.portalStrict = cfg.portalStrict; // idk 
+	p.affectLand = cfg.affectLand; // obvious enough
+	p.affectWater = cfg.affectWater; // obvious enough
+	p.neverFades = cfg.neverFades; // obvious enough
+
+	p.fov = cfg.fov;   // idk
+	p.falloff = cfg.falloff;    // idk 
+	p.nearDistance = cfg.nearDistance; // idk
+	p.depthBias = cfg.depthBias; // idk 
 
 	p.sceneGraphIndex = 0;      // always use 0 
 
 	p.restrictedNode = nullptr; //idk
 	p.lensFlareData = nullptr; //idk 
 
+	logger::debug(" set shadowLight to	{}", p.shadowLight);
+	logger::debug(" set portalStrict to {}", p.portalStrict);
+	logger::debug(" set affectLand to	{}", p.affectLand);
+	logger::debug(" set affectWater to	{}", p.affectWater);
+	logger::debug(" set neverFades to	{}", p.neverFades);
+	logger::debug(" set fov to			{}", p.fov);
+	logger::debug(" set falloff to		{}", p.falloff);
+	logger::debug(" set nearDistance to {}", p.nearDistance);
+	logger::debug(" set depthBias to	{}", p.depthBias);
+
 	return p;
 }
 
-void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight) {
+void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
 
 	logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
 
@@ -202,7 +214,8 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLig
 		logger::error("createShadowSceneNode: niPointLight is null");
 		return;
 	}
-	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS params = makeLightParams();
+
+	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS params = makeLightParams(cfg);
 
 	auto* shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 
