@@ -49,7 +49,7 @@ struct LightData {
     static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
    // template <class T>
    // inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
-   static void setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg, float ambientRatio);
+   static void setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg);
    static void setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg);
    static void setNiPointLightPos(RE::NiPointLight* light, const LightConfig& cfg);
    static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);

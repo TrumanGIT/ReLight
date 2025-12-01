@@ -9,8 +9,6 @@
 #include <string>
 #include <vector>
 
-float LightData::ambientRatio = 0.1f;
-
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
 {
 	if (!ref || !light || ref->IsDynamicForm()) {
@@ -90,7 +88,7 @@ RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
 	return RE::NiPoint3(cfg.radius, cfg.radius, cfg.radius);
 }
 
-void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg, float ambientRatio) {
+void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) return;
 	auto& data = niPointLight->GetLightRuntimeData();
 
@@ -101,9 +99,9 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight,
 
 	// idk about ambient after a quick google search it seems ambient is usually a fraction of diffuse
 	// we could prolly research futher and get better results but for now good enough
-	data.ambient.red = data.diffuse.red * ambientRatio;
-	data.ambient.green = data.diffuse.green * ambientRatio;
-	data.ambient.blue = data.diffuse.blue * ambientRatio;
+	data.ambient.red = data.diffuse.red * cfg.ambientRatio;
+	data.ambient.green = data.diffuse.green * cfg.ambientRatio;
+	data.ambient.blue = data.diffuse.blue * cfg.ambientRatio;
 }
 
 void LightData::setNiPointLightPos(RE::NiPointLight* niPointLight, const LightConfig& cfg)
@@ -119,7 +117,7 @@ void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightC
 	data.fade = cfg.fade;
 	data.radius = getNiPointLightRadius(cfg);
 	setNiPointLightPos(niPointLight, cfg);
-	setNiPointLightAmbientAndDiffuse(niPointLight, cfg, ambientRatio);
+	setNiPointLightAmbientAndDiffuse(niPointLight, cfg);
 	//  auto flags = niPointLight->GetFlags(); 
 	 // flags.set()
 }

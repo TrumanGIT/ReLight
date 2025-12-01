@@ -365,7 +365,7 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 //TODO:: reimplement for new ni pointLightBank ban, we need to find a way to have priority for nodes coming in so
 // so chandeliers overtake candles ect (some chandeliers have candle in node name) 
 
-inline std::string findPriorityMatch(LightConfig& cfg, const std::string& nodeName)
+inline std::string findPriorityMatch(const std::string& nodeName)
 {
 	//  Check priority list created from ini file first
 	for (auto& nodeNameInPriorityList : priorityList) {
