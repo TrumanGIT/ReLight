@@ -3,7 +3,7 @@
 namespace Hooks {
 
 
-    //PO3's
+    //PO3
     struct TESObjectLIGH_GenDynamic {
         static RE::NiPointLight* thunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
             bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
@@ -12,18 +12,19 @@ namespace Hooks {
         static void Install();
     };
 
-    //PO3's
-    struct PostCreate {
-        static void thunk(RE::TESModelDB::TESProcessor* a_this, const RE::BSModelDB::DBTraits::ArgsType& a_args,
-            const char* a_nifPath, RE::NiPointer<RE::NiNode>& a_root, std::uint32_t& a_typeOut);
+    //PO3
+    struct Load3D {
+
+        static RE::NiAVObject* thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading);
 
         static inline REL::Relocation<decltype(thunk)> func;
-        static inline std::size_t size{ 0x1 };
+
+        static constexpr std::size_t idx{ 0x6A };
 
         static void Install();
     };
 
-    void Install();  // no static or inline works because only calling and define it once so fine as is
+    void Install(); 
 
 }
 

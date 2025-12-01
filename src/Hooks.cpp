@@ -67,23 +67,30 @@ namespace Hooks {
         logger::info("Installed TESObjectLIGH::GenDynamic patch");
     }
 
-    //Po3's
-    void PostCreate::thunk(
-        RE::TESModelDB::TESProcessor* a_this,
-        const RE::BSModelDB::DBTraits::ArgsType& a_args,
-        const char* a_nifPath,
-        RE::NiPointer<RE::NiNode>& a_root,
-        std::uint32_t& a_typeOut)
+    RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
     {
+
+        logger::info("load3d called");
+        auto niAVObject = func(a_this, a_backgroundLoading);
+        if (!niAVObject) {
+            logger::info("no ni node casted from niav object in load3d");
+        }
+
+        RE::NiNode* a_root = niAVObject->AsNode();
+        if (!a_root) {
+            logger::info("no ni node casted from niav object in load3d");
+        }
         auto ui = RE::UI::GetSingleton();
 
         if (!dataHasLoaded || !a_root) {
-            return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+
+            logger::info("datahasnot loaded or no root to attach to");
+            return niAVObject;
         }
 
         if (ui && ui->IsMenuOpen("InventoryMenu")) {
             //logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-            return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+            return niAVObject;
         }
 
         // grab name of NiNode (usually 1:1 with mesh names)
@@ -94,48 +101,58 @@ namespace Hooks {
         auto match = findPriorityMatch(nodeName);
 
         if (!match.empty() || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos) {
-			logger::info("PostCreate matched node name: {}", nodeName);
-            if (isExclude(nodeName, a_nifPath, a_root.get())) return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+            logger::info("PostCreate matched node name: {}", nodeName);
+              if (isExclude(nodeName, a_root)) return niAVObject;
+            logger::info("after exclude");
 
-            if (handleSceneRoot(a_nifPath, a_root, nodeName)) 
-                return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+            //TODO:: Reimplement, no nifpath in args of hook but can still prolly pull
+             // if (handleSceneRoot(a_nifPath, a_root, nodeName))
+              //    return niAVObject;
 
-           if (removeFakeGlowOrbs)
-               glowOrbRemover(a_root.get());
+              if (removeFakeGlowOrbs)
+                  glowOrbRemover(a_root);
 
-            if (TorchHandler(nodeName, a_root))
-                return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+              if (TorchHandler(nodeName, a_root))
+                  return niAVObject;
 
-            //TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
-           /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
-                return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
-            logger::info("test log before get next node from bank" );
+              //TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
+             /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
+                  return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
+            logger::info("test log before get next node from bank");
             RE::NiPointer<RE::NiPointLight> nodePtr = getNextNodeFromBank(match);
             if (nodePtr) {
-                a_root->AttachChild(nodePtr.get());
-                LightData::attachNiPointLightToShadowSceneNode(nodePtr.get());
-                return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+                logger::info("next node retrieved successfully ", match);
+                a_root->AttachChild(nodePtr.get(), true);
+
+                logger::info("a_root world translate in load3d ={} ", a_root->world.translate);
+                //   a_root->UpdateWorldBound();
+                 //  auto worldTranslate = a_root->world.translate; 
+                ;
+
                 //    logger::info("attached light to keyword mesh {}", nodeName);
+                LightData::attachNiPointLightToShadowSceneNode(nodePtr.get());
             }
         }
-        dummyHandler(a_root.get(), nodeName);
+        dummyHandler(a_root, nodeName);
 
-        return func(a_this, a_args, a_nifPath, a_root, a_typeOut);
+        return niAVObject;
     }
 
-    void PostCreate::Install() {
-        // Get TESProcessor's vtable
-        REL::Relocation<std::uintptr_t> vtable(RE::TESModelDB::TESProcessor::VTABLE[0]);
 
-        // Replace the vfunc at index 'size' with our thunk
-        func = vtable.write_vfunc(size, thunk);
+    void Load3D::Install()
+    {
+        logger::info("Installing Load3D hook...");
 
-        logger::info("Installed TESModelDB::TESProcessor hook");
+        func = REL::Relocation<std::uintptr_t>(RE::TESObjectREFR::VTABLE[0])
+            .write_vfunc(idx, thunk);
+
+        logger::info("Hooked TESObjectREFR::Load3D");
     }
+    
 
     void Install() {
         SKSE::AllocTrampoline(1 << 8);
         TESObjectLIGH_GenDynamic::Install();
-        PostCreate::Install();       
+        Load3D::Install();
     }
 }

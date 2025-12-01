@@ -315,7 +315,7 @@ inline void glowOrbRemover(RE::NiNode* node)
 }
 
 // TODO:: Rework well probobly move this to ini file since were done with masterlist
-inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNode* root)
+inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::NiNode* root)
 {
     if (nodeName == "mpscandleflame01.nif" && removeFakeGlowOrbs) {
         if (!root)
@@ -349,7 +349,7 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
             return true;
     }
 
-    if (!nifPath)
+    /*if (!nifPath)
         return false;
 
     std::string path = nifPath;
@@ -357,7 +357,7 @@ inline bool isExclude(const std::string& nodeName, const char* nifPath, RE::NiNo
 
     // Some modded torches name "off" variants incorrectly
     if (path.find("off") != std::string::npos)
-        return true;
+        return true;*/
 
     return false;
 }
@@ -421,7 +421,7 @@ inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& no
 }
 
 // torches need special placement of light so they dont light up when not equipped. 
-inline bool TorchHandler(const std::string& nodeName, RE::NiPointer<RE::NiNode>& a_root)
+inline bool TorchHandler(const std::string& nodeName, RE::NiNode* a_root)
 {
     if (nodeName == "torch") {
         RE::NiNode* attachLight = nullptr;
