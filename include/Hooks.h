@@ -12,7 +12,7 @@ namespace Hooks {
         static void Install();
     };
 
-    //PO3
+    
     struct Load3D {
 
         static RE::NiAVObject* thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading);
