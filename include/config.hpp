@@ -19,8 +19,9 @@ T(fires) \
 struct LightConfig {
     std::string nodeName{};
     float fade{0.0};                              // TESObjectLIGH->fade
+    float ambientRatio;                           // dampens ambient colors
     std::uint32_t radius{0};                      // TESObjectLIGH->data.radius
-    std::array<int, COL_SIZE> RGBValues{};        // TESObjectLIGH->data.color.red, blue green 
+    std::array<int, COL_SIZE> DiffuseColor{};        // TESObjectLIGH->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
     std::vector<std::string> flags{};             // TES::ObjectLigh->data.flags
 
@@ -29,7 +30,7 @@ struct LightConfig {
         logger::info(" fade     : {}", fade);
         logger::info(" radius   : {}", radius);
         logger::info(" position : [{}, {}, {}] ", position[0], position[1], position[2]);
-        logger::info(" color    : [{}, {}, {}] ", RGBValues[0], RGBValues[1], RGBValues[2]);
+        logger::info(" color    : [{}, {}, {}] ", DiffuseColor[0], DiffuseColor[1], DiffuseColor[2]);
         logger::info(" flags    :");
         for (const auto& f: flags) {
             logger::info("  {}", f);

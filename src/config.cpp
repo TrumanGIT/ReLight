@@ -33,7 +33,7 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
             auto& arr = data["emittanceColor"];
             for (size_t i = 0; i < std::min(arr.size(), size_t(COL_SIZE)); ++i) {
                 auto val = arr[i].get<int>();
-                config.RGBValues[i] = val > 255 ? val - 255 : val;
+                config.DiffuseColor[i] = val > 255 ? val - 255 : val;
             }
         }
 
