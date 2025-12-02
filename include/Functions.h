@@ -57,7 +57,10 @@ inline bool containsAll(std::string ID,
 	return true;
 }
 
-inline void ReadIniAndFillPriorityList() {
+
+//TODO:: Log values for debugging (saved me alot of time with users) 
+inline void iniParser()
+{
 	std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
 
 	if (!std::filesystem::exists(path)) {
@@ -72,176 +75,95 @@ inline void ReadIniAndFillPriorityList() {
 	}
 
 	std::string line;
-	int section = 0; // 0=normal, 1=priority section
+	enum Section { NONE, exact, partial, priority } section = NONE;
 
-	while (std::getline(iniFile, line)) {
+	while (std::getline(iniFile, line))
+	{
 		line = trim(line);
-		if (line.empty())
-			continue;
+		if (line.empty()) continue;
 
-		if (line.starts_with(";")) {
-			// detect the section header for priority nodes
-			if (line.find("PRIORITY NODES BY NAME") != std::string::npos) {
-				section = 1;
-			}
-			else {
-				section = 0; // other sections ignored
-			}
-			continue;
-		}
+		
+		if (line.starts_with(";"))
+		{
+			toLower(line);
 
-		if (section == 1) {
-			line = trim(line);
-			toLower(line); // normalize casing
-			priorityList.push_back(line);
-			logger::info("Added to priority list: '{}'", line);
-		}
-	}
-
-	iniFile.close();
-}
-
-inline void iniParser() {
-	std::ifstream iniFile("Data\\SKSE\\Plugins\\ReLight.ini");
-	std::string line;
-
-	while (std::getline(iniFile, line)) {
-		line.erase(0, line.find_first_not_of(" \t"));
-		if (line.empty() || line[0] == ';') continue;
-
-		if (line.starts_with("disableShadowCasters=")) {
-			std::string value = line.substr(std::string("disableShadowCasters=").length());
-			toLower(value);
-
-			if (value == "true" || value == "1")
-				disableShadowCasters = 1;
-			else if (value == "false" || value == "0")
-				disableShadowCasters = 0;
+			if (line.find("exclude specific nodes") != std::string::npos)
+				section = exact;
+			else if (line.find("exclude partial nodes") != std::string::npos)
+				section = partial;
+			else if (line.find("priority") != std::string::npos)
+				section = priority;
 			else
-				spdlog::warn("Invalid value for disableShadowCasters: {}", value);
+				section = NONE;
 
-			spdlog::info("INI override: disableShadowCasters = {}", disableShadowCasters);
-
-		}
-		else if (line.starts_with("disableTorchLights=")) {
-			std::string value = line.substr(std::string("disableTorchLights=").length());
-			toLower(value);
-
-			if (value == "true" || value == "1")
-				disableTorchLights = true;
-			else if (value == "false" || value == "0")
-				disableTorchLights = false;
-			else
-				spdlog::warn("Invalid value for disableTorchLights: {}", value);
-
-			spdlog::info("INI override: disableTorchLights = {}", disableTorchLights);
-		}
-		else if (line.starts_with("removeFakeGlowOrbs=")) {
-			std::string value = line.substr(std::string("removeFakeGlowOrbs=").length());
-			toLower(value);
-
-			if (value == "true" || value == "1")
-				removeFakeGlowOrbs = true;
-			else if (value == "false" || value == "0")
-				removeFakeGlowOrbs = false;
-			else
-				spdlog::warn("Invalid value for removeFakeGlowOrbs: {}", value);
-
-			spdlog::info("INI override: removeFakeGlowOrbs = {}", removeFakeGlowOrbs);
-		}
-
-		else if (line.starts_with("RGB Values=")) {
-			auto values = line.substr(std::string("RGB Values=").length());
-
-			// Find each color
-			auto rPos = values.find("Red:");
-			auto gPos = values.find("Green:");
-			auto bPos = values.find("Blue:");
-
-			if (rPos != std::string::npos) {
-				red = static_cast<std::uint8_t>(std::stoi(values.substr(rPos + 4)));
-			}
-			if (gPos != std::string::npos) {
-				green = static_cast<std::uint8_t>(std::stoi(values.substr(gPos + 6)));
-			}
-			if (bPos != std::string::npos) {
-				blue = static_cast<std::uint8_t>(std::stoi(values.substr(bPos + 5)));
-			}
-
-			spdlog::info("INI override: Bulb RGB values set to R:{} G:{} B:{}", red, green, blue);
-		}
-
-		else if (line.starts_with("whitelist=")) {
-			std::string prefix = "whitelist=";
-
-			line.erase(0, prefix.length());
-
-			splitString(line, ',', whitelist);
-		}
-
-		else if (line.starts_with("priority list=")) {
-			std::string prefix = "whitelist=";
-
-			line.erase(0, prefix.length());
-
-			splitString(line, ',', priorityList);
-		}
-	}
-	ReadIniAndFillPriorityList();
-}
-
-//TODO:: move this to ini file? 
-inline void ReadiniAndFillExcludes() {
-	std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
-
-	if (!std::filesystem::exists(path)) {
-		logger::warn("INI file not found: {}", path);
-		return;
-	}
-
-	std::ifstream iniFile(path);
-	if (!iniFile.is_open()) {
-		logger::warn("Failed to open INI file: {}", path);
-		return;
-	}
-
-	std::string line;
-	int section = 0; // 0=normal, 1=exact excludes, 2=partial excludes
-
-	while (std::getline(iniFile, line)) {
-		line = trim(line);
-		if (line.empty())
-			continue;
-
-		if (line.starts_with(";")) {
-			// detect section headers
-			if (line.find("EXCLUDE SPECIFIC NODES BY NAME") != std::string::npos) {
-				section = 1;
-			}
-			else if (line.find("EXCLUDE PARTIAL NODES BY NAME") != std::string::npos) {
-				section = 2;
-			}
-			else if (line.find("PRIORITY NODES BY NAME") != std::string::npos) {
-				break;
-			}
 			continue;
 		}
 
-		if (section == 1) {
-			line = trim(line);
+		switch (section)
+		{
+		case exact:
 			toLower(line);
 			exclusionList.push_back(line);
-			logger::info("Added exact exclude: '{}'", line);
-		}
-		else if (section == 2) {
-			line = trim(line);
+			logger::info("Added exact exclude: {}", line);
+			continue;
+
+		case partial:
 			toLower(line);
 			exclusionListPartialMatch.push_back(line);
-			logger::info("Added partial exclude: '{}'", line);
+			logger::info("Added partial exclude: {}", line);
+			continue;
+			//not working
+		case priority:
+			 toLower(line);
+			priorityList.push_back(line);
+			logger::info("Added priority node: {}", line);
+			continue;
+
+		default:
+			break;
+		}
+
+		auto eq = line.find('=');
+		if (eq == std::string::npos)
+			continue;
+
+		std::string key = trim(line.substr(0, eq));
+		toLower(key); 
+
+		std::string value = trim(line.substr(eq + 1));
+		toLower(value);
+
+		std::string vLow = value;
+		toLower(vLow);
+
+		auto parseBool = [&](const std::string& v) {
+			return (v == "true" || v == "1" || v == "yes");
+			};
+
+		if (key == "disableshadowcasters") {
+			disableShadowCasters = parseBool(vLow);
+			continue;
+		}
+
+		if (key == "disabletorchlights") {
+			disableTorchLights = parseBool(vLow);
+			continue;
+		}
+
+		if (key == "removefakegloworbs") {
+			removeFakeGlowOrbs = parseBool(vLow);
+			continue;
+		}
+
+		if (key == "whitelist") {
+			splitString(value, ',', whitelist);
+			continue;
 		}
 	}
 
 	iniFile.close();
+
+	logger::info("ReLight.ini parsed successfully!");
 }
 
 inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
@@ -254,7 +176,7 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 		return false;  // Not in a worldspace (probably in an interior cell)
 	}
 
-	// logger::info("current worldspace = {}", worldspace->GetFormID());
+	 logger::debug("current worldspace = {}", worldspace->GetFormID());
 
 	if (worldspace->GetFormID() == apocryphaFormID || worldspace->GetFormID() == soulCairnFormID) {
 		//  logger::info("is in soul cairn or apocrypha");
@@ -264,8 +186,7 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 	return false;
 }
 
-// TODO:: I may delete this or repurpose this. 
-inline RE::NiPointer<RE::NiAVObject> CloneNiPointLight(RE::NiPointLight* NiPointLight) {
+inline RE::NiAVObject* CloneNiPointLight(RE::NiPointLight* NiPointLight) {
 
 	RE::NiCloningProcess cloningProcess;
 	auto NiPointLightClone = NiPointLight->CreateClone(cloningProcess);
@@ -277,7 +198,7 @@ inline RE::NiPointer<RE::NiAVObject> CloneNiPointLight(RE::NiPointLight* NiPoint
 	auto NiPointLightCloneAsAv = static_cast<RE::NiAVObject*>(NiPointLightClone);
 
 	// Successfully cloned node
-	return RE::NiPointer<RE::NiAVObject>(NiPointLightCloneAsAv);
+	return NiPointLightCloneAsAv;
 }
 
 inline void glowOrbRemover(RE::NiNode* node)
@@ -314,13 +235,14 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-// TODO:: Rework well probobly move this to ini file since were done with masterlist
+
 inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::NiNode* root)
 {
 	if (nodeName == "mpscandleflame01.nif" && removeFakeGlowOrbs) {
 		if (!root)
 			return true;
 
+		// TODO:: mps glow remover doesent seem to be working. 
 		// this is to remove glow orbs from Master particle system candles
 		if (auto* flameNode = root->GetObjectByName("mpscandleflame01")) {
 			if (auto* flameNiNode = flameNode->AsNode()) {
@@ -399,13 +321,13 @@ inline LightConfig findConfigForNode(const std::string& nodeName)
 //we clone and store NIpointLight nodes in bank 
 inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
 {
-	logger::info("test get next ndoe from bank");
+	logger::debug("test get next ndoe from bank");
 	for (auto& [cfg, bank] : niPointLightNodeBank) {
 
 		if (nodeName.find(cfg.nodeName) == std::string::npos)
 			continue;
 
-		logger::info("node name found in a config ");
+		logger::debug("node name found in a config ");
 
 		if (bank.empty()) {
 			logger::warn("getNextNodeFromBank: '{}' has no nodes available", nodeName);

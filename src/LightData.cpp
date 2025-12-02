@@ -78,7 +78,6 @@ RE::NiPointLight* LightData::createNiPointLight() {
 	auto* niPointLight = RE::NiPointLight::Create();
 	if (!niPointLight) {
 		logger::info("nipoint light creation failed");
-		return nullptr;
 	}
 	return niPointLight;
 }
@@ -89,7 +88,10 @@ RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
 }
 
 void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
-	if (!niPointLight) return;
+	if (!niPointLight) {
+		logger::warn("nullptr passed to set ni point light ambient and diffuse");
+		return;
+	}
 	auto& data = niPointLight->GetLightRuntimeData();
 
 	// supposedly main color of light 
@@ -142,15 +144,15 @@ void LightData::assignNiPointLightsToBank() {
 		const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
 
 		for (size_t i = 0; i < maxNodes; ++i) {
+                  
 			auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
 			if (!clonedNiPointLightAsNiObject) {
 				logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
 				continue;
 			}
 
-
 			// cast from niobject to nipoint light and extract from ni pointer 
-			RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject.get());
+			RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject);
 			if (!clonedNiPointLight) {
 				logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
 				continue;
@@ -161,9 +163,10 @@ void LightData::assignNiPointLightsToBank() {
 
 			// logger::info("adding to bank. ");
 			bankedNodes.push_back(clonedNiPointLightPtr);
-			//logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
+			logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
 		}
 	}
+
 	logger::info("Finished assignClonedNodes");
 }
 
@@ -173,6 +176,8 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
 
 	// Couldn't do it with a macro as not all config. variables can be used with LIGHT_CREATE_PARAMS.
+
+	//Truman -  sounds good homie idk how to use that shit anyway xD
 
 	p.dynamic = true;    // dynamic = game updates it every frame so yes
 	p.shadowLight = cfg.shadowLight;   // obvious enough
@@ -196,7 +201,7 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 
 void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
 
-	logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
+	//logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
 
 	if (!niPointLight) {
 		logger::error("createShadowSceneNode: niPointLight is null");
@@ -212,7 +217,7 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLig
 	auto* shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 
 	if (!shadowSceneNode) {
-		logger::info("no shadow scene node to grab in (createShadowSceneNode()");
+		logger::warn("no shadow scene node to grab in (createShadowSceneNode()");
 		return;
 	}
 	RE::BSLight* BsLight = shadowSceneNode->AddLight(niPointLight, params);

@@ -4,7 +4,7 @@
 #include "config.hpp"
 #include "hooks.h"
 #include "Functions.h"
-
+#include "menu.h"
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     switch (msg->type) {
@@ -45,10 +45,11 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
     setupLog(spdlog::level::info);
     logger::info("Relight Plugin is Loaded");
-    ReadiniAndFillExcludes(); // need to change this func to read from ini file
+    // need to change this func to read from ini file
+    iniParser();
     parseTemplates();
-	iniParser();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     Hooks::Install(); 
+    UI::Register();
     return true;
 }

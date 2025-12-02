@@ -70,21 +70,22 @@ namespace Hooks {
 	RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 	{
 
-		logger::info("load3d called");
+		//logger::info("load3D called");
 		auto niAVObject = func(a_this, a_backgroundLoading);
 		if (!niAVObject) {
-			logger::info("no ni node casted from niav object in load3d");
+			logger::warn("no ni node casted from niav object in load3d");
+			return niAVObject;
 		}
 
 		RE::NiNode* a_root = niAVObject->AsNode();
 		if (!a_root) {
-			logger::info("no ni node casted from niav object in load3d");
+			logger::warn("no ni node casted from niav object in load3d");
 		}
 		auto ui = RE::UI::GetSingleton();
 
 		if (!dataHasLoaded || !a_root) {
 
-			logger::info("datahasnot loaded or no root to attach to");
+			logger::debug("data is not loaded or no root to attach to");
 			return niAVObject;
 		}
 
@@ -100,12 +101,11 @@ namespace Hooks {
 		// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
 		auto match = findPriorityMatch(nodeName);
 
-		if (!match.empty() || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos) {
-			logger::info("PostCreate matched node name: {}", nodeName);
+		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos*/ || nodeName.find("scene") != std::string::npos) {
+			logger::debug("Load3D() matched node name: {}", nodeName);
 			if (isExclude(nodeName, a_root)) return niAVObject;
-			logger::info("after exclude");
-
-			//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull
+	
+			//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
 			 // if (handleSceneRoot(a_nifPath, a_root, nodeName))
 			  //    return niAVObject;
 
@@ -118,27 +118,26 @@ namespace Hooks {
 			//TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
 		   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 				return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
-			logger::info("test log before get next node from bank");
+		//	logger::info("test log before get next node from bank");
 			RE::NiPointer<RE::NiPointLight> nodePtr = getNextNodeFromBank(match);
 			if (nodePtr) {
-				logger::info("next node retrieved successfully ", match);
+				logger::debug("next node retrieved successfully ", match);
 				a_root->AttachChild(nodePtr.get(), true);
 
-				logger::info("a_root world translate in load3d ={} ", a_root->world.translate);
+				logger::debug("a_root world translate in load3d ={} ", a_root->world.translate);
 				//   a_root->UpdateWorldBound();
 				 //  auto worldTranslate = a_root->world.translate; 
-				;
-
+				
 				//    logger::info("attached light to keyword mesh {}", nodeName);
 				LightConfig cfg = findConfigForNode(nodeName);
 				LightData::attachNiPointLightToShadowSceneNode(nodePtr.get(), cfg);
 			}
 		}
+
 		dummyHandler(a_root, nodeName);
 
 		return niAVObject;
 	}
-
 
 	void Load3D::Install()
 	{
@@ -149,7 +148,6 @@ namespace Hooks {
 
 		logger::info("Hooked TESObjectREFR::Load3D");
 	}
-
 
 	void Install() {
 		SKSE::AllocTrampoline(1 << 8);
