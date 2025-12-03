@@ -15,11 +15,11 @@ struct ISL_Overlay
 {
     std::uint32_t flags;       // I dont think we need this but idk can ignore for now
     float         cutoffOverride;//ISL need for isl from config
-    RE::FormID    lighFormId;//ISL need for isl from config
+    RE::FormID    lighFormId;
     RE::NiColor   diffuse;
     float         radius;
     float         pad1C;
-    float         size;
+    float         size; //ISL need for isl from config
     float         fade;
     std::uint32_t unk138;
 
