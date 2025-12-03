@@ -42,6 +42,11 @@ namespace UI {
 
         ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &removeFakeGlowOrbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
+        
+        ImGuiMCP::Separator();
+
+        ImGuiMCP::SliderInt("Logging Level", &loggingLevel, 0, 3);
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Logging Level (0: critical, 1: warnings/errors, 2: info)");
 
         ImGuiMCP::Separator();
 
@@ -90,7 +95,7 @@ namespace UI {
 
         outFile << "; ReLight INI\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info)\n";
-        outFile << "loggingLevel=2\n\n";
+        outFile << "loggingLevel=" << loggingLevel << "\n\n";
 
         outFile << "; disable all shadow - casting light references(except skylights) (default = true)\n";
         outFile << "disableShadowCasters=" << (disableShadowCasters ? "true" : "false") << "\n\n";

@@ -71,7 +71,7 @@ inline std::string GetConfigDir() {
 inline std::vector<std::string> GetConfigPaths() {
     const fs::path dir = GetConfigDir();
 
-    static std::vector<std::string> paths;
+    std::vector<std::string> paths;
 
     std::error_code ec;
     if (!fs::exists(dir, ec) || !fs::is_directory(dir, ec)) {
@@ -89,7 +89,7 @@ inline std::vector<std::string> GetConfigPaths() {
     while (it != end) {
         const auto& p = it->path();
 
-        if (fs::is_regular_file(p, ec) && p.filename().extension() == "json") {
+        if (fs::is_regular_file(p, ec) && p.extension() == ".json") {
 			logger::info("Found config file: {}", ToUTF8(p));
             paths.push_back(ToUTF8(p));
         }
