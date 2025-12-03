@@ -58,7 +58,7 @@ inline bool containsAll(std::string ID,
 }
 
 
-//TODO:: Log values for debugging (saved me alot of time with users) 
+//TODO:: Log set values for debugging (saved me alot of time with users) 
 inline void iniParser()
 {
 	std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
@@ -284,8 +284,8 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 	return false;
 }
 
-//TODO:: reimplement for new ni pointLightBank ban, we need to find a way to have priority for nodes coming in so
-// so chandeliers overtake candles ect (some chandeliers have candle in node name) 
+//TODO:: think of a better way to handle priority, first we look at every loaded node and check its name in the priority list, 
+//then check every config for a match using node names, could prolly be optimized. 
 
 inline std::string findPriorityMatch(const std::string& nodeName)
 {
@@ -321,7 +321,7 @@ inline LightConfig findConfigForNode(const std::string& nodeName)
 //we clone and store NIpointLight nodes in bank 
 inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
 {
-	logger::debug("test get next ndoe from bank");
+//	logger::debug("test get next node from bank");
 	for (auto& [cfg, bank] : niPointLightNodeBank) {
 
 		if (nodeName.find(cfg.nodeName) == std::string::npos)
@@ -350,7 +350,7 @@ inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& no
 		return obj;
 	}
 
-	logger::warn("getNextNodeFromBank: '{}' no matching LightConfig found", nodeName);
+	logger::info("getNextNodeFromBank: '{}' no matching LightConfig found", nodeName);
 	return nullptr;
 }
 
@@ -436,7 +436,7 @@ inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_ro
 	std::string path = nifPath;
 	toLower(path);
 
-	logger::info("scene root node detected, checking path: {}", path);
+	logger::debug("scene root node detected, checking path: {}", path);
 
 	// Determine bankType based on path
 	std::string bankType;
@@ -467,7 +467,7 @@ inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_ro
 }
 
 // some nodes are called dummy this is to take care of them.
-inline void dummyHandler(RE::NiNode* root, const std::string& nodeName)
+/*inline void dummyHandler(RE::NiNode* root, const std::string& nodeName)
 {
 	if (nodeName.find("dummy") == std::string::npos)
 		return;
@@ -499,7 +499,7 @@ inline void dummyHandler(RE::NiNode* root, const std::string& nodeName)
 			}
 		}
 	}
-}
+}*/
 
 // this was made for debugging 
 inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)

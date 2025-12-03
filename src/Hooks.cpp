@@ -72,7 +72,7 @@ namespace Hooks {
 
 		//logger::info("load3D called");
 		auto niAVObject = func(a_this, a_backgroundLoading);
-		if (!niAVObject) {
+		if (!niAVObject) { 
 			logger::warn("no ni node casted from niav object in load3d");
 			return niAVObject;
 		}
@@ -80,6 +80,7 @@ namespace Hooks {
 		RE::NiNode* a_root = niAVObject->AsNode();
 		if (!a_root) {
 			logger::warn("no ni node casted from niav object in load3d");
+			return niAVObject;
 		}
 		auto ui = RE::UI::GetSingleton();
 
@@ -101,7 +102,7 @@ namespace Hooks {
 		// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
 		auto match = findPriorityMatch(nodeName);
 
-		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos*/ || nodeName.find("scene") != std::string::npos) {
+		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos*/) {
 			logger::debug("Load3D() matched node name: {}", nodeName);
 			if (isExclude(nodeName, a_root)) return niAVObject;
 	
@@ -134,7 +135,7 @@ namespace Hooks {
 			}
 		}
 
-		dummyHandler(a_root, nodeName);
+	//	dummyHandler(a_root, nodeName);
 
 		return niAVObject;
 	}

@@ -144,12 +144,14 @@ void LightData::assignNiPointLightsToBank() {
 		const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
 
 		for (size_t i = 0; i < maxNodes; ++i) {
-                  
+
 			auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
 			if (!clonedNiPointLightAsNiObject) {
 				logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
 				continue;
 			}
+
+			clonedNiPointLightAsNiObject->name = cfg.nodeName +"_rl";
 
 			// cast from niobject to nipoint light and extract from ni pointer 
 			RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject);

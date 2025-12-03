@@ -24,7 +24,7 @@ namespace UI {
 
         ImGuiMCP::Text("%s ReLight Menu", iconUtf8.c_str());
         ImGuiMCP::PopStyleColor();
-        ImGuiMCP::Separator();
+        ImGuiMCP::SameLine();
 
         if (ImGuiMCP::Button("Save INI")) {
             saveSettingsToIni();
@@ -81,7 +81,7 @@ namespace UI {
         logger::info("Saving ReLight.ini...");
 
         const std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
-        std::ofstream outFile(path, std::ios::trunc); 
+        std::ofstream outFile(path, std::ios::trunc);
 
         if (!outFile.is_open()) {
             logger::error("Failed to open {} for writing!", path);
@@ -92,17 +92,23 @@ namespace UI {
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info)\n";
         outFile << "loggingLevel=2\n\n";
 
-        outFile << "disableShadowCasters=" << (disableShadowCasters ? "true" : "false") << "\n";
-        outFile << "disableTorchLights=" << (disableTorchLights ? "true" : "false") << "\n";
-        outFile << "removeFakeGlowOrbs=" << (removeFakeGlowOrbs ? "true" : "false") << "\n";
-        
+        outFile << "; disable all shadow - casting light references(except skylights) (default = true)\n";
+        outFile << "disableShadowCasters=" << (disableShadowCasters ? "true" : "false") << "\n\n";
+
+        outFile << "; disable light references for carryable torches(default = true)\n";
+        outFile << "disableTorchLights=" << (disableTorchLights ? "true" : "false") << "\n\n";
+
+        outFile << "; remove fake glow orbs (default = true)\n";
+        outFile << "removeFakeGlowOrbs=" << (removeFakeGlowOrbs ? "true" : "false") << "\n\n";
+
+        outFile << "; add esps by name to undisable their lights (usually not needed)\n";
         outFile << "whitelist=";
         for (size_t i = 0; i < whitelist.size(); i++) {
             outFile << whitelist[i];
             if (i + 1 < whitelist.size()) outFile << ",";
         }
         outFile << "\n\n";
-        
+
         outFile << "; Exclude specific nodes\n";
         for (auto& node : exclusionList)
             outFile << node << "\n";
