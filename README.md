@@ -1,2 +1,5 @@
 # ReLight
-Attempt to create NiPoint Lights and attach them to meshes as a all in one Lighting mod for Skyrim AE,SE,VR
+Dynamic, runtime NiPointLight - BSLight generating lighting framework for Skyrim SE/AE/VR. Provides JSON-driven configuration and an in-game ImGui menu for real-time light editing.
+
+Resources
+ Readme
