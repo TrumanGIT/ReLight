@@ -9,8 +9,7 @@
 #include <string>
 #include <vector>
 
-float LightData::ambientRatio = 0.1;
-bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
+bool LightData::isISL = false; // we need a way to determine if isl, idk through config? 
                               // isl lights need different configuring then vanilla 
 
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
@@ -128,11 +127,14 @@ void LightData::setISLFlag(RE::TESObjectLIGH* ligh)
 
 
 void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
-
+	if (!niPointLight) {
+		logger::error("light nullptr for node {}", cfg.nodeName);
+		return;
+	}
 	if (auto* isl = ISL_Overlay::Get(niPointLight)) {
 
-		isl->size = 1.0; // isl
-		isl->cutoffOverride = 0.5; // isl 
+		isl->size = cfg.size; // isl
+		isl->cutoffOverride = cfg.cutoffOverride; // isl 
 		isl->fade = cfg.fade;
 		isl->radius = cfg.radius;
 		// trick isl into thinking the ref has a base object of type: TESObjectLIGH object
@@ -145,11 +147,28 @@ void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cf
 }
 
 void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg, RE::TESObjectLIGH* lighTemplate) {
+	if (!niPointLight) {
+		logger::error("light nullptr for node {}", cfg.nodeName);
+		return;
+	}
 	auto& data = niPointLight->GetLightRuntimeData();
+
+	logger::info(" Setting Light Data for {} from Configs", cfg.nodeName);
+
 	data.fade = cfg.fade;
 	data.radius = getNiPointLightRadius(cfg);
+
+	
+	logger::info(" radius set to: {} ", cfg.radius);
+	logger::info(" fade set to: {} ", cfg.fade);
+
 	setNiPointLightPos(niPointLight, cfg);
+
+	logger::info(" position set to: x:{} y:{} z:{} ", cfg.position[0], cfg.position[1], cfg.position[2]);
+
 	setNiPointLightAmbientAndDiffuse(niPointLight, cfg);
+
+	logger::info(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
 
 	if (isISL) {
 		setISLData(niPointLight, cfg); 
@@ -159,49 +178,60 @@ void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightC
 void LightData::assignNiPointLightsToBank() {
 	logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
 
-	for (auto& pair : niPointLightNodeBank) {
-		const auto& cfg = pair.first;
-		auto& bankedNodes = pair.second;
+	try {
+		for (auto& pair : niPointLightNodeBank) {
+			const auto& cfg = pair.first;
+			auto& bankedNodes = pair.second;
 
-		// Create NiPointLight 
-		auto niPointLight = createNiPointLight();
+			// Create NiPointLight 
+			auto niPointLight = createNiPointLight();
 
-		if (!niPointLight) {
-			logger::error("failed to create ni point light for '{} Json config'", cfg.nodeName);
-			continue;
-		}
-
-		setNiPointLightData(niPointLight, cfg, LoadScreenLightMain);
-
-		const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
-
-		for (size_t i = 0; i < maxNodes; ++i) {
-
-			auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
-			if (!clonedNiPointLightAsNiObject) {
-				logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
+			if (!niPointLight) {
+				logger::error("failed to create ni point light for '{} Json config'", cfg.nodeName);
 				continue;
 			}
 
-			clonedNiPointLightAsNiObject->name = cfg.nodeName +"_rl";
+			logger::debug("Created NiPointLight for node '{}'", cfg.nodeName);
 
-			// cast from niobject to nipoint light and extract from ni pointer 
-			RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject);
-			if (!clonedNiPointLight) {
-				logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
-				continue;
+			setNiPointLightData(niPointLight, cfg, LoadScreenLightMain);
+
+			const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
+
+			for (size_t i = 0; i < maxNodes; ++i) {
+
+				auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
+				if (!clonedNiPointLightAsNiObject) {
+					logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
+					continue;
+				}
+
+				logger::debug("Cloned NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
+
+				clonedNiPointLightAsNiObject->name = cfg.nodeName + "_rl";
+
+				// cast from niobject to nipoint light and extract from ni pointer 
+				RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject);
+				if (!clonedNiPointLight) {
+					logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
+					continue;
+				}
+
+				//wrap in ni pointer again 
+				RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
+
+				// logger::info("adding to bank. ");
+				bankedNodes.push_back(clonedNiPointLightPtr);
+				logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
 			}
-
-			//wrap in ni pointer again 
-			RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
-
-			// logger::info("adding to bank. ");
-			bankedNodes.push_back(clonedNiPointLightPtr);
-			logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
 		}
+
+
+		logger::info("Finished assignClonedNodes");
 	}
-
-	logger::info("Finished assignClonedNodes");
+	catch (const std::exception& e) {
+		logger::error("Exception in assignNiPointLightsToBank: {}", e.what());
+		throw; // rethrow after logging
+	}
 }
 
 

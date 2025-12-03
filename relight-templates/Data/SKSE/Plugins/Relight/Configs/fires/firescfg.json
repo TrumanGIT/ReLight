@@ -1,12 +1,16 @@
 {
     "nodeName": "fxfirew",
-    "fade": 3.0,
+    "fade": 2.5,
     "radius": 256,
     "ambientRatio": 0.1,
     "fov": 90.0,
     "falloff": 1.0,
     "nearDistance": 5.0,
     "depthBias": 0.0005,
+
+    // ISL related
+    "size" : 1.0,
+    "cutoffOverride" : 0.5,
 
     "shadowLight": false,
     "portalStrict": false,

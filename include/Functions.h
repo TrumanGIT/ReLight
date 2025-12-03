@@ -149,6 +149,8 @@ inline void iniParser()
 			return (v == "true" || v == "1" || v == "yes");
 			};
 
+		logger::info("Parsing key: '{}', value: '{}'", key, value);
+
 		if (key == "disableshadowcasters") {
 			disableShadowCasters = parseBool(vLow);
 			continue;
@@ -172,6 +174,7 @@ inline void iniParser()
 		if (key == "loggingLevel") {
 			loggingLevel = std::stoi(value);
 			loggingLevel = std::clamp(loggingLevel, 0, 3);
+			logger::info("Logging level set to {}", loggingLevel);
 			switch (loggingLevel) {
 				case 0:
 				{
@@ -188,7 +191,7 @@ inline void iniParser()
 					spdlog::set_level(spdlog::level::info);
 					break;
 				}
-				default:
+				case 3:
 				{
 					spdlog::set_level(spdlog::level::debug);
 					break;

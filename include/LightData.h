@@ -33,8 +33,6 @@ struct ISL_Overlay
 
 struct LightData {
 
-    static float ambientRatio; 
-
     static bool isISL;
     // Light flags
     /*#define FOREACH_LIGHTFLAG(F) \

@@ -23,6 +23,8 @@ B(neverFades, true) \
 #define FOREACH_FLOAT(F) \
 F(fade, 0) \
 F(radius, 0) \
+F(size, 1.0) \
+F(cutoffOverride , 0.5) \
 F(ambientRatio, 0.1) \
 F(fov, 90.f) \
 F(falloff, 1.f) \
