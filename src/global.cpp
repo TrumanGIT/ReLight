@@ -12,6 +12,8 @@ bool disableTorchLights = true;
 bool removeFakeGlowOrbs = true;
 //bool enableColorConsistency = true; 
 
+int loggingLevel = 2; // default to info
+
 uint8_t red = 255;
 uint8_t green = 161;
 uint8_t blue = 60;

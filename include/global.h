@@ -9,6 +9,8 @@ extern bool removeFakeGlowOrbs;
 extern bool dataHasLoaded;
 //extern bool enableColorConsistency;
 
+extern int loggingLevel;
+
 extern uint8_t red;
 extern uint8_t green;
 extern uint8_t blue;

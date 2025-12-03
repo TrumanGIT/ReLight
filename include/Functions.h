@@ -168,6 +168,34 @@ inline void iniParser()
 			splitString(value, ',', whitelist);
 			continue;
 		}
+
+		if (key == "loggingLevel") {
+			loggingLevel = std::stoi(value);
+			loggingLevel = std::clamp(loggingLevel, 0, 3);
+			switch (loggingLevel) {
+				case 0:
+				{
+					spdlog::set_level(spdlog::level::critical);
+					break;
+				}
+				case 1:
+				{
+					spdlog::set_level(spdlog::level::warn);
+					break;
+				}
+				case 2:
+				{
+					spdlog::set_level(spdlog::level::info);
+					break;
+				}
+				default:
+				{
+					spdlog::set_level(spdlog::level::debug);
+					break;
+				}
+			}
+			continue;
+		}
 	}
 
 	iniFile.close();

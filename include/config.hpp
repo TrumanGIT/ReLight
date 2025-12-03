@@ -13,11 +13,6 @@ namespace fs = std::filesystem;
 constexpr int COL_SIZE = 3;
 constexpr int POS_SIZE = 3;
 
-#define FOREACH_TEMPLATE(T) \
-T(candle) \
-T(chandelier) \
-T(fires) \
-
 #define FOREACH_BOOL(B) \
 B(shadowLight, false) \
 B(portalStrict, false) \
@@ -42,7 +37,7 @@ F(depthBias, 0.0005f) \
 struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
-    std::string nodeName{};                  // TESObjectLIGH->data.radius
+    std::string nodeName{};                       // TESObjectLIGH->data.radius
     std::array<int, COL_SIZE> diffuseColor{};     // TESObjectLIGH->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
     std::vector<std::string> flags{};             // TES::ObjectLigh->data.flags
@@ -76,11 +71,38 @@ inline std::string GetConfigDir() {
 inline std::vector<std::string> GetConfigPaths() {
     const fs::path dir = GetConfigDir();
 
-#define DIR2PATH(T) (dir / #T / #T "cfg.json").string(),
+    static std::vector<std::string> paths;
 
-    static std::vector<std::string> paths = {
-        FOREACH_TEMPLATE(DIR2PATH)
-    };
+    std::error_code ec;
+    if (!fs::exists(dir, ec) || !fs::is_directory(dir, ec)) {
+		logger::critical("Config directory {} does not exist.", ToUTF8(dir));
+        return paths;
+    }
+
+    auto it = fs::recursive_directory_iterator(dir, fs::directory_options::skip_permission_denied, ec);
+    fs::recursive_directory_iterator end;
+
+    if (ec) {
+        logger::critical("Cannot iterate over {}: {}", ToUTF8(dir), ec.message());
+    }
+
+    while (it != end) {
+        const auto& p = it->path();
+
+        if (fs::is_regular_file(p, ec) && p.filename().extension() == "json") {
+			logger::info("Found config file: {}", ToUTF8(p));
+            paths.push_back(ToUTF8(p));
+        }
+
+        ec.clear();
+
+        it.increment(ec);
+
+        if (ec) {
+            logger::critical("Skipping path under {}: {}", ToUTF8(dir), ec.message());
+            ec.clear();
+        }
+    }
 
     return paths;
 }
