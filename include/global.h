@@ -7,11 +7,13 @@ extern bool disableShadowCasters;
 extern bool disableTorchLights;
 extern bool removeFakeGlowOrbs;
 extern bool dataHasLoaded;
-extern bool enableColorConsistency;
+//extern bool enableColorConsistency;
 
 extern uint8_t red;
 extern uint8_t green;
 extern uint8_t blue;
+
+extern RE::TESObjectLIGH* LoadScreenLightMain;
 
 extern RE::FormID soulCairnFormID;
 

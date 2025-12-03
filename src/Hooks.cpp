@@ -128,7 +128,7 @@ namespace Hooks {
 				logger::debug("a_root world translate in load3d ={} ", a_root->world.translate);
 				//   a_root->UpdateWorldBound();
 				 //  auto worldTranslate = a_root->world.translate; 
-				
+				 // 
 				//    logger::info("attached light to keyword mesh {}", nodeName);
 				LightConfig cfg = findConfigForNode(nodeName);
 				LightData::attachNiPointLightToShadowSceneNode(nodePtr.get(), cfg);

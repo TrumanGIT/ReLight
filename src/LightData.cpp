@@ -9,6 +9,10 @@
 #include <string>
 #include <vector>
 
+float LightData::ambientRatio = 0.1;
+bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
+                              // isl lights need different configuring then vanilla 
+
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
 {
 	if (!ref || !light || ref->IsDynamicForm()) {
@@ -114,14 +118,42 @@ void LightData::setNiPointLightPos(RE::NiPointLight* niPointLight, const LightCo
 	niPointLight->local.translate.z = cfg.position[2];
 }
 
-void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+void LightData::setISLFlag(RE::TESObjectLIGH* ligh)
+{
+	if (!ligh) return;
+
+	auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
+	*rawPtr |= (1u << 14); // set 14th bit for ISL support
+}
+
+
+void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+
+	if (auto* isl = ISL_Overlay::Get(niPointLight)) {
+
+		isl->size = 1.0; // isl
+		isl->cutoffOverride = 0.5; // isl 
+		isl->fade = cfg.fade;
+		isl->radius = cfg.radius;
+		// trick isl into thinking the ref has a base object of type: TESObjectLIGH object
+		isl->lighFormId = LoadScreenLightMain ? LoadScreenLightMain->GetFormID() : 0;
+	}
+
+	if (LoadScreenLightMain) {
+		LightData::setISLFlag(LoadScreenLightMain);
+	}
+}
+
+void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg, RE::TESObjectLIGH* lighTemplate) {
 	auto& data = niPointLight->GetLightRuntimeData();
 	data.fade = cfg.fade;
 	data.radius = getNiPointLightRadius(cfg);
 	setNiPointLightPos(niPointLight, cfg);
 	setNiPointLightAmbientAndDiffuse(niPointLight, cfg);
-	//  auto flags = niPointLight->GetFlags(); 
-	 // flags.set()
+
+	if (isISL) {
+		setISLData(niPointLight, cfg); 
+	}
 }
 
 void LightData::assignNiPointLightsToBank() {
@@ -139,7 +171,7 @@ void LightData::assignNiPointLightsToBank() {
 			continue;
 		}
 
-		setNiPointLightData(niPointLight, cfg);
+		setNiPointLightData(niPointLight, cfg, LoadScreenLightMain);
 
 		const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
 
@@ -224,7 +256,6 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLig
 	}
 	RE::BSLight* BsLight = shadowSceneNode->AddLight(niPointLight, params);
 
-	//TODO:: we should name NiPointLight nodes after creating them so we can debugg easier
 	if (!BsLight) {
 		logger::info("no BSLight created in (createShadowSceneNode() for {}", niPointLight->name);
 		return;

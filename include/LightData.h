@@ -10,13 +10,32 @@
 #include "ClibUtil/EditorID.hpp"
 #include "config.hpp"
 
+// extend ni point light runtime data so ISL sees our lights otherwise darkness
+struct ISL_Overlay
+{
+    std::uint32_t flags;       // I dont think we need this but idk can ignore for now
+    float         cutoffOverride;//ISL need for isl from config
+    RE::FormID    lighFormId;//ISL need for isl from config
+    RE::NiColor   diffuse;
+    float         radius;
+    float         pad1C;
+    float         size;
+    float         fade;
+    std::uint32_t unk138;
+
+    static ISL_Overlay* Get(RE::NiLight* niLight)
+    {
+        return reinterpret_cast<ISL_Overlay*>(&niLight->GetLightRuntimeData());
+    }
+};
 
 // Backup light data for unused TESObjectLIGH
 
 struct LightData {
 
-
     static float ambientRatio; 
+
+    static bool isISL;
     // Light flags
     /*#define FOREACH_LIGHTFLAG(F) \
     F(kNone) \
@@ -50,10 +69,12 @@ struct LightData {
    // template <class T>
    // inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
    static void setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg);
-   static void setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg);
+   static void setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg,RE::TESObjectLIGH* lighTemplate);
    static void setNiPointLightPos(RE::NiPointLight* light, const LightConfig& cfg);
    static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
    static RE::NiPointLight* createNiPointLight();
+   static void setISLData(RE::NiPointLight* niPointLight, const LightConfig& cfg);
+   static void setISLFlag(RE::TESObjectLIGH* ligh); 
    static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
    static void attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg);
    static void printLightParams(const RE::ShadowSceneNode::LIGHT_CREATE_PARAMS& params) {

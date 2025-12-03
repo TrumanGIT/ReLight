@@ -10,7 +10,7 @@
 bool disableShadowCasters = true;
 bool disableTorchLights = true;
 bool removeFakeGlowOrbs = true;
-bool enableColorConsistency = true; 
+//bool enableColorConsistency = true; 
 
 uint8_t red = 255;
 uint8_t green = 161;
@@ -20,6 +20,8 @@ bool dataHasLoaded = false;
 
 RE::FormID soulCairnFormID = 0x2001408;
 RE::FormID apocryphaFormID = 0x0401C0B2;
+
+RE::TESObjectLIGH* LoadScreenLightMain = nullptr; 
 
 std::vector<std::string> whitelist; // to whitelist light refs from mods by plugin name
 
