@@ -70,7 +70,7 @@ struct LightData {
    static void setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg,RE::TESObjectLIGH* lighTemplate);
    static void setNiPointLightPos(RE::NiPointLight* light, const LightConfig& cfg);
    static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
-   static RE::NiPointLight* createNiPointLight();
+  static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
    static void setISLData(RE::NiPointLight* niPointLight, const LightConfig& cfg);
    static void setISLFlag(RE::TESObjectLIGH* ligh); 
    static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);

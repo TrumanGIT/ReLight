@@ -30,7 +30,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
-         //initialize();
         initialize(); 
         LightData::assignNiPointLightsToBank();
         dataHasLoaded = true; 

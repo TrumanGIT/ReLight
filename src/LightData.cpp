@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-bool LightData::isISL = false; // we need a way to determine if isl, idk through config? 
+bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
                               // isl lights need different configuring then vanilla 
 
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
@@ -77,12 +77,17 @@ parseLightFlags(const T& obj)
 	return flags;
 }*/
 
-RE::NiPointLight* LightData::createNiPointLight() {
+RE::NiPointer<RE::NiPointLight> LightData::createNiPointLight() {
 	auto* niPointLight = RE::NiPointLight::Create();
 	if (!niPointLight) {
 		logger::info("nipoint light creation failed");
+		return nullptr; 
 	}
-	return niPointLight;
+
+	// ni pointer again 
+	RE::NiPointer<RE::NiPointLight> niPointLightPtr(niPointLight);
+
+	return niPointLightPtr;
 }
 
 RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
@@ -193,13 +198,13 @@ void LightData::assignNiPointLightsToBank() {
 
 			logger::debug("Created NiPointLight for node '{}'", cfg.nodeName);
 
-			setNiPointLightData(niPointLight, cfg, LoadScreenLightMain);
+			setNiPointLightData(niPointLight.get(), cfg, LoadScreenLightMain);
 
 			const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
 
 			for (size_t i = 0; i < maxNodes; ++i) {
 
-				auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight);
+				auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight.get());
 				if (!clonedNiPointLightAsNiObject) {
 					logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
 					continue;
@@ -209,14 +214,14 @@ void LightData::assignNiPointLightsToBank() {
 
 				clonedNiPointLightAsNiObject->name = cfg.nodeName + "_rl";
 
-				// cast from niobject to nipoint light and extract from ni pointer 
+				// cast from niobject to nipoint light 
 				RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject);
 				if (!clonedNiPointLight) {
 					logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
 					continue;
 				}
 
-				//wrap in ni pointer again 
+				// ni pointer again 
 				RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
 
 				// logger::info("adding to bank. ");
@@ -225,7 +230,6 @@ void LightData::assignNiPointLightsToBank() {
 			}
 		}
 
-
 		logger::info("Finished assignClonedNodes");
 	}
 	catch (const std::exception& e) {
@@ -233,7 +237,6 @@ void LightData::assignNiPointLightsToBank() {
 		throw; // rethrow after logging
 	}
 }
-
 
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {
@@ -244,11 +247,11 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	//Truman -  sounds good homie idk how to use that shit anyway xD
 
 	p.dynamic = true;    // dynamic = game updates it every frame so yes
-	p.shadowLight = cfg.shadowLight;   // obvious enough
+	p.shadowLight = cfg.shadowLight;   
 	p.portalStrict = cfg.portalStrict; // idk 
-	p.affectLand = cfg.affectLand; // obvious enough
-	p.affectWater = cfg.affectWater; // obvious enough
-	p.neverFades = cfg.neverFades; // obvious enough
+	p.affectLand = cfg.affectLand; 
+	p.affectWater = cfg.affectWater; 
+	p.neverFades = cfg.neverFades; 
 
 	p.fov = cfg.fov;   // idk
 	p.falloff = cfg.falloff;    // idk 
