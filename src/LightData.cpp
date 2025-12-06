@@ -143,15 +143,15 @@ void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cf
 		isl->fade = cfg.fade;
 		isl->radius = cfg.radius;
 		// trick isl into thinking the ref has a base object of type: TESObjectLIGH object
-		isl->lighFormId = LoadScreenLightMain ? LoadScreenLightMain->GetFormID() : 0;
+		isl->lighFormId = loadScreenLightMain ? loadScreenLightMain->GetFormID() : 0;
 	}
 
-	if (LoadScreenLightMain) {
-		LightData::setISLFlag(LoadScreenLightMain);
+	if (loadScreenLightMain) {
+		LightData::setISLFlag(loadScreenLightMain);
 	}
 }
 
-void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg, RE::TESObjectLIGH* lighTemplate) {
+void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
@@ -198,13 +198,13 @@ void LightData::assignNiPointLightsToBank() {
 
 			logger::debug("Created NiPointLight for node '{}'", cfg.nodeName);
 
-			setNiPointLightData(niPointLight.get(), cfg, LoadScreenLightMain);
+			setNiPointLightData(niPointLight.get(), cfg);
 
-			const size_t maxNodes = (cfg.nodeName == "candle") ? 60 : 20;
+			const size_t maxNodes = (cfg.nodeName == "candle") ? 55 : 18;
 
 			for (size_t i = 0; i < maxNodes; ++i) {
 
-				auto clonedNiPointLightAsNiObject = CloneNiPointLight(niPointLight.get());
+				auto clonedNiPointLightAsNiObject = cloneNiPointLight(niPointLight.get());
 				if (!clonedNiPointLightAsNiObject) {
 					logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
 					continue;

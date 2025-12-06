@@ -15,7 +15,7 @@ extern uint8_t red;
 extern uint8_t green;
 extern uint8_t blue;
 
-extern RE::TESObjectLIGH* LoadScreenLightMain;
+extern RE::TESObjectLIGH* loadScreenLightMain;
 
 extern RE::FormID soulCairnFormID;
 

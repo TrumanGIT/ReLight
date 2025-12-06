@@ -16,8 +16,8 @@ namespace logger = SKSE::log;
 inline void initialize() {
      logger::info("loading forms");
     auto dataHandler = RE::TESDataHandler::GetSingleton(); // single instance
-    LoadScreenLightMain = dataHandler->LookupForm<RE::TESObjectLIGH>(0x00105300, "Skyrim.esm");
-    if (!LoadScreenLightMain) {
+   loadScreenLightMain = dataHandler->LookupForm<RE::TESObjectLIGH>(0x0, "Skyrim.esm");
+   if (!loadScreenLightMain) {
         logger::info("TESObjectLIGH LoadScreenLightMain (0x00105300) not found");
     }
 }
@@ -226,19 +226,19 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 	return false;
 }
 
-inline RE::NiAVObject* CloneNiPointLight(RE::NiPointLight* NiPointLight) {
+inline RE::NiAVObject* cloneNiPointLight(RE::NiPointLight* niPointLight) {
 
 	RE::NiCloningProcess cloningProcess;
-	auto NiPointLightClone = NiPointLight->CreateClone(cloningProcess);
-	if (!NiPointLightClone) {
+	auto niPointLightClone = niPointLight->CreateClone(cloningProcess);
+	if (!niPointLightClone) {
 		logger::error("Failed to clone NiNode");
 		return nullptr;
 	}
 
-	auto NiPointLightCloneAsAv = static_cast<RE::NiAVObject*>(NiPointLightClone);
+	auto niPointLightCloneAsAv = static_cast<RE::NiAVObject*>(niPointLightClone);
 
 	// Successfully cloned node
-	return NiPointLightCloneAsAv;
+	return niPointLightCloneAsAv;
 }
 
 inline void glowOrbRemover(RE::NiNode* node)
@@ -266,7 +266,7 @@ inline void glowOrbRemover(RE::NiNode* node)
 		toLower(name);
 
 		if (name.find("glow") != std::string::npos) {
-			node->DetachChild(childAsNode);
+			node->SetAppCulled(true);
 			continue;
 		}
 

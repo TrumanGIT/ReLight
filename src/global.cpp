@@ -23,7 +23,7 @@ bool dataHasLoaded = false;
 RE::FormID soulCairnFormID = 0x2001408;
 RE::FormID apocryphaFormID = 0x0401C0B2;
 
-RE::TESObjectLIGH* LoadScreenLightMain = nullptr; 
+RE::TESObjectLIGH* loadScreenLightMain = nullptr; 
 
 std::vector<std::string> whitelist; // to whitelist light refs from mods by plugin name
 

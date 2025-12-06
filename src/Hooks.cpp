@@ -25,10 +25,6 @@ namespace Hooks {
 		if (LightData::excludeLightEditorID(light))
 			return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-		RE::FormID refFormID = ref->GetFormID();
-		if (!refFormID)
-			return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
-
 		// get the name of the mod owning the light
 		const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
 		std::string modName = refOriginFile ? refOriginFile->fileName : "";
@@ -40,14 +36,14 @@ namespace Hooks {
 
 		// if whitelisted, change rgb values to whatever we want    
 	   //doint want to change color of lights that change color based on time of day. 
-		if (modName.find("window shadows ultimate") == std::string::npos)
+		/*if (modName.find("window shadows ultimate") == std::string::npos)
 		{
 			light->data.color.red = red;
 			light->data.color.green = green;
 			light->data.color.blue = blue;
-
+			
 			//  logger::info("Changed color for light {:X} from {}", formID, modName);
-		}
+		}*/
 
 		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 	}
@@ -82,13 +78,14 @@ namespace Hooks {
 			logger::warn("no ni node casted from niav object in load3d");
 			return niAVObject;
 		}
-		auto ui = RE::UI::GetSingleton();
 
 		if (!dataHasLoaded || !a_root) {
 
 			logger::debug("data is not loaded or no root to attach to");
 			return niAVObject;
 		}
+
+		auto ui = RE::UI::GetSingleton();
 
 		if (ui && ui->IsMenuOpen("InventoryMenu")) {
 			//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
