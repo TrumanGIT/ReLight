@@ -122,13 +122,13 @@ void LightData::setNiPointLightPos(RE::NiPointLight* niPointLight, const LightCo
 	niPointLight->local.translate.z = cfg.position[2];
 }
 
-void LightData::setISLFlag(RE::TESObjectLIGH* ligh)
-{
-	if (!ligh) return;
+//void LightData::setISLFlag(RE::TESObjectLIGH* ligh)
+//{
+	//if (!ligh) return;
 
-	auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
-	*rawPtr |= (1u << 14); // set 14th bit for ISL support
-}
+	//auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
+	//*rawPtr |= (1u << 14); // set 14th bit for ISL support
+//}
 
 
 void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
@@ -143,11 +143,7 @@ void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cf
 		isl->fade = cfg.fade;
 		isl->radius = cfg.radius;
 		// trick isl into thinking the ref has a base object of type: TESObjectLIGH object
-		isl->lighFormId = loadScreenLightMain ? loadScreenLightMain->GetFormID() : 0;
-	}
-
-	if (loadScreenLightMain) {
-		LightData::setISLFlag(loadScreenLightMain);
+		isl->lighFormId = 0;
 	}
 }
 

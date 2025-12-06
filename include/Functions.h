@@ -13,14 +13,14 @@
 
 namespace logger = SKSE::log;
 
-inline void initialize() {
-     logger::info("loading forms");
-    auto dataHandler = RE::TESDataHandler::GetSingleton(); // single instance
-   loadScreenLightMain = dataHandler->LookupForm<RE::TESObjectLIGH>(0x0, "Skyrim.esm");
-   if (!loadScreenLightMain) {
-        logger::info("TESObjectLIGH LoadScreenLightMain (0x00105300) not found");
-    }
-}
+//inline void initialize() {
+    // logger::info("loading forms");
+  //  auto dataHandler = RE::TESDataHandler::GetSingleton(); // single instance
+//   loadScreenLightMain = dataHandler->LookupForm<RE::TESObjectLIGH>(0x0, "Skyrim.esm");
+  // if (!loadScreenLightMain) {
+    //    logger::info("TESObjectLIGH LoadScreenLightMain (0x00105300) not found");
+    //}
+//}
 
 inline void toLower(std::string& str) {
 	for (auto& c : str) {
