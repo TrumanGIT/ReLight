@@ -6,17 +6,22 @@ namespace logger = SKSE::log;
 
 namespace UI {
 
+    static vector<RE::NiPointer<RE::BSLight>> lights = {};
+    static bool lightsLoaded = false;
+    static bool enableLightEditor = false;
+    static bool lightAlreadyInList = false;
+
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
 
         SKSEMenuFramework::SetSection("ReLight");
 
-        SKSEMenuFramework::AddSectionItem("Settings", UI::Render);
+        SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
 
-        reLightMenuWindow = SKSEMenuFramework::AddWindow(RenderWindow);
+        SKSEMenuFramework::AddSectionItem("Settings", UI::RenderSettings);
     }
 
-    void __stdcall Render() {
+    void __stdcall RenderSettings() {
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
         FontAwesome::PushSolid();
@@ -42,7 +47,7 @@ namespace UI {
 
         ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &removeFakeGlowOrbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
-        
+
         ImGuiMCP::Separator();
 
         ImGuiMCP::SliderInt("Logging Level", &loggingLevel, 0, 3);
@@ -52,34 +57,125 @@ namespace UI {
 
         if (ImGuiMCP::CollapsingHeader("Whitelist (by plugin name)")) {
             for (auto& entry : whitelist)
-                ImGuiMCP::BulletText("%s", entry.c_str());
+                ImGuiMCP::Text("%s", entry.c_str());
         }
 
         if (ImGuiMCP::CollapsingHeader("Priority Nodes")) {
             for (auto& entry : priorityList)
-                ImGuiMCP::BulletText("%s", entry.c_str());
+                ImGuiMCP::Text("%s", entry.c_str());
         }
 
         if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Exact)")) {
             for (auto& entry : exclusionList)
-                ImGuiMCP::BulletText("%s", entry.c_str());
+                ImGuiMCP::Text("%s", entry.c_str());
         }
 
         if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Partial Match)")) {
             for (auto& entry : exclusionListPartialMatch)
-                ImGuiMCP::BulletText("%s", entry.c_str());
+                ImGuiMCP::Text("%s", entry.c_str());
         }
     }
 
-    void __stdcall RenderWindow() {
-        auto viewport = ImGuiMCP::GetMainViewport();
-        ImGuiMCP::SetNextWindowSize(ImGuiMCP::ImVec2{ viewport->Size.x * 0.40f,
-                                         viewport->Size.y * 0.50f },
-            ImGuiMCP::ImGuiCond_Appearing);
+    void __stdcall RenderLightEditor() {
 
-        ImGuiMCP::Begin("ReLight Menu", nullptr, ImGuiMCP::ImGuiWindowFlags_NoTitleBar);
-        Render();
-        ImGuiMCP::End();
+        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+
+        FontAwesome::PushSolid();
+        auto iconUtf8 = FontAwesome::UnicodeToUtf8(0xf044);
+
+        ImGuiMCP::Text("%s Light Editor", iconUtf8.c_str());
+        ImGuiMCP::PopStyleColor();
+        ImGuiMCP::SameLine();
+
+        if (ImGuiMCP::Button("Save Template")) {
+       // TODO:: Save to Json and clear banked vector of lights and refill selected bank with new ni point lights
+        }
+        
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Write current settings to Json config");
+
+        ImGuiMCP::Separator();
+
+        if (ImGuiMCP::Checkbox("Enable Editor", &enableLightEditor)) {
+
+            if (enableLightEditor) {
+                getAllLights();
+               
+            }
+            else if (!enableLightEditor) {
+                lights.clear();
+            }
+        }
+
+        if (!enableLightEditor) {
+            ImGuiMCP::Text("Light Editor is disabled. Enable it to edit light properties.");
+            return;
+        }
+
+        if (ImGuiMCP::CollapsingHeader("Loaded Light Templates")) {
+
+            static int selectedIndex = -1;
+
+            for (int i = 0; i < lights.size(); i++) {
+
+                auto& light = lights[i];
+                if (!light) continue;
+
+                bool selected = (i == selectedIndex);
+                if (ImGuiMCP::Selectable(light->light->name.c_str(), &selected)) {
+                    selectedIndex = i;
+                }
+            }
+
+            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
+                auto selectedLight = lights[selectedIndex];
+                auto& lightData = selectedLight->light->GetLightRuntimeData();
+
+                ImGuiMCP::Text("Selected: %s", selectedLight->light->name.c_str());
+
+                if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                light->light->GetLightRuntimeData().radius = lightData.radius;
+                            }
+                        }
+                    }
+                }
+
+                if (ImGuiMCP::SliderFloat("Fade", &lightData.fade, 0.0f, 50.0f, "%.1f")) {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                light->light->GetLightRuntimeData().fade = lightData.fade;
+                            }
+                        }
+                    }
+                }
+
+				// colors are kinda broken, need a better way to do this they change the color but not in a usefull way 
+                // youll have to test to see what I mean its hard to explain. 
+                
+                //static float color[3] = { lightData.diffuse.red, lightData.diffuse.green, lightData.diffuse.blue };
+                if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.000f, 1.000f, "%.3f")) {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                light->light->GetLightRuntimeData().diffuse = lightData.diffuse;
+                            }
+                        }
+                    }
+                }
+
+				// TODO : Add ISL Cutoff and size sliders here
+            }
+            
+        }
     }
 
     void saveSettingsToIni() {
@@ -129,4 +225,35 @@ namespace UI {
         outFile.close();
         logger::info("ReLight.ini saved successfully!");
     }
+
+    void getAllLights() {
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null!");
+            return;
+        }
+
+        auto& rt = ssNode->GetRuntimeData();
+
+        for (auto& light : rt.activeLights) {
+            if (!light) continue; // skip null NiPointers
+            auto lightName = light->light->name;
+            
+			for (auto& existingLight : lights) {
+                if (existingLight->light->name == lightName) {
+                    // Light already exists in the list, skip adding
+                     lightAlreadyInList = true; 
+                }
+            }
+
+            if (!lightAlreadyInList) lights.push_back(light); 
+
+			lightAlreadyInList = false;
+        }
+		//lightsLoaded = true;
+    }
+
 }
+
+
+
