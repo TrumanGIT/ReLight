@@ -16,9 +16,11 @@ namespace UI {
 
         SKSEMenuFramework::SetSection("ReLight");
 
+        SKSEMenuFramework::AddSectionItem("Settings", UI::RenderSettings);
+
         SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
 
-        SKSEMenuFramework::AddSectionItem("Settings", UI::RenderSettings);
+
     }
 
     void __stdcall RenderSettings() {
@@ -130,7 +132,9 @@ namespace UI {
                 auto selectedLight = lights[selectedIndex];
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
 
-                ImGuiMCP::Text("Selected: %s", selectedLight->light->name.c_str());
+                // ImGuiMCP::Text("Selected: %s", selectedLight->light->name.c_str());
+
+                ImGuiMCP::LabelText("Selected Template", selectedLight->light->name.c_str());
 
                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -155,7 +159,7 @@ namespace UI {
                         }
                     }
                 }
-                
+
                 //static float color[3] = { lightData.diffuse.red, lightData.diffuse.green, lightData.diffuse.blue };
                 if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.000f, 1.000f, "%.3f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -233,12 +237,12 @@ namespace UI {
         auto& rt = ssNode->GetRuntimeData();
 
         for (auto& light : rt.activeLights) {
-            if (!light) continue; // skip null NiPointers
+            if (!light) continue; 
             auto lightName = light->light->name;
             
 			for (auto& existingLight : lights) {
                 if (existingLight->light->name == lightName) {
-                    // Light already exists in the list, skip adding
+         
                      lightAlreadyInList = true; 
                 }
             }
