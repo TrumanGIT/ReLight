@@ -196,7 +196,9 @@ void LightData::assignNiPointLightsToBank() {
 
 			setNiPointLightData(niPointLight.get(), cfg);
 
-			const size_t maxNodes = (cfg.nodeName == "candle") ? 55 : 18;
+			//I noticed over 60 candles used from bank in bannered mare, I wonder if this is true. or if we are pulling
+			// more lights then needed. should count all candles in a cell, see if matches bank count, if not then investigate
+			const size_t maxNodes = (cfg.nodeName == "candle") ? 75 : 25;
 
 			for (size_t i = 0; i < maxNodes; ++i) {
 

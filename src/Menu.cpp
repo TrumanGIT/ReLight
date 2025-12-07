@@ -90,9 +90,9 @@ namespace UI {
         ImGuiMCP::SameLine();
 
         if (ImGuiMCP::Button("Save Template")) {
-       // TODO:: Save to Json and clear banked vector of lights and refill selected bank with new ni point lights
+            // TODO:: Save to Json and clear banked vector of lights and refill selected bank with new ni point lights
         }
-        
+
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Write current settings to Json config");
 
         ImGuiMCP::Separator();
@@ -101,7 +101,7 @@ namespace UI {
 
             if (enableLightEditor) {
                 getAllLights();
-               
+
             }
             else if (!enableLightEditor) {
                 lights.clear();
@@ -173,12 +173,41 @@ namespace UI {
                     }
                 }
 
-				// TODO : Add ISL Cutoff and size sliders here
+                auto* selectedIslRt = ISL_Overlay::Get(selectedLight->light.get());
+
+                if (!selectedIslRt) return;
+
+                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.00f, 50.00f, "%.2f")) {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                    islRt->cutoffOverride = selectedIslRt->cutoffOverride;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.00f, 5.00f, "%.2f")) {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                    islRt->size = selectedIslRt->size;
+                                }
+                            }
+                        }
+                    }
+                }
+
             }
-            
         }
     }
-
     void saveSettingsToIni() {
         logger::info("Saving ReLight.ini...");
 
@@ -211,15 +240,15 @@ namespace UI {
         }
         outFile << "\n\n";
 
-        outFile << "; Exclude specific nodes\n";
+        outFile << "; exclude specific nodes\n";
         for (auto& node : exclusionList)
             outFile << node << "\n";
 
-        outFile << "\n; Exclude partial nodes\n";
+        outFile << "\n; exclude partial nodes\n";
         for (auto& node : exclusionListPartialMatch)
             outFile << node << "\n";
 
-        outFile << "\n; Priority nodes\n";
+        outFile << "\n; priority list (higher = first match. Usefull for candlechandelier ect to get correct lighting)\n";
         for (auto& node : priorityList)
             outFile << node << "\n";
 
@@ -237,12 +266,12 @@ namespace UI {
         auto& rt = ssNode->GetRuntimeData();
 
         for (auto& light : rt.activeLights) {
-            if (!light) continue; 
+            if (!light) continue; // skip null NiPointers
             auto lightName = light->light->name;
             
 			for (auto& existingLight : lights) {
                 if (existingLight->light->name == lightName) {
-         
+                    // Light already exists in the list, skip adding
                      lightAlreadyInList = true; 
                 }
             }

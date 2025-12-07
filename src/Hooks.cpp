@@ -66,10 +66,24 @@ namespace Hooks {
 	RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 	{
 
+		if (!a_this) {
+			logger::warn("Load3D called with null a_this");
+			return func(a_this, a_backgroundLoading);
+		}
+
+		auto base = a_this->GetBaseObject(); 
+
+		if (!base) {
+			logger::info("no base object in load 3d hook"); 
+			return func(a_this, a_backgroundLoading);
+		}
+
+		std::string edid = clib_util::editorID::get_editorID(base);
+
 		//logger::info("load3D called");
 		auto niAVObject = func(a_this, a_backgroundLoading);
 		if (!niAVObject) { 
-			logger::warn("no ni node casted from niav object in load3d");
+			logger::warn("no ni node casted from niav object in load3d  with base editor id:{}", edid);
 			return niAVObject;
 		}
 
@@ -79,9 +93,8 @@ namespace Hooks {
 			return niAVObject;
 		}
 
-		if (!dataHasLoaded || !a_root) {
-
-			logger::debug("data is not loaded or no root to attach to");
+		if (!dataHasLoaded) {
+			logger::debug("kdata is not loaded in load3d hook");
 			return niAVObject;
 		}
 
@@ -110,22 +123,18 @@ namespace Hooks {
 			if (removeFakeGlowOrbs)
 				glowOrbRemover(a_root);
 
-			if (TorchHandler(nodeName, a_root))
-				return niAVObject;
+		//	if (TorchHandler(nodeName, a_root))
+			//	return niAVObject;
 
 			//TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
 		   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 				return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
-		//	logger::info("test log before get next node from bank");
+	
 			RE::NiPointer<RE::NiPointLight> nodePtr = getNextNodeFromBank(match);
 			if (nodePtr) {
 				logger::debug("next node retrieved successfully ", match);
-				a_root->AttachChild(nodePtr.get(), true);
+				a_root->AttachChild(nodePtr.get());
 
-				logger::debug("a_root world translate in load3d ={} ", a_root->world.translate);
-				//   a_root->UpdateWorldBound();
-				 //  auto worldTranslate = a_root->world.translate; 
-				 // 
 				//    logger::info("attached light to keyword mesh {}", nodeName);
 				LightConfig cfg = findConfigForNode(nodeName);
 				LightData::attachNiPointLightToShadowSceneNode(nodePtr.get(), cfg);

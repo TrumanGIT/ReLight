@@ -30,9 +30,10 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
+        dataHasLoaded = true;
      //   initialize(); 
         LightData::assignNiPointLightsToBank();
-        dataHasLoaded = true; 
+     
       //   assignClonedNodesToBank(); working on renewing this function
         break;
     }

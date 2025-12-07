@@ -121,7 +121,7 @@ inline void iniParser()
 			exclusionListPartialMatch.push_back(line);
 			logger::info("Added partial exclude: {}", line);
 			continue;
-			//not working
+
 		case priority:
 			 toLower(line);
 			priorityList.push_back(line);
@@ -386,11 +386,13 @@ inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& no
 			return nullptr;
 		}
 
+		logger::debug("got Next Node From Bank for node '{}' count {}", nodeName, count);
+
 		count++;
 		return obj;
 	}
 
-	logger::info("getNextNodeFromBank: '{}' no matching LightConfig found", nodeName);
+	logger::warn("getNextNodeFromBank: '{}' no matching LightConfig found", nodeName);
 	return nullptr;
 }
 
