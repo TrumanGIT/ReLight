@@ -155,9 +155,6 @@ namespace UI {
                         }
                     }
                 }
-
-				// colors are kinda broken, need a better way to do this they change the color but not in a usefull way 
-                // youll have to test to see what I mean its hard to explain. 
                 
                 //static float color[3] = { lightData.diffuse.red, lightData.diffuse.green, lightData.diffuse.blue };
                 if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.000f, 1.000f, "%.3f")) {
