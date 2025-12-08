@@ -39,13 +39,15 @@ F(depthBias, 0.0005f) \
 struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
+    std::string configPath{};                     // save the path from where this config is loaded
     std::string nodeName{};                       // TESObjectLIGH->data.radius
     std::array<int, COL_SIZE> diffuseColor{};     // TESObjectLIGH->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
     std::vector<std::string> flags{};             // TES::ObjectLigh->data.flags
 
     void print() {
-        logger::info("Node name          : {}", nodeName);
+        logger::info("Path               : {}", configPath);
+        logger::info(" Node name         : {}", nodeName);
         FOREACH_BOOL(BOOL2PRINT);
         FOREACH_FLOAT(FLOAT2PRINT);
         logger::info(" position          : [{}, {}, {}] ", position[0], position[1], position[2]);
@@ -58,6 +60,11 @@ struct LightConfig {
     bool operator<(const LightConfig& other) const {
         return nodeName < other.nodeName;
     }
+};
+
+struct Template {
+    LightConfig config;
+    std::vector<RE::NiPointer<RE::NiPointLight>> bank;
 };
 
 inline std::string ToUTF8(const fs::path& p) {
@@ -110,5 +117,7 @@ inline std::vector<std::string> GetConfigPaths() {
 }
 
 bool loadConfiguration(LightConfig& config, const std::string& configPath);
+
+bool saveConfiguration(const LightConfig& config, const std::string& configPath);
 
 void parseTemplates();

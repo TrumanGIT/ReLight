@@ -31,7 +31,7 @@ extern std::unordered_set<RE::FormID> excludedLightFormIDs;
 
 extern std::vector<std::string> priorityList;
 
-extern std::map<LightConfig, std::vector<RE::NiPointer<RE::NiPointLight>>> niPointLightNodeBank;
+extern std::map<std::string, Template> niPointLightNodeBank;
 
 static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
     {"sun", "light"},   // both must be present

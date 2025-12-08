@@ -87,6 +87,50 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
     }
 }
 
+bool saveConfiguration(const LightConfig& config, const std::string& configPath) {
+	try {
+		json data;
+
+		data["nodeName"] = config.nodeName;
+
+#define JSON_WRITE(C, I) data[#C] = config.C;
+
+        FOREACH_BOOL(JSON_WRITE);
+        FOREACH_FLOAT(JSON_WRITE);
+
+		data["color"] = {
+            config.diffuseColor[0],
+            config.diffuseColor[1],
+            config.diffuseColor[2]
+		};
+
+		data["position"] = {
+			config.position[0],
+			config.position[1],
+			config.position[2]
+		};
+
+		data["flags"] = config.flags;
+
+		std::ofstream out(configPath, std::ios::trunc);
+		if (!out.is_open()) {
+			logger::error("Failed to open config file for writing: {}", configPath);
+			return false;
+		}
+
+		out << data.dump(4);
+
+        logger::info("Successfully saved light data to template at {}", configPath);
+
+		return true;
+	}
+	catch (const std::exception& e) {
+		logger::error("Failed to write config {}: {}", configPath, e.what());
+		return false;
+	}
+}
+
+
 void parseTemplates() {
     logger::info("Parsing light templates..");
     std::vector<std::string> paths = GetConfigPaths();
@@ -95,8 +139,10 @@ void parseTemplates() {
         logger::info(" reading.. {}", p);
         LightConfig cfg;
         loadConfiguration(cfg, p);
+        cfg.configPath = p;
         cfg.print();
-        std::vector<RE::NiPointer<RE::NiPointLight>> objs{};
-        niPointLightNodeBank[std::move(cfg)] = objs;
+        Template temp;
+        temp.config = std::move(cfg);
+        niPointLightNodeBank[temp.config.nodeName] = std::move(temp);
     }
 }

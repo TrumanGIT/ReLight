@@ -90,7 +90,33 @@ namespace UI {
         ImGuiMCP::SameLine();
 
         if (ImGuiMCP::Button("Save Template")) {
-            // TODO:: Save to Json and clear banked vector of lights and refill selected bank with new ni point lights
+            // TODO:: refill selected bank with new ni point lights
+
+            for (auto& bsLightPtr : lights) {
+                if (!bsLightPtr) continue;
+
+                auto* niLight = bsLightPtr->light.get();
+                if (!niLight) continue;
+
+                std::string lightName = niLight->name.c_str();
+                if (lightName.empty())
+                    continue;
+
+                LightConfig cfg; 
+                
+                if (LightData::findConfigForLight(cfg, lightName)) {
+                    LightData::updateConfigFromLight(cfg, niLight);
+                    if (!cfg.configPath.empty()) {
+                        saveConfiguration(cfg, cfg.configPath);
+                    }
+                    else {
+                        logger::warn("Config for '{}' has no configPath, cannot save", cfg.nodeName);
+                    }
+                }
+                else {
+                    logger::warn("No config found for light '{}'", lightName);
+                }
+            }
         }
 
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Write current settings to Json config");

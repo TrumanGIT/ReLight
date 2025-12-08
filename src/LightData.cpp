@@ -181,18 +181,25 @@ void LightData::assignNiPointLightsToBank() {
 
 	try {
 		for (auto& pair : niPointLightNodeBank) {
-			const auto& cfg = pair.first;
-			auto& bankedNodes = pair.second;
+			const std::string nodeName = pair.first;
+			Template& temp = pair.second;
+			const LightConfig& cfg = temp.config;
+			auto& bankedNodes = temp.bank;
+
+			if (nodeName != temp.config.nodeName) {
+				logger::error("Template node name {} do not match map key {}", nodeName, temp.config.nodeName);
+				continue;
+			}
 
 			// Create NiPointLight 
 			auto niPointLight = createNiPointLight();
 
 			if (!niPointLight) {
-				logger::error("failed to create ni point light for '{} Json config'", cfg.nodeName);
+				logger::error("Failed to create ni point light for '{} Json config'", nodeName);
 				continue;
 			}
 
-			logger::debug("Created NiPointLight for node '{}'", cfg.nodeName);
+			logger::debug("Created NiPointLight for node '{}'", nodeName);
 
 			setNiPointLightData(niPointLight.get(), cfg);
 
@@ -204,18 +211,18 @@ void LightData::assignNiPointLightsToBank() {
 
 				auto clonedNiPointLightAsNiObject = cloneNiPointLight(niPointLight.get());
 				if (!clonedNiPointLightAsNiObject) {
-					logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
+					logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", nodeName, i);
 					continue;
 				}
 
-				logger::debug("Cloned NiPointLight for node '{}' (iteration {})", cfg.nodeName, i);
+				logger::debug("Cloned NiPointLight for node '{}' (iteration {})", nodeName, i);
 
-				clonedNiPointLightAsNiObject->name = cfg.nodeName + "_rl";
+				clonedNiPointLightAsNiObject->name = nodeName + "_rl";
 
 				// cast from niobject to nipoint light 
 				RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject);
 				if (!clonedNiPointLight) {
-					logger::error("Cloned NiPointer is null for node '{}' (iteration {})", cfg.nodeName, i);
+					logger::error("Cloned NiPointer is null for node '{}' (iteration {})", nodeName, i);
 					continue;
 				}
 
@@ -224,7 +231,7 @@ void LightData::assignNiPointLightsToBank() {
 
 				// logger::info("adding to bank. ");
 				bankedNodes.push_back(clonedNiPointLightPtr);
-				logger::debug("Added cloned light for node '{}' (iteration {})", cfg.nodeName, i);
+				logger::debug("Added cloned light for node '{}' (iteration {})", nodeName, i);
 			}
 		}
 
@@ -290,6 +297,46 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLig
 	if (!BsLight) {
 		logger::info("no BSLight created in (createShadowSceneNode() for {}", niPointLight->name);
 		return;
+	}
+}
+
+std::string LightData::getBaseNodeName(const std::string& lightName) {
+	const std::string suffix = "_rl";
+	if (lightName.size() >= suffix.size() && lightName.compare(lightName.size() - suffix.size(), suffix.size(), suffix) == 0) {
+		return lightName.substr(0, lightName.size() - suffix.size());
+	}
+	return lightName;
+}
+
+bool LightData::findConfigForLight(LightConfig& cfg, const std::string& lightName) {
+	const std::string baseName = getBaseNodeName(lightName);
+	for (auto& [name, temp] : niPointLightNodeBank) {
+		if (name == baseName) {
+			cfg = temp.config;
+			return true;
+		}
+	}
+	return false;
+}
+
+void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
+	auto& rt = niLight->GetLightRuntimeData();
+
+	cfg.radius = rt.radius.x;
+
+	cfg.fade = rt.fade;
+
+	cfg.position[0] = niLight->local.translate.x;
+	cfg.position[1] = niLight->local.translate.y;
+	cfg.position[2] = niLight->local.translate.z;
+
+	cfg.diffuseColor[0] = int(rt.diffuse.red * 255.0f);
+	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
+	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
+
+	if (auto* isl = ISL_Overlay::Get(niLight)) {
+		cfg.size = isl->size;
+		cfg.cutoffOverride = isl->cutoffOverride;
 	}
 }
 

@@ -337,10 +337,10 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 
 	// No priority specified
 	for (auto& pair : niPointLightNodeBank) {
-		const auto& jsonCfg = pair.first;
+		const auto& name = pair.first;
 
-		if (nodeName.find(jsonCfg.nodeName) != std::string::npos)
-			return jsonCfg.nodeName;
+		if (nodeName.find(name) != std::string::npos)
+			return name;
 	}
 
 	return ""; // no match
@@ -349,10 +349,9 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 inline LightConfig findConfigForNode(const std::string& nodeName)
 {
 	for (auto& pair : niPointLightNodeBank) {
-		const auto& jsonCfg = pair.first;
-
-		if (nodeName.find(jsonCfg.nodeName) != std::string::npos)
-			return jsonCfg;
+		const auto& name = pair.first;
+		if (nodeName.find(name) != std::string::npos)
+			return pair.second.config;
 	}
 	logger::warn("No template found by findConfigForNode for node {}", nodeName);
 	return LightConfig(); // no match
@@ -362,9 +361,11 @@ inline LightConfig findConfigForNode(const std::string& nodeName)
 inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
 {
 //	logger::debug("test get next node from bank");
-	for (auto& [cfg, bank] : niPointLightNodeBank) {
+	for (auto& [name, temp] : niPointLightNodeBank) {
 
-		if (nodeName.find(cfg.nodeName) == std::string::npos)
+		auto& bank = temp.bank;
+
+		if (nodeName.find(name) == std::string::npos)
 			continue;
 
 		logger::debug("node name found in a config ");
