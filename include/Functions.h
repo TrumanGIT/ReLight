@@ -149,8 +149,6 @@ inline void iniParser()
 			return (v == "true" || v == "1" || v == "yes");
 			};
 
-		logger::info("Parsing key: '{}', value: '{}'", key, value);
-
 		if (key == "disableshadowcasters") {
 			disableShadowCasters = parseBool(vLow);
 			continue;
@@ -171,32 +169,35 @@ inline void iniParser()
 			continue;
 		}
 
-		if (key == "loggingLevel") {
+		if (key == "logginglevel") {
 			loggingLevel = std::stoi(value);
 			loggingLevel = std::clamp(loggingLevel, 0, 3);
 			logger::info("Logging level set to {}", loggingLevel);
+			spdlog::level::level_enum user_level = spdlog::level::info;
 			switch (loggingLevel) {
 				case 0:
 				{
-					spdlog::set_level(spdlog::level::critical);
+					user_level = spdlog::level::critical;
 					break;
 				}
 				case 1:
 				{
-					spdlog::set_level(spdlog::level::warn);
+					user_level = spdlog::level::warn;
 					break;
 				}
 				case 2:
 				{
-					spdlog::set_level(spdlog::level::info);
+					user_level = spdlog::level::info;
 					break;
 				}
 				case 3:
 				{
-					spdlog::set_level(spdlog::level::debug);
+					user_level = spdlog::level::debug;
 					break;
 				}
 			}
+			spdlog::set_level(user_level);
+			spdlog::flush_on(user_level);
 			continue;
 		}
 	}
