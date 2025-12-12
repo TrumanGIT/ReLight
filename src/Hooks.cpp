@@ -71,15 +71,6 @@ namespace Hooks {
 			return func(a_this, a_backgroundLoading);
 		}
 
-		auto base = a_this->GetBaseObject(); 
-
-		if (!base) {
-			logger::info("no base object in load 3d hook"); 
-			return func(a_this, a_backgroundLoading);
-		}
-
-		std::string edid = clib_util::editorID::get_editorID(base);
-
 		//logger::info("load3D called");
 		auto niAVObject = func(a_this, a_backgroundLoading);
 		if (!niAVObject) { 
@@ -87,14 +78,10 @@ namespace Hooks {
 			return niAVObject;
 		}
 
-		RE::NiNode* a_root = niAVObject->AsNode();
+		//helps filter out a few things we dont want to touch (fog, mist)
+		auto a_root = niAVObject->AsNode();
 		if (!a_root) {
 			logger::warn("no ni node casted from niav object in load3d");
-			return niAVObject;
-		}
-
-		if (!dataHasLoaded) {
-			logger::debug("kdata is not loaded in load3d hook");
 			return niAVObject;
 		}
 
@@ -130,14 +117,14 @@ namespace Hooks {
 		   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 				return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
 	
-			RE::NiPointer<RE::NiPointLight> nodePtr = getNextNodeFromBank(match);
+		    auto nodePtr = getNextNodeFromBank(match);
 			if (nodePtr) {
 				logger::debug("next node retrieved successfully ", match);
 				a_root->AttachChild(nodePtr.get());
 
 				//    logger::info("attached light to keyword mesh {}", nodeName);
 				LightConfig cfg = findConfigForNode(nodeName);
-				LightData::attachNiPointLightToShadowSceneNode(nodePtr.get(), cfg);
+				LightData::attachNiPointLightToShadowSceneNode(getNextNodeFromBank(match).get(), cfg);
 			}
 		}
 

@@ -84,10 +84,7 @@ RE::NiPointer<RE::NiPointLight> LightData::createNiPointLight() {
 		return nullptr; 
 	}
 
-	// ni pointer again 
-	RE::NiPointer<RE::NiPointLight> niPointLightPtr(niPointLight);
-
-	return niPointLightPtr;
+	return RE::NiPointer<RE::NiPointLight>(niPointLight);
 }
 
 RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
@@ -179,9 +176,19 @@ void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightC
 void LightData::assignNiPointLightsToBank() {
 	logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
 
+	
+    // try creating 1 only and reusing it
+	auto niPointLight = createNiPointLight();
+
+	if (!niPointLight) {
+		logger::error("Failed to create ni point light");
+		return;
+	}
+
+
 	try {
 		for (auto& pair : niPointLightNodeBank) {
-			const std::string nodeName = pair.first;
+			const std::string& nodeName = pair.first;
 			Template& temp = pair.second;
 			const LightConfig& cfg = temp.config;
 			auto& bankedNodes = temp.bank;
@@ -191,44 +198,29 @@ void LightData::assignNiPointLightsToBank() {
 				continue;
 			}
 
-			// Create NiPointLight 
-			auto niPointLight = createNiPointLight();
-
-			if (!niPointLight) {
-				logger::error("Failed to create ni point light for '{} Json config'", nodeName);
-				continue;
-			}
-
-			logger::debug("Created NiPointLight for node '{}'", nodeName);
-
 			setNiPointLightData(niPointLight.get(), cfg);
 
 			//I noticed over 60 candles used from bank in bannered mare, I wonder if this is true. or if we are pulling
 			// more lights then needed. should count all candles in a cell, see if matches bank count, if not then investigate
-			const size_t maxNodes = (cfg.nodeName == "candle") ? 75 : 25;
+			const size_t maxNodes = (cfg.nodeName == "candle") ? 78 : 25;
 
 			for (size_t i = 0; i < maxNodes; ++i) {
 
-				auto clonedNiPointLightAsNiObject = cloneNiPointLight(niPointLight.get());
-				if (!clonedNiPointLightAsNiObject) {
+				auto clonedNiPointLight = cloneNiPointLight(niPointLight.get());
+
+				if (!clonedNiPointLight) {
 					logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", nodeName, i);
 					continue;
 				}
 
-				logger::debug("Cloned NiPointLight for node '{}' (iteration {})", nodeName, i);
-
-				clonedNiPointLightAsNiObject->name = nodeName + "_rl";
-
-				// cast from niobject to nipoint light 
-				RE::NiPointLight* clonedNiPointLight = netimmerse_cast<RE::NiPointLight*>(clonedNiPointLightAsNiObject);
-				if (!clonedNiPointLight) {
-					logger::error("Cloned NiPointer is null for node '{}' (iteration {})", nodeName, i);
-					continue;
-				}
-
-				// ni pointer again 
 				RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
 
+				logger::debug("Cloned NiPointLight for node '{}' (iteration {})", nodeName, i);
+
+				clonedNiPointLight->name = nodeName + "_rl";
+		
+				// ni pointer for safe keeping
+			
 				// logger::info("adding to bank. ");
 				bankedNodes.push_back(clonedNiPointLightPtr);
 				logger::debug("Added cloned light for node '{}' (iteration {})", nodeName, i);

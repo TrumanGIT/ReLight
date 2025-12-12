@@ -227,20 +227,21 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 	return false;
 }
 
-inline RE::NiAVObject* cloneNiPointLight(RE::NiPointLight* niPointLight) {
+inline RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight) {
 
 	RE::NiCloningProcess cloningProcess;
-	auto niPointLightClone = niPointLight->CreateClone(cloningProcess);
-	if (!niPointLightClone) {
+	auto cloneAsNiAv = niPointLight->CreateClone(cloningProcess);
+	if (!cloneAsNiAv) {
 		logger::error("Failed to clone NiNode");
 		return nullptr;
 	}
 
-	auto niPointLightCloneAsAv = static_cast<RE::NiAVObject*>(niPointLightClone);
+	auto niPointLightClone = netimmerse_cast<RE::NiPointLight*>(cloneAsNiAv);
 
 	// Successfully cloned node
-	return niPointLightCloneAsAv;
+	return niPointLightClone;
 }
+
 
 inline void glowOrbRemover(RE::NiNode* node)
 {

@@ -30,10 +30,10 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
-        dataHasLoaded = true;
-     //   initialize(); 
+       
+ 
         LightData::assignNiPointLightsToBank();
-     
+        Hooks::Install();
       //   assignClonedNodesToBank(); working on renewing this function
         break;
     }
@@ -49,7 +49,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     iniParser();
     parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
-    Hooks::Install(); 
+
     UI::Register();
     return true;
 }

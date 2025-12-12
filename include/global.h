@@ -6,7 +6,7 @@
 extern bool disableShadowCasters;
 extern bool disableTorchLights;
 extern bool removeFakeGlowOrbs;
-extern bool dataHasLoaded;
+
 //extern bool enableColorConsistency;
 
 extern int loggingLevel;
