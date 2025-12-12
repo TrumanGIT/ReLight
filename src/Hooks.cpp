@@ -124,7 +124,7 @@ namespace Hooks {
 
 				//    logger::info("attached light to keyword mesh {}", nodeName);
 				LightConfig cfg = findConfigForNode(nodeName);
-				LightData::attachNiPointLightToShadowSceneNode(getNextNodeFromBank(match).get(), cfg);
+				LightData::attachNiPointLightToShadowSceneNode(nodePtr.get(), cfg);
 			}
 		}
 
