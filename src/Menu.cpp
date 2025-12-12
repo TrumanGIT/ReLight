@@ -19,8 +19,6 @@ namespace UI {
         SKSEMenuFramework::AddSectionItem("Settings", UI::RenderSettings);
 
         SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
-
-
     }
 
     void __stdcall RenderSettings() {
@@ -158,10 +156,6 @@ namespace UI {
                 auto selectedLight = lights[selectedIndex];
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
 
-                // ImGuiMCP::Text("Selected: %s", selectedLight->light->name.c_str());
-
-                ImGuiMCP::LabelText("Selected Template", selectedLight->light->name.c_str());
-
                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
@@ -203,7 +197,7 @@ namespace UI {
 
                 if (!selectedIslRt) return;
 
-                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.00f, 50.00f, "%.2f")) {
+                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.00f, 1.50f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();

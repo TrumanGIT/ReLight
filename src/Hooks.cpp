@@ -74,7 +74,7 @@ namespace Hooks {
 		//logger::info("load3D called");
 		auto niAVObject = func(a_this, a_backgroundLoading);
 		if (!niAVObject) { 
-			logger::warn("no ni node casted from niav object in load3d  with base editor id:{}", edid);
+			logger::warn("no ni node casted from niav object from load3d hook");
 			return niAVObject;
 		}
 

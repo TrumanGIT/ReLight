@@ -36,7 +36,8 @@ extern std::map<std::string, Template> niPointLightNodeBank;
 static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
     {"sun", "light"},   // both must be present
     {"window"},         
-    {"loadscreen"}      
+    {"loadscreen"},
+    {"magic"}
 };
 
 
