@@ -8,6 +8,11 @@
     "nearDistance": 5.0,
     "depthBias": 0.0005,
 
+    // Falloff parameters
+    "constantAttenuation" : 0.0,
+    "linearAttenuation" : 0.0,
+    "quadraticAttenuation" : 0.0,
+
     // ISL related
     "size" : 1.0,
     "cutoffOverride" : 0.5,

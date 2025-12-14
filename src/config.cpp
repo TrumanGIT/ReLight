@@ -41,11 +41,14 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
 
         FOREACH_FLOAT(FLOAT2JSON_READ)
 
+        // clamp radius.
+		config.radius = std::clamp(config.radius, 0.0f, 256.f);
+
         if (data.contains("color") && data["color"].is_array()) {
             auto& arr = data["color"];
             for (size_t i = 0; i < std::min(arr.size(), size_t(COL_SIZE)); ++i) {
                 auto val = arr[i].get<int>();
-                config.diffuseColor[i] = val > 255 ? val - 255 : val;
+                config.diffuseColor[i] = std::clamp(val, 0, 255);
             }
         }
 
