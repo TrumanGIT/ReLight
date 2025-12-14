@@ -15,8 +15,6 @@ extern uint8_t red;
 extern uint8_t green;
 extern uint8_t blue;
 
-//extern RE::TESObjectLIGH* loadScreenLightMain;
-
 extern RE::FormID soulCairnFormID;
 
 extern RE::FormID apocryphaFormID;
@@ -32,6 +30,8 @@ extern std::unordered_set<RE::FormID> excludedLightFormIDs;
 extern std::vector<std::string> priorityList;
 
 extern std::map<std::string, Template> niPointLightNodeBank;
+
+extern RE::NiPointer<RE::NiPointLight> masterNiPointLight;
 
 static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
     {"sun", "light"},   // both must be present

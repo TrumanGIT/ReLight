@@ -35,13 +35,16 @@ struct LightData {
 
 	static bool isISL;
 
-	static void assignNiPointLightsToBank();
+	static std::unordered_map<std::string, LightConfig> defaultConfigs;
+
+	static void refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg);
+	static void assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight);
 	static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName);
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
 	// template <class T>
 	// inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
 	static void setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg);
+	static void setNiPointLightDataFromCfg(RE::NiPointLight* niPointLight, const LightConfig& cfg);
 	static void setNiPointLightPos(RE::NiPointLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
 	static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
@@ -49,7 +52,7 @@ struct LightData {
 	//static void setISLFlag(RE::TESObjectLIGH* ligh); 
 	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
 	static void attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg);
-	static std::string getBaseNodeName(const std::string& lightName);
+	//static std::string getBaseNodeName(const std::string& lightName);
 	static bool findConfigForLight(LightConfig& cfg, const std::string& lightName);
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);
 
@@ -64,6 +67,7 @@ struct LightData {
 		logger::debug(" nearDistance  {}", params.nearDistance);
 		logger::debug(" depthBias	 {}", params.depthBias);
 	}
-
 	// void initialize();
 };
+
+ 

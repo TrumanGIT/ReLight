@@ -78,6 +78,8 @@ namespace UI {
 
     void __stdcall RenderLightEditor() {
 
+        static int selectedIndex = -1;
+
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
         FontAwesome::PushSolid();
@@ -87,21 +89,24 @@ namespace UI {
         ImGuiMCP::PopStyleColor();
         ImGuiMCP::SameLine();
 
-        if (ImGuiMCP::Button("Save Template")) {
-            // TODO:: refill selected bank with new ni point lights
+        if (ImGuiMCP::Button("Save Selected Template")) {
 
-            for (auto& bsLightPtr : lights) {
-                if (!bsLightPtr) continue;
-
-                auto* niLight = bsLightPtr->light.get();
-                if (!niLight) continue;
+            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
+                auto selectedLight = lights[selectedIndex];
+                auto niLight = selectedLight->light.get();
+                if (!niLight) {
+                    logger::error("no ni light from bslight when saving template");
+                    return;
+                }
 
                 std::string lightName = niLight->name.c_str();
-                if (lightName.empty())
-                    continue;
+                if (lightName.empty()) {
+                    logger::debug("Nilight name empty when saving template");
+                    return;
+                }
 
-                LightConfig cfg; 
-                
+                LightConfig cfg;
+
                 if (LightData::findConfigForLight(cfg, lightName)) {
                     LightData::updateConfigFromLight(cfg, niLight);
                     if (!cfg.configPath.empty()) {
@@ -114,10 +119,30 @@ namespace UI {
                 else {
                     logger::warn("No config found for light '{}'", lightName);
                 }
+
+                LightData::refillBankForSelectedTemplate(lightName, cfg);
+
+                logger::debug("refilled Bank for selectedTemplates (probobly)");
+            }
+
+        }
+
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Save the currently selected light template's settings");
+
+        ImGuiMCP::SameLine();
+
+        if (ImGuiMCP::Button("Restore Selected Template Defaults")) {
+            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
+                auto selectedLight = lights[selectedIndex];
+             
+
+                restoreLightToDefaults(selectedLight->light);
+
+                logger::info("Restored defaults for '{}'", selectedLight->light->name.c_str());
             }
         }
 
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Write current settings to Json config");
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Restore the currently selected light template's settings to what they were at game start");
 
         ImGuiMCP::Separator();
 
@@ -139,7 +164,7 @@ namespace UI {
 
         if (ImGuiMCP::CollapsingHeader("Loaded Light Templates")) {
 
-            static int selectedIndex = -1;
+
 
             for (int i = 0; i < lights.size(); i++) {
 
@@ -197,7 +222,7 @@ namespace UI {
 
                 if (!selectedIslRt) return;
 
-                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.00f, 1.50f, "%.2f")) {
+                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.05f, 1.50f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
@@ -228,6 +253,7 @@ namespace UI {
             }
         }
     }
+
     void saveSettingsToIni() {
         logger::info("Saving ReLight.ini...");
 
@@ -288,22 +314,62 @@ namespace UI {
         for (auto& light : rt.activeLights) {
             if (!light) continue; // skip null NiPointers
             auto lightName = light->light->name;
-            
-			for (auto& existingLight : lights) {
+
+            for (auto& existingLight : lights) {
                 if (existingLight->light->name == lightName) {
                     // Light already exists in the list, skip adding
-                     lightAlreadyInList = true; 
+                    lightAlreadyInList = true;
                 }
             }
 
-            if (!lightAlreadyInList) lights.push_back(light); 
+            if (!lightAlreadyInList) lights.push_back(light);
 
-			lightAlreadyInList = false;
+            lightAlreadyInList = false;
         }
-		//lightsLoaded = true;
+    }
+
+    void restoreLightToDefaults(RE::NiPointer<RE::NiLight> selectedLight) {
+        if (!selectedLight) {
+            logger::warn("Selected light is null, cannot restore defaults");
+            return;
+        }
+
+        const std::string lightName = selectedLight->name.c_str();
+        auto defaultIt = LightData::defaultConfigs.find(lightName);
+        if (defaultIt == LightData::defaultConfigs.end()) {
+            logger::warn("No default config found for '{}'", lightName);
+            return;
+        }
+
+        const auto& defaultCfg = defaultIt->second;
+
+        // Update selected light runtime data
+        auto& lightData = selectedLight->GetLightRuntimeData();
+        lightData.radius = LightData::getNiPointLightRadius(defaultCfg);
+        lightData.fade = defaultCfg.fade;
+        lightData.diffuse.red = defaultCfg.diffuseColor[0] / 255.0f;
+        lightData.diffuse.green = defaultCfg.diffuseColor[1] / 255.0f;
+        lightData.diffuse.blue = defaultCfg.diffuseColor[2] / 255.0f;
+
+        // Propagate to active lights in the shader node
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (ssNode) {
+            auto& rt = ssNode->GetRuntimeData();
+            for (auto& light : rt.activeLights) {
+                if (!light || light->light->name.c_str() != lightName)
+                    continue;
+
+                auto& activeData = light->light->GetLightRuntimeData();
+                activeData = lightData;
+
+                if (auto* isl = ISL_Overlay::Get(light->light.get())) {
+                    isl->cutoffOverride = defaultCfg.cutoffOverride;
+                    isl->size = defaultCfg.size;
+                }
+            }
+        }
+
+        logger::info("Restored '{}' to default config", lightName);
     }
 
 }
-
-
-

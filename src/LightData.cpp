@@ -12,6 +12,9 @@
 bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
                               // isl lights need different configuring then vanilla 
 
+// at runtime save a copy of each tempaltes settings so we can restore to defaults later
+std::unordered_map<std::string, LightConfig> LightData::defaultConfigs = {}; 
+
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
 {
 	if (!ref || !light || ref->IsDynamicForm()) {
@@ -77,6 +80,7 @@ parseLightFlags(const T& obj)
 	return flags;
 }*/
 
+// create ni point light and wrap in ni pointer for safe keeping
 RE::NiPointer<RE::NiPointLight> LightData::createNiPointLight() {
 	auto* niPointLight = RE::NiPointLight::Create();
 	if (!niPointLight) {
@@ -144,7 +148,7 @@ void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cf
 	}
 }
 
-void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+void LightData::setNiPointLightDataFromCfg(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
@@ -173,18 +177,13 @@ void LightData::setNiPointLightData(RE::NiPointLight* niPointLight, const LightC
 	}
 }
 
-void LightData::assignNiPointLightsToBank() {
+void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
 	logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
-
 	
-    // try creating 1 only and reusing it
-	auto niPointLight = createNiPointLight();
-
 	if (!niPointLight) {
 		logger::error("Failed to create ni point light");
 		return;
 	}
-
 
 	try {
 		for (auto& pair : niPointLightNodeBank) {
@@ -198,7 +197,7 @@ void LightData::assignNiPointLightsToBank() {
 				continue;
 			}
 
-			setNiPointLightData(niPointLight.get(), cfg);
+			setNiPointLightDataFromCfg(niPointLight.get(), cfg);
 
 			//I noticed over 60 candles used from bank in bannered mare, I wonder if this is true. or if we are pulling
 			// more lights then needed. should count all candles in a cell, see if matches bank count, if not then investigate
@@ -213,13 +212,11 @@ void LightData::assignNiPointLightsToBank() {
 					continue;
 				}
 
+				clonedNiPointLight->name = nodeName;
+
 				RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
 
 				logger::debug("Cloned NiPointLight for node '{}' (iteration {})", nodeName, i);
-
-				clonedNiPointLight->name = nodeName + "_rl";
-		
-				// ni pointer for safe keeping
 			
 				// logger::info("adding to bank. ");
 				bankedNodes.push_back(clonedNiPointLightPtr);
@@ -232,6 +229,37 @@ void LightData::assignNiPointLightsToBank() {
 	catch (const std::exception& e) {
 		logger::error("Exception in assignNiPointLightsToBank: {}", e.what());
 		throw; // rethrow after logging
+	}
+}
+
+void LightData::refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg) {
+
+	auto& selectedTemplateNodeBank = niPointLightNodeBank[lightName].bank;
+
+	auto size = selectedTemplateNodeBank.size();
+
+	selectedTemplateNodeBank.clear();
+
+	LightData::setNiPointLightDataFromCfg(masterNiPointLight.get(), cfg);
+
+	for (std::size_t i = 0; i < size; i++) {
+
+		auto clonedNiPointLight = cloneNiPointLight(masterNiPointLight.get());
+
+		if (!clonedNiPointLight) {
+			logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", lightName, i);
+			continue;
+		}
+
+		clonedNiPointLight->name = lightName;
+
+		RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
+
+		logger::debug("Cloned NiPointLight for node '{}' (iteration {})", lightName, i);
+
+		// logger::info("adding to bank. ");
+		selectedTemplateNodeBank.push_back(clonedNiPointLightPtr);
+		logger::debug("Added cloned light for node '{}' (iteration {})", lightName, i);
 	}
 }
 
@@ -292,18 +320,18 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLig
 	}
 }
 
-std::string LightData::getBaseNodeName(const std::string& lightName) {
+/*std::string LightData::getBaseNodeName(const std::string& lightName) {
 	const std::string suffix = "_rl";
 	if (lightName.size() >= suffix.size() && lightName.compare(lightName.size() - suffix.size(), suffix.size(), suffix) == 0) {
 		return lightName.substr(0, lightName.size() - suffix.size());
 	}
 	return lightName;
-}
+} */ 
 
 bool LightData::findConfigForLight(LightConfig& cfg, const std::string& lightName) {
-	const std::string baseName = getBaseNodeName(lightName);
-	for (auto& [name, temp] : niPointLightNodeBank) {
-		if (name == baseName) {
+	//const std::string baseName = getBaseNodeName(lightName);
+	for  (auto& [name, temp] : niPointLightNodeBank) {
+		if (name == lightName) {
 			cfg = temp.config;
 			return true;
 		}

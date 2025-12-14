@@ -31,10 +31,15 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     case SKSE::MessagingInterface::kDataLoaded:
     {
        
- 
-        LightData::assignNiPointLightsToBank();
+         masterNiPointLight = LightData::createNiPointLight();
+
+        if (!masterNiPointLight) {
+            logger::critical("masterNiPointLight was not created succesfully, backing out of mod intialization");
+            return; 
+        }
+
+        LightData::assignNiPointLightsToBank(masterNiPointLight);
         Hooks::Install();
-      //   assignClonedNodesToBank(); working on renewing this function
         break;
     }
     default:
@@ -49,7 +54,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     iniParser();
     parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
-
     UI::Register();
     return true;
 }

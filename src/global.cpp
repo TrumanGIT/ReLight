@@ -19,9 +19,7 @@ uint8_t green = 161;
 uint8_t blue = 60;
 
 RE::FormID soulCairnFormID = 0x2001408;
-RE::FormID apocryphaFormID = 0x0401C0B2;
-
-//RE::TESObjectLIGH* loadScreenLightMain = nullptr; 
+RE::FormID apocryphaFormID = 0x0401C0B2; 
 
 std::vector<std::string> whitelist; // to whitelist light refs from mods by plugin name
 
@@ -32,6 +30,8 @@ std::vector<std::string> exclusionListPartialMatch;
 std::vector<std::string> priorityList = {};
 
 std::map<std::string, Template> niPointLightNodeBank = {};
+
+RE::NiPointer<RE::NiPointLight> masterNiPointLight = nullptr; 
 
 // nodeName (lowercased) -> template mesh path
 //std::unordered_map<std::string, std::string>

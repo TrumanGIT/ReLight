@@ -40,10 +40,10 @@ struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
     std::string configPath{};                     // save the path from where this config is loaded
-    std::string nodeName{};                       // TESObjectLIGH->data.radius
-    std::array<int, COL_SIZE> diffuseColor{};     // TESObjectLIGH->data.color.red, blue green 
+    std::string nodeName{};                       //NiPointLightRunTime->data.radius
+    std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
-    std::vector<std::string> flags{};             // TES::ObjectLigh->data.flags
+    std::vector<std::string> flags{};             // NiPointLightRunTime->data.flags
 
     void print() {
         logger::info("Path               : {}", configPath);

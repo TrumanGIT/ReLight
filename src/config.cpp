@@ -130,7 +130,6 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 	}
 }
 
-
 void parseTemplates() {
     logger::info("Parsing light templates..");
     std::vector<std::string> paths = GetConfigPaths();
@@ -143,6 +142,7 @@ void parseTemplates() {
         cfg.print();
         Template temp;
         temp.config = std::move(cfg);
+        LightData::defaultConfigs[temp.config.nodeName] = temp.config;
         niPointLightNodeBank[temp.config.nodeName] = std::move(temp);
     }
 }
