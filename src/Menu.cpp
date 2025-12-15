@@ -89,7 +89,7 @@ namespace UI {
         ImGuiMCP::PopStyleColor();
         ImGuiMCP::SameLine();
 
-        if (ImGuiMCP::Button("Save Selected Template")) {
+        if (ImGuiMCP::Button("Save")) {
 
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 auto selectedLight = lights[selectedIndex];
@@ -131,7 +131,7 @@ namespace UI {
 
         ImGuiMCP::SameLine();
 
-        if (ImGuiMCP::Button("Restore Selected Template Defaults")) {
+        if (ImGuiMCP::Button("Default")) {
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 auto selectedLight = lights[selectedIndex];
              
@@ -164,8 +164,6 @@ namespace UI {
 
         if (ImGuiMCP::CollapsingHeader("Loaded Light Templates")) {
 
-
-
             for (int i = 0; i < lights.size(); i++) {
 
                 auto& light = lights[i];
@@ -193,7 +191,7 @@ namespace UI {
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Fade", &lightData.fade, 0.0f, 50.0f, "%.1f")) {
+                if (ImGuiMCP::SliderFloat("Fade", &lightData.fade, 0.0f, 10.0f, "%.1f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
@@ -222,7 +220,7 @@ namespace UI {
 
                 if (!selectedIslRt) return;
 
-                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.05f, 1.50f, "%.2f")) {
+                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
@@ -236,7 +234,7 @@ namespace UI {
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.00f, 5.00f, "%.2f")) {
+                if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.00f, 10.00f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();

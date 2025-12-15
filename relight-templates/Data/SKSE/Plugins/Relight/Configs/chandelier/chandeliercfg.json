@@ -23,7 +23,7 @@
     "affectWater": true,
     "neverFades": true,
 
-    "emittanceColor": [255, 162, 61],
+    "color": [255, 162, 61],
     
     "position": [0.0, 0.0, 20.0],
 
