@@ -268,7 +268,7 @@ inline void glowOrbRemover(RE::NiNode* node)
 		toLower(name);
 
 		if (name.find("glow") != std::string::npos) {
-			node->SetAppCulled(true);
+			childAsNode->SetAppCulled(true);
 			continue;
 		}
 
