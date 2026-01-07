@@ -361,4 +361,3 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 		cfg.cutoffOverride = isl->cutoffOverride;
 	}
 }
-

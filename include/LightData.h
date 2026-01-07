@@ -9,19 +9,31 @@
 #include "logger.hpp"
 #include "ClibUtil/EditorID.hpp"
 #include "config.hpp"
+#include "ClibUtilityRNG.hpp"
 
 // extend ni point light runtime data so ISL sees our lights otherwise darkness
 struct ISL_Overlay
 {
 	std::uint32_t flags;       // I dont think we need this but idk can ignore for now
 	float         cutoffOverride;//ISL need for isl from config
-	RE::FormID    lighFormId;
+	RE::FormID    lighFormId; // ISL dont need
 	RE::NiColor   diffuse;
 	float         radius;
 	float         pad1C;
 	float         size; //ISL need for isl from config
 	float         fade;
 	std::uint32_t unk138;
+
+	float         flickerIntensity = 0.2f;   // Relight specific values
+	float         flickersPerSecond = 3.0f;  // Relight specific values
+
+	float speedRandomness = 1.0; // this is if we want random flickers or not
+
+	float time; // flicker interval
+
+	float startingFade;
+
+	bool initialized = false;
 
 	static ISL_Overlay* Get(RE::NiLight* niLight)
 	{

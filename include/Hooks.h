@@ -24,6 +24,18 @@ namespace Hooks {
         static void Install();
     };
 
+    //PO3
+    struct UpdateActivateParents
+    {
+        static void thunk(RE::TESObjectCELL* a_cell);
+
+        static inline REL::Relocation<decltype(thunk)> func;
+
+        static void Install();
+
+    };
+
+
     void Install(); 
 
 }

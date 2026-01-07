@@ -1,15 +1,72 @@
-#include "Hooks.h"
-#include "Functions.h"
-#include "global.h"
 #include <map>
 #include <array>
 #include <string>
+#include <numbers>
+#include <cmath>
+#include "Hooks.h"
+#include "Functions.h"
+#include "global.h"
 #include <unordered_set>
 #include "lightdata.h"
 
+
 namespace Hooks {
 
-	//Po3's
+	clib_util::RNG<> rng;
+
+	// Po3's hook 
+	void UpdateActivateParents::thunk(RE::TESObjectCELL* a_cell) {
+
+		func(a_cell); 
+
+		static float deltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
+
+
+		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+		if (!ssNode) {
+			logger::warn("ShadowSceneNode[0] is null!");
+			return;
+		}
+
+		auto& rt = ssNode->GetRuntimeData();
+
+		for (auto& light : rt.activeLights) {
+			if (!light) continue; 
+			std::string lightName = light->light->name.c_str();
+		
+			if (!lightName.ends_with("RL")) continue; 
+
+			logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
+
+			auto& data = light->light->GetLightRuntimeData(); 
+
+			if (auto* lightRuntimeData = ISL_Overlay::Get(light->light.get())) {
+
+				if (!lightRuntimeData->initialized) {
+					lightRuntimeData->startingFade = lightRuntimeData->fade;
+					lightRuntimeData->flickerIntensity = 0.2f;
+					lightRuntimeData->flickersPerSecond = 3.f;
+					logger::debug("INIT {} startingFade={} flickerintesnsity =  {}flickerpersecond =  {}", lightName, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond);
+					lightRuntimeData->initialized = true; 
+				}
+
+				lightRuntimeData->time += deltaTime * (1 - rng.generate(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness)) * std::numbers::pi_v<float>;
+				data.fade = lightRuntimeData->startingFade + std::sin(lightRuntimeData->time * lightRuntimeData->flickersPerSecond) * lightRuntimeData->flickerIntensity;
+			}
+		}
+	}
+	
+		 void UpdateActivateParents::Install()
+		{
+			REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(18458, 18889), 0x52 };  // TESObjectCELL::RunAnimations
+			auto& trampoline = SKSE::GetTrampoline();
+			UpdateActivateParents::func = trampoline.write_call<5>(target.address(), UpdateActivateParents::thunk);
+
+			logger::info("Hooked TESObjectCELL::UpdateActivateParents");
+		}
+
+
+	//Po3's hook (disable vanilla lights for a clean base to start with) 
 	RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 		RE::TESObjectLIGH* light,
 		RE::TESObjectREFR* ref,
@@ -60,6 +117,7 @@ namespace Hooks {
 		logger::info("Installed TESObjectLIGH::GenDynamic patch");
 	}
 
+	// this is when we attach lights
 	RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 	{
 
@@ -121,14 +179,14 @@ namespace Hooks {
 
 			LightData::setNiPointLightDataFromCfg(niLight, cfg);
 
-			niLight->name = cfg.nodeName; 
+			niLight->name = cfg.nodeName + "RL";
 			
 				logger::debug("next node retrieved successfully ", match);
-				a_root->AttachChild(niLight);
+			//	a_root->AttachChild(niLight);
 
 				//    logger::info("attached light to keyword mesh {}", nodeName);
 				
-				LightData::attachNiPointLightToShadowSceneNode(niLight, cfg);
+			//	LightData::attachNiPointLightToShadowSceneNode(niLight, cfg);
 				//a_this->UpdateRefLight(); 
 		}
 
@@ -151,5 +209,6 @@ namespace Hooks {
 		SKSE::AllocTrampoline(1 << 8);
 		TESObjectLIGH_GenDynamic::Install();
 		Load3D::Install();
+		UpdateActivateParents::Install(); 
 	}
 }
