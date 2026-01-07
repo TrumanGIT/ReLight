@@ -22,6 +22,13 @@ inline void initialize() {
     }
 }
 
+inline std::string RemoveSuffix(const std::string& str, const std::string& suffix) {
+	if (str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0) {
+		return str.substr(0, str.size() - suffix.size());
+	}
+	return str; // return original if suffix not found
+}
+
 inline void toLower(std::string& str) {
 	for (auto& c : str) {
 		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -277,14 +284,14 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-
 inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::NiNode* root)
 {
 	if (nodeName == "mpscandleflame01.nif" && removeFakeGlowOrbs) {
 		if (!root)
 			return true;
 
-		// TODO:: mps glow remover doesent seem to be working. 
+		// TODO:: mps glow remover doesent seem to be working. I suspect 
+		// that the issue is MPS is not loaded through load3d hook like it is PostCreate() but idk
 		// this is to remove glow orbs from Master particle system candles
 		if (auto* flameNode = root->GetObjectByName("mpscandleflame01")) {
 			if (auto* flameNiNode = flameNode->AsNode()) {

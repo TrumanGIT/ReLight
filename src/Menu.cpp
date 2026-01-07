@@ -4,6 +4,9 @@
 
 namespace logger = SKSE::log;
 
+
+//TODO:: add sliders for flicker settings and mabye light attenuation if its beneficial
+
 namespace UI {
 
     static vector<RE::NiPointer<RE::BSLight>> lights = {};
@@ -175,9 +178,17 @@ namespace UI {
                 }
             }
 
+
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 auto selectedLight = lights[selectedIndex];
+
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
+
+                auto* selectedIslRt = ISL_Overlay::Get(selectedLight->light.get());
+
+                if (!selectedIslRt) return;
+
+                //TODO:: add 'starting radius' so it doesent fight skse menu when ISL is enabled
 
                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -191,17 +202,20 @@ namespace UI {
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Fade", &lightData.fade, 0.0f, 10.0f, "%.1f")) {
+                if (ImGuiMCP::SliderFloat("Fade", &selectedIslRt->startingFade, 0.0f, 10.0f, "%.1f")) {
+           
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
-                                light->light->GetLightRuntimeData().fade = lightData.fade;
+                                auto& data = light->light->GetLightRuntimeData();
+                                data.fade = selectedIslRt->startingFade;
                             }
                         }
                     }
                 }
+
 
                 //static float color[3] = { lightData.diffuse.red, lightData.diffuse.green, lightData.diffuse.blue };
                 if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.000f, 1.000f, "%.3f")) {
@@ -216,9 +230,7 @@ namespace UI {
                     }
                 }
 
-                auto* selectedIslRt = ISL_Overlay::Get(selectedLight->light.get());
-
-                if (!selectedIslRt) return;
+               
 
                 if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -333,7 +345,7 @@ namespace UI {
         }
 
         const std::string lightName = selectedLight->name.c_str();
-        auto defaultIt = LightData::defaultConfigs.find(lightName);
+        auto defaultIt = LightData::defaultConfigs.find(RemoveSuffix(lightName, "RL"));
         if (defaultIt == LightData::defaultConfigs.end()) {
             logger::warn("No default config found for '{}'", lightName);
             return;

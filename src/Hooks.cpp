@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include "lightdata.h"
 
+//TODO:: currently RNG is the same for all candles, I need each light to get their own RNG 
+// otherwise it looks unnatural having all lights flicker at same speed. 
 
 namespace Hooks {
 
@@ -36,7 +38,7 @@ namespace Hooks {
 		
 			if (!lightName.ends_with("RL")) continue; 
 
-			logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
+		//`	logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
 
 			auto& data = light->light->GetLightRuntimeData(); 
 
@@ -91,7 +93,10 @@ namespace Hooks {
 	//	if (LightData::shouldDisableLight(light, ref, modName))
 			//return nullptr;
 
-	
+		//TODO:: we now add lights using this hooks func itself, so I need a way to
+		// ignore our lights, amd disable all others (- excluded lights) 
+		// my idea is to take a page out of ISL's book and flip bit 15th bit on the dummy TESObjectLigh object flags bit mask
+		// can act as a harmless flag to idntify our lights and not disable them.
 		if (modName.find("skyrim") != std::string::npos)
 		{
 			return nullptr; 
