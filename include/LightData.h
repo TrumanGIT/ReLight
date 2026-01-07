@@ -29,6 +29,27 @@ struct ISL_Overlay
 	}
 };
 
+inline RE::NiLight* CallGenDynamic(
+	RE::TESObjectLIGH* light,
+	RE::TESObjectREFR* ref,
+	RE::NiNode* node,
+	bool forceDynamic,
+	bool useLightRadius,
+	bool affectRefOnly)
+{
+	using func_t = RE::NiLight* (
+		RE::TESObjectLIGH*,
+		RE::TESObjectREFR*,
+		RE::NiNode*,
+		bool,
+		bool,
+		bool);
+
+	static REL::Relocation<func_t> func{ RELOCATION_ID(17208, 17610) };
+	return func(light, ref, node, forceDynamic, useLightRadius, affectRefOnly);
+}
+
+
 // Backup light data for unused TESObjectLIGH
 
 struct LightData {
@@ -43,15 +64,15 @@ struct LightData {
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
 	// template <class T>
 	// inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
-	static void setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightDataFromCfg(RE::NiPointLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightPos(RE::NiPointLight* light, const LightConfig& cfg);
+	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
 	static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
-	static void setISLData(RE::NiPointLight* niPointLight, const LightConfig& cfg);
+	static void setISLData(RE::NiLight* niPointLight, const LightConfig& cfg);
 	//static void setISLFlag(RE::TESObjectLIGH* ligh); 
 	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
-	static void attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg);
+	static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
 	//static std::string getBaseNodeName(const std::string& lightName);
 	static bool findConfigForLight(LightConfig& cfg, const std::string& lightName);
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);

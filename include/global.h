@@ -37,8 +37,11 @@ static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
     {"sun", "light"},   // both must be present
     {"window"},         
     {"loadscreen"},
-    {"magic"}
+    {"magic"},
+    {"fog"}
 };
+
+extern RE::TESObjectLIGH* dummyLightObject; 
 
 
 

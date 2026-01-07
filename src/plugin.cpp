@@ -38,7 +38,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
             return; 
         }
 
-        LightData::assignNiPointLightsToBank(masterNiPointLight);
+        initialize(); 
+       // LightData::assignNiPointLightsToBank(masterNiPointLight);
         Hooks::Install();
         break;
     }

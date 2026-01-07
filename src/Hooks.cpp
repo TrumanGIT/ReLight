@@ -31,19 +31,16 @@ namespace Hooks {
 
 		toLower(modName);
 
-		if (LightData::shouldDisableLight(light, ref, modName))
-			return nullptr;
+	//	if (LightData::shouldDisableLight(light, ref, modName))
+			//return nullptr;
 
-		// if whitelisted, change rgb values to whatever we want    
-	   //doint want to change color of lights that change color based on time of day. 
-		/*if (modName.find("window shadows ultimate") == std::string::npos)
+	
+		if (modName.find("skyrim") != std::string::npos)
 		{
-			light->data.color.red = red;
-			light->data.color.green = green;
-			light->data.color.blue = blue;
+			return nullptr; 
 			
 			//  logger::info("Changed color for light {:X} from {}", formID, modName);
-		}*/
+		}
 
 		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 	}
@@ -101,6 +98,7 @@ namespace Hooks {
 
 		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos*/) {
 			logger::debug("Load3D() matched node name: {}", nodeName);
+
 			if (isExclude(nodeName, a_root)) return niAVObject;
 	
 			//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
@@ -116,16 +114,22 @@ namespace Hooks {
 			//TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
 		   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 				return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
-	
-		    auto nodePtr = getNextNodeFromBank(match);
-			if (nodePtr) {
+		
+	       LightConfig cfg = findConfigForNode(match);
+
+			auto niLight = CallGenDynamic(dummyLightObject, a_this, a_root, true, true, true);
+
+			LightData::setNiPointLightDataFromCfg(niLight, cfg);
+
+			niLight->name = cfg.nodeName; 
+			
 				logger::debug("next node retrieved successfully ", match);
-				a_root->AttachChild(nodePtr.get());
+				a_root->AttachChild(niLight);
 
 				//    logger::info("attached light to keyword mesh {}", nodeName);
-				LightConfig cfg = findConfigForNode(nodeName);
-				LightData::attachNiPointLightToShadowSceneNode(nodePtr.get(), cfg);
-			}
+				
+				LightData::attachNiPointLightToShadowSceneNode(niLight, cfg);
+				//a_this->UpdateRefLight(); 
 		}
 
 	//	dummyHandler(a_root, nodeName);

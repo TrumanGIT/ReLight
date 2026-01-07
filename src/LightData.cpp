@@ -10,7 +10,9 @@
 #include <vector>
 
 bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
-                              // isl lights need different configuring then vanilla 
+                              // isl lights need different configuring then vanilla.. this boool currently isent used
+
+
 
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<std::string, LightConfig> LightData::defaultConfigs = {}; 
@@ -96,7 +98,7 @@ RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
 	return RE::NiPoint3(cfg.radius, cfg.radius, cfg.radius);
 }
 
-void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::warn("nullptr passed to set ni point light ambient and diffuse");
 		return;
@@ -115,7 +117,7 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiPointLight* niPointLight,
 	data.ambient.blue = data.diffuse.blue * cfg.ambientRatio;
 }
 
-void LightData::setNiPointLightPos(RE::NiPointLight* niPointLight, const LightConfig& cfg)
+void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig& cfg)
 {
 	if (!niPointLight) return;
 	niPointLight->local.translate.x = cfg.position[0];
@@ -132,7 +134,7 @@ void LightData::setNiPointLightPos(RE::NiPointLight* niPointLight, const LightCo
 //}
 
 
-void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
@@ -148,7 +150,7 @@ void LightData::setISLData(RE::NiPointLight* niPointLight, const LightConfig& cf
 	}
 }
 
-void LightData::setNiPointLightDataFromCfg(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
@@ -291,7 +293,7 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	return p;
 }
 
-void LightData::attachNiPointLightToShadowSceneNode(RE::NiPointLight* niPointLight, const LightConfig& cfg) {
+void LightData::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg) {
 
 	//logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
 

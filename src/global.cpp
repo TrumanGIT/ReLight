@@ -33,6 +33,8 @@ std::map<std::string, Template> niPointLightNodeBank = {};
 
 RE::NiPointer<RE::NiPointLight> masterNiPointLight = nullptr; 
 
+RE::TESObjectLIGH* dummyLightObject = nullptr;
+
 // nodeName (lowercased) -> template mesh path
 //std::unordered_map<std::string, std::string>
  //   baseMeshesAndTemplateToAttach = {};
