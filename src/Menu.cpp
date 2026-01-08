@@ -338,6 +338,9 @@ namespace UI {
         }
     }
 
+
+    //TODO::restore starting fade aswell
+
     void restoreLightToDefaults(RE::NiPointer<RE::NiLight> selectedLight) {
         if (!selectedLight) {
             logger::warn("Selected light is null, cannot restore defaults");

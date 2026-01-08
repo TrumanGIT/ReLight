@@ -341,6 +341,7 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 {
 	//  Check priority list created from ini file first
 	for (auto& nodeNameInPriorityList : priorityList) {
+		logger::debug("Checking priority list entry '{}' against '{}'", nodeNameInPriorityList, nodeName);
 		if (nodeName.find(nodeNameInPriorityList) != std::string::npos)
 			return nodeNameInPriorityList;
 	}
@@ -348,14 +349,15 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 	// No priority specified
 	for (auto& pair : niPointLightNodeBank) {
 		const auto& name = pair.first;
+		logger::debug("Checking bank key '{}' against '{}'", name, nodeName);
 
 		if (nodeName.find(name) != std::string::npos)
 			return name;
 	}
 
+	logger::debug("No match found for node '{}'", nodeName);
 	return ""; // no match
 }
-
 
 //we clone and store NIpointLight nodes in bank (not anymore)
 /*inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)

@@ -10,6 +10,10 @@
 #include "lightdata.h"
 #include "ClibUtil/rng.hpp"
 
+// Note to self campfireburning01 had different in gane menu flicker behaviour (investigate)
+
+
+
 //TODO:: currently RNG is the same for all candles, I need each light to get their own RNG 
 // otherwise it looks unnatural having all lights flicker at same speed. 
 
