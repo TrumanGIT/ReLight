@@ -15,8 +15,9 @@ namespace logger = SKSE::log;
 
 inline void initialize() {
      logger::info("loading forms");
-   auto dataHandler = RE::TESDataHandler::GetSingleton(); // single instance
-   dummyLightObject = dataHandler->LookupForm<RE::TESObjectLIGH>(0x0001D4EC, "Skyrim.esm");
+   auto dataHandler = RE::TESDataHandler::GetSingleton();
+   //LoadScreenLightMain (seemingly unsued, does not come through the  light gen hook so useful as a dymmy) 
+   dummyLightObject = dataHandler->LookupForm<RE::TESObjectLIGH>(0x00105300, "Skyrim.esm");
    if (!dummyLightObject) {
         logger::info("TESObjectLIGH dummyLightObject (0x00105300) not found");
     }
@@ -26,7 +27,7 @@ inline std::string RemoveSuffix(const std::string& str, const std::string& suffi
 	if (str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0) {
 		return str.substr(0, str.size() - suffix.size());
 	}
-	return str; // return original if suffix not found
+	return str; 
 }
 
 inline void toLower(std::string& str) {
@@ -355,19 +356,9 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 	return ""; // no match
 }
 
-inline LightConfig findConfigForNode(const std::string& nodeName)
-{
-	for (auto& pair : niPointLightNodeBank) {
-		const auto& name = pair.first;
-		if (nodeName.find(name) != std::string::npos)
-			return pair.second.config;
-	}
-	logger::warn("No template found by findConfigForNode for node {}", nodeName);
-	return LightConfig(); // no match
-}
 
-//we clone and store NIpointLight nodes in bank 
-inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
+//we clone and store NIpointLight nodes in bank (not anymore)
+/*inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
 {
 //	logger::debug("test get next node from bank");
 	for (auto& [name, temp] : niPointLightNodeBank) {
@@ -450,7 +441,9 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiNode* a_root)
 	return false;
 }
 
-/*inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
+//TODO:: Reimplement
+
+inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
 {
 	static const std::unordered_set<std::string> nordicHallMeshes = {
 	"norcathallsm1way01",
@@ -473,8 +466,7 @@ inline bool TorchHandler(const std::string& nodeName, RE::NiNode* a_root)
 //before we iterated through each node in a template wired gave us, now we only have single json objects, we will have to think of something
 
 	return true;
-}*/
-
+}
 // some nodes are called scene root this is to take care of them. 
 inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, const std::string& nodeName)
 {
@@ -516,6 +508,17 @@ inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_ro
 	}
 
 	return true;
+}*/
+
+inline LightConfig findConfigForNode(const std::string& nodeName)
+{
+    for (auto& pair : niPointLightNodeBank) {
+        const auto& name = pair.first;
+        if (nodeName.find(name) != std::string::npos)
+            return pair.second;
+    }
+    logger::warn("No template found by findConfigForNode for node {}", nodeName);
+    return LightConfig(); // no match
 }
 
 // some nodes are called dummy this is to take care of them.

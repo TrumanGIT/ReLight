@@ -3,21 +3,23 @@
 #include "global.h"
 #include "logger.hpp"
 #include "ClibUtil/EditorID.hpp"
+
 #include "Functions.h"
 #include "config.hpp"
 #include "LightData.h"
 #include <string>
 #include <vector>
 
+
+//TODO:: make this isISL Bool apart of ISL Overlay to easily differentiate between isl and non isl lights
+
 bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
                               // isl lights need different configuring then vanilla.. this boool currently isent used
-
-
 
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<std::string, LightConfig> LightData::defaultConfigs = {}; 
 
-bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName)
+bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref)
 {
 	if (!ref || !light || ref->IsDynamicForm()) {
 		return false;
@@ -42,11 +44,11 @@ bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* 
 		return false;
 	}
 
-	for (const auto& whitelistedMod : whitelist) {
-		if (modName.find(whitelistedMod) != std::string::npos) {
-			return false;
-		}
-	}
+	//for (const auto& whitelistedMod : whitelist) {
+	//	if (modName.find(whitelistedMod) != std::string::npos) {
+		//	return false;
+		//}
+	//}
 	return true;
 }
 
@@ -125,13 +127,13 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 	niPointLight->local.translate.z = cfg.position[2];
 }
 
-//void LightData::setISLFlag(RE::TESObjectLIGH* ligh)
-//{
-	//if (!ligh) return;
+void LightData::setRelightFlag(RE::TESObjectLIGH* ligh)
+{
+	if (!ligh) return;
 
-	//auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
-	//*rawPtr |= (1u << 14); // set 14th bit for ISL support
-//}
+	auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
+	*rawPtr |= (1u << 15); // set 15th bit (an unused flag to identify our lights) 
+}
 
 
 void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg) {
@@ -179,7 +181,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	}
 }
 
-void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
+/*void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
 	logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
 	
 	if (!niPointLight) {
@@ -192,7 +194,7 @@ void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPoin
 			const std::string& nodeName = pair.first;
 			Template& temp = pair.second;
 			const LightConfig& cfg = temp.config;
-			auto& bankedNodes = temp.bank;
+			auto& bankedNodes = temp;
 
 			if (nodeName != temp.config.nodeName) {
 				logger::error("Template node name {} do not match map key {}", nodeName, temp.config.nodeName);
@@ -236,7 +238,7 @@ void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPoin
 
 void LightData::refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg) {
 
-	auto& selectedTemplateNodeBank = niPointLightNodeBank[lightName].bank;
+	auto& selectedTemplateNodeBank = niPointLightNodeBank[lightName];
 
 	auto size = selectedTemplateNodeBank.size();
 
@@ -322,7 +324,7 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, c
 	}
 }
 
-/*std::string LightData::getBaseNodeName(const std::string& lightName) {
+std::string LightData::getBaseNodeName(const std::string& lightName) {
 	const std::string suffix = "_rl";
 	if (lightName.size() >= suffix.size() && lightName.compare(lightName.size() - suffix.size(), suffix.size(), suffix) == 0) {
 		return lightName.substr(0, lightName.size() - suffix.size());
@@ -334,7 +336,7 @@ bool LightData::findConfigForLight(LightConfig& cfg, const std::string& lightNam
 	//const std::string baseName = getBaseNodeName(lightName);
 	for  (auto& [name, temp] : niPointLightNodeBank) {
 		if (name == lightName) {
-			cfg = temp.config;
+			cfg = temp;
 			return true;
 		}
 	}

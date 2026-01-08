@@ -123,7 +123,7 @@ namespace UI {
                     logger::warn("No config found for light '{}'", lightName);
                 }
 
-                LightData::refillBankForSelectedTemplate(lightName, cfg);
+//                LightData::refillBankForSelectedTemplate(lightName, cfg);
 
                 logger::debug("refilled Bank for selectedTemplates (probobly)");
             }

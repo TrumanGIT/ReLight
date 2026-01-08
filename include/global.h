@@ -3,17 +3,12 @@
 #include <unordered_map>
 #include "config.hpp"
 
+
 extern bool disableShadowCasters;
 extern bool disableTorchLights;
 extern bool removeFakeGlowOrbs;
 
-//extern bool enableColorConsistency;
-
 extern int loggingLevel;
-
-extern uint8_t red;
-extern uint8_t green;
-extern uint8_t blue;
 
 extern RE::FormID soulCairnFormID;
 
@@ -29,16 +24,17 @@ extern std::unordered_set<RE::FormID> excludedLightFormIDs;
 
 extern std::vector<std::string> priorityList;
 
-extern std::map<std::string, Template> niPointLightNodeBank;
+extern std::map<std::string, LightConfig> niPointLightNodeBank;
 
 extern RE::NiPointer<RE::NiPointLight> masterNiPointLight;
 
 static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
     {"sun", "light"},   // both must be present
-    {"window"},         
+    {"window"},
     {"loadscreen"},
     {"magic"},
-    {"fog"}
+    {"fog"},
+    {"loadscreenlightmain"}
 };
 
 extern RE::TESObjectLIGH* dummyLightObject; 

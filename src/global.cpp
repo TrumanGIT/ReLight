@@ -10,13 +10,8 @@
 bool disableShadowCasters = true;
 bool disableTorchLights = true;
 bool removeFakeGlowOrbs = true;
-//bool enableColorConsistency = true; 
 
 int loggingLevel = 2; // default to info
-
-uint8_t red = 255;
-uint8_t green = 161;
-uint8_t blue = 60;
 
 RE::FormID soulCairnFormID = 0x2001408;
 RE::FormID apocryphaFormID = 0x0401C0B2; 
@@ -29,7 +24,7 @@ std::vector<std::string> exclusionListPartialMatch;
 
 std::vector<std::string> priorityList = {};
 
-std::map<std::string, Template> niPointLightNodeBank = {};
+std::map<std::string, LightConfig> niPointLightNodeBank = {};
 
 RE::NiPointer<RE::NiPointLight> masterNiPointLight = nullptr; 
 

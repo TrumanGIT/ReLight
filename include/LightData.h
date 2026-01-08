@@ -9,7 +9,6 @@
 #include "logger.hpp"
 #include "ClibUtil/EditorID.hpp"
 #include "config.hpp"
-#include "ClibUtilityRNG.hpp"
 
 // extend ni point light runtime data so ISL sees our lights otherwise darkness
 struct ISL_Overlay
@@ -70,9 +69,9 @@ struct LightData {
 
 	static std::unordered_map<std::string, LightConfig> defaultConfigs;
 
-	static void refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg);
-	static void assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight);
-	static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, const std::string& modName);
+//	static void refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg);
+	//static void assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight);
+	static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref);
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
 	// template <class T>
 	// inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
@@ -82,9 +81,9 @@ struct LightData {
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
 	static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
 	static void setISLData(RE::NiLight* niPointLight, const LightConfig& cfg);
-	//static void setISLFlag(RE::TESObjectLIGH* ligh); 
-	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
-	static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setRelightFlag(RE::TESObjectLIGH* ligh); 
+	//static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
+	//static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
 	//static std::string getBaseNodeName(const std::string& lightName);
 	static bool findConfigForLight(LightConfig& cfg, const std::string& lightName);
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);

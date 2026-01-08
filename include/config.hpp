@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <array>
-
+//#include "global.h"
 #include "logger.hpp"
 
 namespace fs = std::filesystem;
@@ -32,9 +32,9 @@ F(nearDistance, 5.f) \
 F(depthBias, 0.0005f) \
 F(constAttenuation, 0.f) \
 F(linearAttenuation, 0.f) \
-F(quadraticAttenuation, 0.f)\
-F(flickerIntensity,0.f)\
-F(flickersPerSecond, 0.f)
+F(quadraticAttenuation, 0.f)
+//F(flickerIntensity,0.f)\
+//F(flickersPerSecond, 0.f)
 
 #define BOOL2DEF(B, I) bool B{I};
 #define FLOAT2DEF(B, I) float B{I};
@@ -67,10 +67,10 @@ struct LightConfig {
     }
 };
 
-struct Template {
-    LightConfig config;
-    std::vector<RE::NiPointer<RE::NiPointLight>> bank;
-};
+//struct Template {
+  //  LightConfig config;
+ //   std::vector<RE::NiPointer<RE::NiPointLight>> bank;
+//};
 
 inline std::string ToUTF8(const fs::path& p) {
     auto u8 = p.u8string();
@@ -121,8 +121,10 @@ inline std::vector<std::string> GetConfigPaths() {
     return paths;
 }
 
+
 bool loadConfiguration(LightConfig& config, const std::string& configPath);
 
 bool saveConfiguration(const LightConfig& config, const std::string& configPath);
 
 void parseTemplates();
+

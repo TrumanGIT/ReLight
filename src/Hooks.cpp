@@ -8,6 +8,7 @@
 #include "global.h"
 #include <unordered_set>
 #include "lightdata.h"
+#include "ClibUtil/rng.hpp"
 
 //TODO:: currently RNG is the same for all candles, I need each light to get their own RNG 
 // otherwise it looks unnatural having all lights flicker at same speed. 
@@ -15,6 +16,7 @@
 namespace Hooks {
 
 	clib_util::RNG<> rng;
+	
 
 	// Po3's hook 
 	void UpdateActivateParents::thunk(RE::TESObjectCELL* a_cell) {
@@ -46,9 +48,9 @@ namespace Hooks {
 
 				if (!lightRuntimeData->initialized) {
 					lightRuntimeData->startingFade = lightRuntimeData->fade;
-					lightRuntimeData->flickerIntensity = 0.2f;
-					lightRuntimeData->flickersPerSecond = 3.f;
-					logger::debug("INIT {} startingFade={} flickerintesnsity =  {}flickerpersecond =  {}", lightName, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond);
+					lightRuntimeData->flickerIntensity = 0.2f; // temporary until configs handle them
+					lightRuntimeData->flickersPerSecond = 3.f; // temporary until configs handle them
+					logger::debug("Light name: {} startingFade = {} flickerintesnsity = {}flickerpersecond = {}", lightName, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond);
 					lightRuntimeData->initialized = true; 
 				}
 
@@ -85,24 +87,19 @@ namespace Hooks {
 			return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
 		// get the name of the mod owning the light
-		const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
-		std::string modName = refOriginFile ? refOriginFile->fileName : "";
+	//	const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+		//std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
-		toLower(modName);
+		//toLower(modName);
 
-	//	if (LightData::shouldDisableLight(light, ref, modName))
-			//return nullptr;
+		if (LightData::shouldDisableLight(light, ref))
+			return nullptr;
 
 		//TODO:: we now add lights using this hooks func itself, so I need a way to
 		// ignore our lights, amd disable all others (- excluded lights) 
 		// my idea is to take a page out of ISL's book and flip bit 15th bit on the dummy TESObjectLigh object flags bit mask
 		// can act as a harmless flag to idntify our lights and not disable them.
-		if (modName.find("skyrim") != std::string::npos)
-		{
-			return nullptr; 
-			
-			//  logger::info("Changed color for light {:X} from {}", formID, modName);
-		}
+		
 
 		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 	}
@@ -186,13 +183,8 @@ namespace Hooks {
 
 			niLight->name = cfg.nodeName + "RL";
 			
-				logger::debug("next node retrieved successfully ", match);
-			//	a_root->AttachChild(niLight);
-
-				//    logger::info("attached light to keyword mesh {}", nodeName);
-				
-			//	LightData::attachNiPointLightToShadowSceneNode(niLight, cfg);
-				//a_this->UpdateRefLight(); 
+			logger::debug("LightName: {}, created ", match);
+			
 		}
 
 	//	dummyHandler(a_root, nodeName);

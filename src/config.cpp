@@ -133,6 +133,8 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 	}
 }
 
+// hopfully I dident break this i removed template bc I removed the ni point light bank 
+//(nodebank map now just contians configs )
 void parseTemplates() {
     logger::info("Parsing light templates..");
     std::vector<std::string> paths = GetConfigPaths();
@@ -143,9 +145,9 @@ void parseTemplates() {
         loadConfiguration(cfg, p);
         cfg.configPath = p;
         cfg.print();
-        Template temp;
-        temp.config = std::move(cfg);
-        LightData::defaultConfigs[temp.config.nodeName] = temp.config;
-        niPointLightNodeBank[temp.config.nodeName] = std::move(temp);
+       // Template temp;
+      //  temp.config = std::move(cfg);
+        LightData::defaultConfigs[cfg.nodeName] = cfg;
+        niPointLightNodeBank[cfg.nodeName] = std::move(cfg);
     }
 }
