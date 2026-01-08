@@ -9,6 +9,9 @@
 #include "logger.hpp"
 #include "ClibUtil/EditorID.hpp"
 #include "config.hpp"
+#include "random.h"
+
+
 
 // extend ni point light runtime data so ISL sees our lights otherwise darkness
 struct ISL_Overlay
@@ -37,6 +40,13 @@ struct ISL_Overlay
 	static ISL_Overlay* Get(RE::NiLight* niLight)
 	{
 		return reinterpret_cast<ISL_Overlay*>(&niLight->GetLightRuntimeData());
+	}
+
+	uint32_t rngState = 1;
+
+	float getRandomFloat(const float& min, const float& max)
+	{
+		return min + (max - min) * Random::rand(rngState);
 	}
 };
 

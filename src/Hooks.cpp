@@ -8,7 +8,6 @@
 #include "global.h"
 #include <unordered_set>
 #include "lightdata.h"
-#include "ClibUtil/rng.hpp"
 
 // Note to self campfireburning01 had different in gane menu flicker behaviour (investigate)
 
@@ -18,8 +17,6 @@
 // otherwise it looks unnatural having all lights flicker at same speed. 
 
 namespace Hooks {
-
-	clib_util::RNG<> rng;
 	
 
 	// Po3's hook 
@@ -44,11 +41,9 @@ namespace Hooks {
 		
 			if (!lightName.ends_with("RL")) continue; 
 
-			//toLower(lightName);
-
-			// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
-			//auto match = findPriorityMatch(lightName);
-			//LightConfig cfg = findConfigForNode(match);
+			toLower(lightName);
+			auto match = findPriorityMatch(lightName);
+			LightConfig cfg = findConfigForNode(match);
 
 		//`	logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
 
@@ -58,13 +53,17 @@ namespace Hooks {
 
 				if (!lightRuntimeData->initialized) {
 					lightRuntimeData->startingFade = lightRuntimeData->fade;
-					lightRuntimeData->flickerIntensity = 0.2f; //cfg.flickerIntensity;
-					lightRuntimeData->flickersPerSecond = 3.f; //cfg.flickersPerSecond;
+					lightRuntimeData->flickerIntensity = cfg.flickerIntensity;
+					lightRuntimeData->flickersPerSecond = cfg.flickersPerSecond;
+					const uint32_t seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName)); // seed rng with light name hash
+					lightRuntimeData->rngState = seed ? seed : 1; // ensure rng state is not zero othwerwise the generator will always return zero
 					logger::info("Light name: {}, startingFade = {}, flickerintesnsity = {}, flickerpersecond = {}", lightName, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond);
 					lightRuntimeData->initialized = true; 
 				}
 
-				lightRuntimeData->time += deltaTime * (1 - rng.generate(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness)) * std::numbers::pi_v<float>;
+				const auto r = lightRuntimeData->getRandomFloat(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness);
+
+				lightRuntimeData->time += deltaTime * (1 - r) * std::numbers::pi_v<float>;
 				data.fade = lightRuntimeData->startingFade + std::sin(lightRuntimeData->time * lightRuntimeData->flickersPerSecond) * lightRuntimeData->flickerIntensity;
 			}
 		}
