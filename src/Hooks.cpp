@@ -176,6 +176,7 @@ namespace Hooks {
 
 			LightData::setNiPointLightDataFromCfg(niLight, cfg);
 
+			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 			niLight->name = cfg.nodeName + "RL";
 			
 			logger::debug("LightName: {}, created ", match);
