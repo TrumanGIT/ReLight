@@ -514,6 +514,7 @@ inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_ro
 
 inline LightConfig findConfigForNode(const std::string& nodeName)
 {
+	if (nodeName.empty()) return LightConfig();
     for (auto& pair : niPointLightNodeBank) {
         const auto& name = pair.first;
         if (nodeName.find(name) != std::string::npos)

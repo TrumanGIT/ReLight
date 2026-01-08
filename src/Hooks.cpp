@@ -44,6 +44,12 @@ namespace Hooks {
 		
 			if (!lightName.ends_with("RL")) continue; 
 
+			//toLower(lightName);
+
+			// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
+			//auto match = findPriorityMatch(lightName);
+			//LightConfig cfg = findConfigForNode(match);
+
 		//`	logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
 
 			auto& data = light->light->GetLightRuntimeData(); 
@@ -52,9 +58,9 @@ namespace Hooks {
 
 				if (!lightRuntimeData->initialized) {
 					lightRuntimeData->startingFade = lightRuntimeData->fade;
-					lightRuntimeData->flickerIntensity = 0.2f; // temporary until configs handle them
-					lightRuntimeData->flickersPerSecond = 3.f; // temporary until configs handle them
-					logger::debug("Light name: {} startingFade = {} flickerintesnsity = {}flickerpersecond = {}", lightName, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond);
+					lightRuntimeData->flickerIntensity = 0.2f; //cfg.flickerIntensity;
+					lightRuntimeData->flickersPerSecond = 3.f; //cfg.flickersPerSecond;
+					logger::info("Light name: {}, startingFade = {}, flickerintesnsity = {}, flickerpersecond = {}", lightName, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond);
 					lightRuntimeData->initialized = true; 
 				}
 

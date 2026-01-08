@@ -32,9 +32,9 @@ F(nearDistance, 5.f) \
 F(depthBias, 0.0005f) \
 F(constAttenuation, 0.f) \
 F(linearAttenuation, 0.f) \
-F(quadraticAttenuation, 0.f)
-//F(flickerIntensity,0.f)\
-//F(flickersPerSecond, 0.f)
+F(quadraticAttenuation, 0.f) \
+F(flickerIntensity, 0.2f) \
+F(flickersPerSecond, 3.f) \
 
 #define BOOL2DEF(B, I) bool B{I};
 #define FLOAT2DEF(B, I) float B{I};
