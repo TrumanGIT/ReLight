@@ -30,14 +30,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
-       
-         masterNiPointLight = LightData::createNiPointLight();
-
-        if (!masterNiPointLight) {
-            logger::critical("masterNiPointLight was not created succesfully, backing out of mod intialization");
-            return; 
-        }
-
         initialize(); 
        // LightData::assignNiPointLightsToBank(masterNiPointLight);
         Hooks::Install();

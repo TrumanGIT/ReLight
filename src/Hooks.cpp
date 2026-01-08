@@ -183,7 +183,9 @@ namespace Hooks {
 
 			auto niLight = CallGenDynamic(dummyLightObject, a_this, a_root, true, true, true);
 
-			LightData::setNiPointLightDataFromCfg(niLight, cfg);
+			auto niPointer = RE::NiPointer<RE::NiLight>(niLight);
+
+			LightData::setNiPointLightDataFromCfg(niPointer.get(), cfg);
 
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 			niLight->name = cfg.nodeName + "RL";
