@@ -94,11 +94,6 @@ namespace Hooks {
 
 		if (LightData::shouldDisableLight(light, ref))
 			return nullptr;
-
-		//TODO:: we now add lights using this hooks func itself, so I need a way to
-		// ignore our lights, amd disable all others (- excluded lights) 
-		// my idea is to take a page out of ISL's book and flip bit 15th bit on the dummy TESObjectLigh object flags bit mask
-		// can act as a harmless flag to idntify our lights and not disable them.
 		
 
 		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
