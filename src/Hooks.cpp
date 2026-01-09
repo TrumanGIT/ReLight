@@ -49,7 +49,7 @@ namespace Hooks {
 			if (auto* lightRuntimeData = ISL_Overlay::Get(light->light.get())) {
 
 				if (!lightRuntimeData->initialized) {
-					lightRuntimeData->startingFade = lightRuntimeData->fade;
+					lightRuntimeData->startingFade = cfg.fade;
 					lightRuntimeData->flickerIntensity = cfg.flickerIntensity;
 					lightRuntimeData->flickersPerSecond = cfg.flickersPerSecond;
 					lightRuntimeData->speedRandomness = 1.0f; 
@@ -66,6 +66,7 @@ namespace Hooks {
 			}
 			else logger::warn("no isl overlay for light: {}", lightName);
 		}
+
 	}
  
 		 void UpdateActivateParents::Install()
@@ -160,7 +161,7 @@ namespace Hooks {
 		auto match = findPriorityMatch(nodeName);
 
 		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos*/) {
-			logger::debug("Load3D() matched node name: {}", nodeName);
+		//	logger::debug("Load3D() matched node name: {}", nodeName);
 
 			if (isExclude(nodeName, a_root)) return niAVObject;
 	
@@ -189,7 +190,7 @@ namespace Hooks {
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 			niLight->name = cfg.nodeName + "RL";
 			
-			logger::debug("LightName: {}, created ", match);
+			//logger::debug("LightName: {}, created ", match);
 			
 		}
 

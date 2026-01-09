@@ -219,7 +219,7 @@ namespace UI {
                                     data.fade = selectedIslRt->startingFade;
                                     islRt->startingFade = selectedIslRt->startingFade;
                                 }
-                                spdlog::info("MATCH -> set fade to {}", data.fade);
+                               // spdlog::info("MATCH -> set fade to {}", data.fade);
                             }
                         }
                     }
@@ -251,8 +251,8 @@ namespace UI {
                                 if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
                                     islRt->flickerIntensity = selectedIslRt->flickerIntensity;
                                 }
-                                spdlog::info("MATCH -> set flickerIntensity to {}",
-                                    selectedIslRt->flickerIntensity);
+                                //spdlog::info("MATCH -> set flickerIntensity to {}",
+                                  //  selectedIslRt->flickerIntensity);
                             }
                         }
                     }
@@ -270,8 +270,8 @@ namespace UI {
                                 if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
                                     islRt->flickersPerSecond = selectedIslRt->flickersPerSecond;
                                 }
-                                spdlog::info("MATCH -> set flickersPerSecond to {}",
-                                    selectedIslRt->flickersPerSecond);
+                            //    spdlog::info("MATCH -> set flickersPerSecond to {}",
+                             //       selectedIslRt->flickersPerSecond);
                             }
                         }
                     }
@@ -371,7 +371,16 @@ namespace UI {
             if (!light) continue; 
             auto lightName = light->light->name;
 
+            auto& currentRt = light->light->GetLightRuntimeData();
 
+            auto* currentIslRt = ISL_Overlay::Get(light->light.get());
+
+            if (!currentIslRt) {
+                logger::warn("no selected ISL runtime data in skse menu");
+                return;
+            }
+
+            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} ", lightName, currentRt.fade, currentIslRt->startingFade, currentRt.radius, currentIslRt->flickerIntensity, currentIslRt->flickersPerSecond);
 
             for (auto& existingLight : lights) {
                 if (existingLight->light->name == lightName) {
@@ -382,17 +391,11 @@ namespace UI {
 
             if (!lightAlreadyInList) {
 
-                auto& selectedRt = light->light->GetLightRuntimeData();
-
-                auto* selectedIslRt = ISL_Overlay::Get(light->light.get());
-
-                if (!selectedIslRt) {
-                    logger::warn("no selected ISL runtime data in skse menu");
-                    return;
-                }
-                logger::debug("light :{}  fade:{}  starting fade:{}", lightName, selectedRt.fade, selectedIslRt->startingFade );
+             
+                
                 lights.push_back(light);
             }
+           
             lightAlreadyInList = false;
         }
     }
