@@ -28,7 +28,7 @@ bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* 
 	auto player = RE::PlayerCharacter::GetSingleton();
 
 	if (IsInSoulCairnOrApocrypha(player)) {
-		logger::info("player is in apocrypha or soul cairn so we should not disable light");
+		logger::debug("player is in apocrypha or soul cairn so we should not disable light");
 		return false;
 	}
 	if (disableShadowCasters == false &&
@@ -38,17 +38,6 @@ bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* 
 		return false;
 	}
 
-	if (disableTorchLights == false &&
-		light->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry))
-	{
-		return false;
-	}
-
-	//for (const auto& whitelistedMod : whitelist) {
-	//	if (modName.find(whitelistedMod) != std::string::npos) {
-		//	return false;
-		//}
-	//}
 	return true;
 }
 

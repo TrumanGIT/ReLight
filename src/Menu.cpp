@@ -186,7 +186,12 @@ namespace UI {
 
                 auto* selectedIslRt = ISL_Overlay::Get(selectedLight->light.get());
 
-                if (!selectedIslRt) return;
+                if (!selectedIslRt) {
+                    logger::warn("no selected ISL runtime data in skse menu");
+                    return;
+                }
+
+                
 
                 //TODO:: add 'starting radius' so it doesent fight skse menu when ISL is enabled
 
@@ -210,7 +215,11 @@ namespace UI {
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
                                 auto& data = light->light->GetLightRuntimeData();
-                                data.fade = selectedIslRt->startingFade;
+                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                    data.fade = selectedIslRt->startingFade;
+                                    islRt->startingFade = selectedIslRt->startingFade;
+                                }
+                                spdlog::info("MATCH -> set fade to {}", data.fade);
                             }
                         }
                     }
@@ -230,7 +239,43 @@ namespace UI {
                     }
                 }
 
-               
+                if (ImGuiMCP::SliderFloat("Flicker Intensity",
+                    &selectedIslRt->flickerIntensity,
+                    0.0f, 5.0f, "%.2f"))
+                {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                    islRt->flickerIntensity = selectedIslRt->flickerIntensity;
+                                }
+                                spdlog::info("MATCH -> set flickerIntensity to {}",
+                                    selectedIslRt->flickerIntensity);
+                            }
+                        }
+                    }
+                }
+
+                if (ImGuiMCP::SliderFloat("Flickers / Second",
+                    &selectedIslRt->flickersPerSecond,
+                    0.1f, 20.0f, "%.2f"))
+                {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                    islRt->flickersPerSecond = selectedIslRt->flickersPerSecond;
+                                }
+                                spdlog::info("MATCH -> set flickersPerSecond to {}",
+                                    selectedIslRt->flickersPerSecond);
+                            }
+                        }
+                    }
+                }
 
                 if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -321,9 +366,12 @@ namespace UI {
 
         auto& rt = ssNode->GetRuntimeData();
 
+
         for (auto& light : rt.activeLights) {
             if (!light) continue; 
             auto lightName = light->light->name;
+
+
 
             for (auto& existingLight : lights) {
                 if (existingLight->light->name == lightName) {
@@ -332,8 +380,19 @@ namespace UI {
                 }
             }
 
-            if (!lightAlreadyInList) lights.push_back(light);
+            if (!lightAlreadyInList) {
 
+                auto& selectedRt = light->light->GetLightRuntimeData();
+
+                auto* selectedIslRt = ISL_Overlay::Get(light->light.get());
+
+                if (!selectedIslRt) {
+                    logger::warn("no selected ISL runtime data in skse menu");
+                    return;
+                }
+                logger::debug("light :{}  fade:{}  starting fade:{}", lightName, selectedRt.fade, selectedIslRt->startingFade );
+                lights.push_back(light);
+            }
             lightAlreadyInList = false;
         }
     }

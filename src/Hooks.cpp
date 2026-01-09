@@ -9,23 +9,18 @@
 #include <unordered_set>
 #include "lightdata.h"
 
-// Note to self campfireburning01 had different in gane menu flicker behaviour (investigate)
-
-
 
 //TODO:: currently RNG is the same for all candles, I need each light to get their own RNG 
 // otherwise it looks unnatural having all lights flicker at same speed. 
 
 namespace Hooks {
-	
 
 	// Po3's hook 
 	void UpdateActivateParents::thunk(RE::TESObjectCELL* a_cell) {
 
-		func(a_cell); 
+		func(a_cell);
 
 		static float deltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
-
 
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 		if (!ssNode) {
@@ -36,18 +31,18 @@ namespace Hooks {
 		auto& rt = ssNode->GetRuntimeData();
 
 		for (auto& light : rt.activeLights) {
-			if (!light) continue; 
+			if (!light) continue;
 			std::string lightName = light->light->name.c_str();
-		
-			if (!lightName.ends_with("RL")) continue; 
 
-			toLower(lightName);
+			if (!lightName.ends_with("RL")) continue;
+
 			auto match = findPriorityMatch(lightName);
+
 			LightConfig cfg = findConfigForNode(match);
 
-		//`	logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
+			//`	logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
 
-			auto& data = light->light->GetLightRuntimeData(); 
+			auto& data = light->light->GetLightRuntimeData();
 
 			if (auto* lightRuntimeData = ISL_Overlay::Get(light->light.get())) {
 
@@ -55,10 +50,11 @@ namespace Hooks {
 					lightRuntimeData->startingFade = lightRuntimeData->fade;
 					lightRuntimeData->flickerIntensity = cfg.flickerIntensity;
 					lightRuntimeData->flickersPerSecond = cfg.flickersPerSecond;
+					lightRuntimeData->speedRandomness = 1.0f; 
 					const uint32_t seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName)); // seed rng with light name hash
 					lightRuntimeData->rngState = seed ? seed : 1; // ensure rng state is not zero othwerwise the generator will always return zero
-					logger::info("Light name: {}, startingFade = {}, flickerintesnsity = {}, flickerpersecond = {}", lightName, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond);
-					lightRuntimeData->initialized = true; 
+					logger::debug("Light name: {}, fade {} startingFade = {}, flickerintesnsity = {}, flickerpersecond = {} seed: {}, speed randomness{}", lightName, data.fade, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond, seed, lightRuntimeData->speedRandomness);
+					lightRuntimeData->initialized = true;
 				}
 
 				const auto r = lightRuntimeData->getRandomFloat(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness);
@@ -66,9 +62,10 @@ namespace Hooks {
 				lightRuntimeData->time += deltaTime * (1 - r) * std::numbers::pi_v<float>;
 				data.fade = lightRuntimeData->startingFade + std::sin(lightRuntimeData->time * lightRuntimeData->flickersPerSecond) * lightRuntimeData->flickerIntensity;
 			}
+			else logger::warn("no isl overlay for light: {}", lightName);
 		}
 	}
-	
+ 
 		 void UpdateActivateParents::Install()
 		{
 			REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(18458, 18889), 0x52 };  // TESObjectCELL::RunAnimations
@@ -183,9 +180,9 @@ namespace Hooks {
 
 			auto niLight = CallGenDynamic(dummyLightObject, a_this, a_root, true, true, true);
 
-			auto niPointer = RE::NiPointer<RE::NiLight>(niLight);
+			//auto niPointer = RE::NiPointer<RE::NiLight>(niLight);
 
-			LightData::setNiPointLightDataFromCfg(niPointer.get(), cfg);
+			LightData::setNiPointLightDataFromCfg(niLight, cfg);
 
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 			niLight->name = cfg.nodeName + "RL";
@@ -213,6 +210,6 @@ namespace Hooks {
 		SKSE::AllocTrampoline(1 << 8);
 		TESObjectLIGH_GenDynamic::Install();
 		Load3D::Install();
-		UpdateActivateParents::Install(); 
+	//	UpdateActivateParents::Install(); 
 	}
 }

@@ -225,7 +225,7 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 		return false;  // Not in a worldspace (probably in an interior cell)
 	}
 
-	 logger::debug("current worldspace = {}", worldspace->GetFormID());
+	// logger::debug("current worldspace = {}", worldspace->GetFormID());
 
 	if (worldspace->GetFormID() == apocryphaFormID || worldspace->GetFormID() == soulCairnFormID) {
 		//  logger::info("is in soul cairn or apocrypha");
@@ -341,7 +341,7 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 {
 	//  Check priority list created from ini file first
 	for (auto& nodeNameInPriorityList : priorityList) {
-		logger::debug("Checking priority list entry '{}' against '{}'", nodeNameInPriorityList, nodeName);
+	//	logger::debug("Checking priority list entry '{}' against '{}'", nodeNameInPriorityList, nodeName);
 		if (nodeName.find(nodeNameInPriorityList) != std::string::npos)
 			return nodeNameInPriorityList;
 	}
@@ -349,13 +349,13 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 	// No priority specified
 	for (auto& pair : niPointLightNodeBank) {
 		const auto& name = pair.first;
-		logger::debug("Checking bank key '{}' against '{}'", name, nodeName);
+		//logger::debug("Checking bank key '{}' against '{}'", name, nodeName);
 
 		if (nodeName.find(name) != std::string::npos)
 			return name;
 	}
 
-	logger::debug("No match found for node '{}'", nodeName);
+	//logger::debug("No match found for node '{}'", nodeName);
 	return ""; // no match
 }
 
