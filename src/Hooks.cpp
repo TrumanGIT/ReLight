@@ -20,7 +20,9 @@ namespace Hooks {
 
 		func(a_cell);
 
-		static float deltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
+		const float deltaTime = RE::BSTimer::GetSingleton()->realTimeDelta; 
+		
+		//static float deltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
 
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 		if (!ssNode) {
@@ -210,6 +212,6 @@ namespace Hooks {
 		SKSE::AllocTrampoline(1 << 8);
 		TESObjectLIGH_GenDynamic::Install();
 		Load3D::Install();
-	//	UpdateActivateParents::Install(); 
+		UpdateActivateParents::Install(); 
 	}
 }
