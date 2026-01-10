@@ -361,18 +361,18 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 inline std::string findPriorityMatch(const std::string& nodeName)
 {
 	//  Check priority list created from ini file first
-	for (auto& nodeNameInPriorityList : priorityList) {
+	for (const auto& nodeNameInPriorityList : priorityList) {
 	//	logger::debug("Checking priority list entry '{}' against '{}'", nodeNameInPriorityList, nodeName);
 		if (nodeName.find(nodeNameInPriorityList) != std::string::npos)
 			return nodeNameInPriorityList;
 	}
 
 	// No priority specified
-	for (auto& pair : niPointLightNodeBank) {
+	for (const auto& pair : niPointLightNodeBank) {
 		const auto& name = pair.first;
 		//logger::debug("Checking bank key '{}' against '{}'", name, nodeName);
 
-		if (nodeName.find(name) != std::string::npos)
+		if (name.find(nodeName) != std::string::npos)
 			return name;
 	}
 

@@ -38,9 +38,6 @@ namespace Hooks {
 			return;
 		}
 
-	
-
-
 		//update seems to be called more frequently need a new hoook, or equation to find a consitent number to work with.
 		const float baseDelta = RE::BSTimer::GetSingleton()->realTimeDelta;
 		const float deltaTime = playerCell->IsExteriorCell() ? baseDelta / 20.0f : baseDelta;
@@ -75,16 +72,16 @@ namespace Hooks {
 
 			if (auto* lightRuntimeData = ISL_Overlay::Get(light->light.get())) {
 
-				if (!lightRuntimeData->initialized) {
-					lightRuntimeData->startingFade = cfg.fade;
-					lightRuntimeData->flickerIntensity = cfg.flickerIntensity;
-					lightRuntimeData->flickersPerSecond = cfg.flickersPerSecond;
-					lightRuntimeData->speedRandomness = 1.0f;
+				/*if (!lightRuntimeData->initialized) {
+					//lightRuntimeData->startingFade = cfg.fade;
+					//lightRuntimeData->flickerIntensity = cfg.flickerIntensity;
+					//lightRuntimeData->flickersPerSecond = cfg.flickersPerSecond;
+					//lightRuntimeData->speedRandomness = 1.0f;
 					const uint32_t seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName)); // seed rng with light name hash
 					lightRuntimeData->rngState = seed ? seed : 1; // ensure rng state is not zero othwerwise the generator will always return zero
 					logger::debug("Light name: {}, fade {} startingFade = {}, flickerintesnsity = {}, flickerpersecond = {} seed: {}, speed randomness{}", lightName, data.fade, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond, seed, lightRuntimeData->speedRandomness);
 					lightRuntimeData->initialized = true;
-				}
+				}*/
 
 				const auto r = lightRuntimeData->getRandomFloat(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness);
 
@@ -219,7 +216,7 @@ namespace Hooks {
 
 			//auto niPointer = RE::NiPointer<RE::NiLight>(niLight);
 
-			LightData::setNiPointLightDataFromCfg(niLight, cfg);
+			LightData::setNiPointLightDataFromCfg(niLight, cfg, cfg.nodeName);
 
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 			niLight->name = "RL" + cfg.nodeName;

@@ -125,11 +125,15 @@ void LightData::setRelightFlag(RE::TESObjectLIGH* ligh)
 }
 
 
-void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg) {
+void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName) {
+
+
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
 	}
+
+
 	if (auto* isl = ISL_Overlay::Get(niPointLight)) {
 
 		isl->size = cfg.size; // isl
@@ -138,10 +142,15 @@ void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg) {
 		isl->radius = cfg.radius;
 		// trick isl into thinking the ref has a base object of type: TESObjectLIGH object
 		isl->lighFormId = 0;
+		isl->startingFade = cfg.fade;
+		isl->flickersPerSecond = cfg.flickersPerSecond;
+		isl->flickerIntensity = cfg.flickerIntensity;
+		isl->speedRandomness = 1.0f; // TODO:: Make this changeable
+		isl->seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName));
 	}
 }
 
-void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
+void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
@@ -166,7 +175,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	logger::info(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
 
 	if (isISL) {
-		setISLData(niPointLight, cfg); 
+		setISLData(niPointLight, cfg, lightName); 
 	}
 }
 

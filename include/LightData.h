@@ -31,9 +31,11 @@ struct ISL_Overlay
 
 	float speedRandomness = 1.0; // this is if we want random flickers or not
 
-	float time; // flicker interval
+	float seed; 
 
-	float startingFade;
+	float time; // used in flicker calcs
+
+	float startingFade; // used in flicker calcs 
 
 	bool initialized = false;
 
@@ -92,11 +94,11 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 	// template <class T>
 	// inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName);
 	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
 	static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
-	static void setISLData(RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setISLData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName);
 	static void setRelightFlag(RE::TESObjectLIGH* ligh); 
 	//static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
 	//static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
