@@ -15,13 +15,36 @@
 
 namespace Hooks {
 
+	
+	static bool firstUpdate = true;
+
 	// Po3's hook 
 	void UpdateActivateParents::thunk(RE::TESObjectCELL* a_cell) {
 
 		func(a_cell);
 
-		const float deltaTime = RE::BSTimer::GetSingleton()->realTimeDelta; 
-		
+		auto* player = RE::PlayerCharacter::GetSingleton();
+
+		if (!player) {
+			logger::warn("player is null cant check cell");
+			return;
+		}
+
+		auto playerCell = player->GetParentCell();
+
+		if (!playerCell) {
+			logger::warn("playerCell is null cant get player location");
+			updateLightsEnabled = true;
+			return;
+		}
+
+	
+
+
+		//update seems to be called more frequently need a new hoook, or equation to find a consitent number to work with.
+		const float baseDelta = RE::BSTimer::GetSingleton()->realTimeDelta;
+		const float deltaTime = playerCell->IsExteriorCell() ? baseDelta / 20.0f : baseDelta;
+
 		//static float deltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
 
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -32,11 +55,15 @@ namespace Hooks {
 
 		auto& rt = ssNode->GetRuntimeData();
 
+		//int sum = 0;
+
 		for (auto& light : rt.activeLights) {
 			if (!light) continue;
 			std::string lightName = light->light->name.c_str();
 
-			if (!lightName.ends_with("RL")) continue;
+			if (!lightName.starts_with("RL")) continue;
+
+			//sum++;
 
 			auto match = findPriorityMatch(lightName);
 
@@ -52,7 +79,7 @@ namespace Hooks {
 					lightRuntimeData->startingFade = cfg.fade;
 					lightRuntimeData->flickerIntensity = cfg.flickerIntensity;
 					lightRuntimeData->flickersPerSecond = cfg.flickersPerSecond;
-					lightRuntimeData->speedRandomness = 1.0f; 
+					lightRuntimeData->speedRandomness = 1.0f;
 					const uint32_t seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName)); // seed rng with light name hash
 					lightRuntimeData->rngState = seed ? seed : 1; // ensure rng state is not zero othwerwise the generator will always return zero
 					logger::debug("Light name: {}, fade {} startingFade = {}, flickerintesnsity = {}, flickerpersecond = {} seed: {}, speed randomness{}", lightName, data.fade, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond, seed, lightRuntimeData->speedRandomness);
@@ -66,18 +93,16 @@ namespace Hooks {
 			}
 			else logger::warn("no isl overlay for light: {}", lightName);
 		}
-
 	}
- 
-		 void UpdateActivateParents::Install()
-		{
-			REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(18458, 18889), 0x52 };  // TESObjectCELL::RunAnimations
-			auto& trampoline = SKSE::GetTrampoline();
-			UpdateActivateParents::func = trampoline.write_call<5>(target.address(), UpdateActivateParents::thunk);
 
-			logger::info("Hooked TESObjectCELL::UpdateActivateParents");
-		}
+	void UpdateActivateParents::Install()
+	{
+		REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(18458, 18889), 0x52 };  // TESObjectCELL::RunAnimations
+		auto& trampoline = SKSE::GetTrampoline();
+		UpdateActivateParents::func = trampoline.write_call<5>(target.address(), UpdateActivateParents::thunk);
 
+		logger::info("Hooked TESObjectCELL::UpdateActivateParents");
+	}
 
 	//Po3's hook (disable vanilla lights for a clean base to start with) 
 	RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
@@ -164,7 +189,16 @@ namespace Hooks {
 		//	logger::debug("Load3D() matched node name: {}", nodeName);
 
 			if (isExclude(nodeName, a_root)) return niAVObject;
-	
+
+			const auto baseObject = a_this->GetBaseObject(); 
+
+			const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
+
+			if (baseFormID != 0) {
+				baseFormsWithAttachedLights.emplace(baseFormID);
+				logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName, baseFormID);
+			}
+				
 			//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
 			 // if (handleSceneRoot(a_nifPath, a_root, nodeName))
 			  //    return niAVObject;
@@ -188,10 +222,9 @@ namespace Hooks {
 			LightData::setNiPointLightDataFromCfg(niLight, cfg);
 
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
-			niLight->name = cfg.nodeName + "RL";
+			niLight->name = "RL" + cfg.nodeName;
 			
-			//logger::debug("LightName: {}, created ", match);
-			
+			//logger::debug("LightName: {}, created ", match);	
 		}
 
 	//	dummyHandler(a_root, nodeName);

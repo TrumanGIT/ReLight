@@ -23,12 +23,33 @@ inline void initialize() {
     }
 }
 
-inline std::string RemoveSuffix(const std::string& str, const std::string& suffix) {
-	if (str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0) {
-		return str.substr(0, str.size() - suffix.size());
-	}
-	return str; 
+inline void isPlayerInInteriorCell(){
+
+	auto* player = RE::PlayerCharacter::GetSingleton();
+if (!player) {
+	logger::warn("PlayerCharacter singleton is null, cannot initialize lastCellWasInterior");
+	return; // or set default: lastCellWasInterior = false;
 }
+
+auto* playerCell = player->GetParentCell();
+if (!playerCell) {
+	logger::warn("Player's parent cell is null, cannot initialize lastCellWasInterior");
+	return; // or set default: lastCellWasInterior = false;
+}
+
+lastCellWasInterior = playerCell->IsInteriorCell();
+logger::info("Initialized lastCellWasInterior to {}", lastCellWasInterior); 
+}
+
+inline std::string removePrefix(const std::string& str, const std::string& prefix)
+{
+	if (str.size() >= prefix.size() &&
+		str.compare(0, prefix.size(), prefix) == 0) {
+		return str.substr(prefix.size());
+	}
+	return str;
+}
+
 
 inline void toLower(std::string& str) {
 	for (auto& c : str) {
@@ -357,6 +378,16 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 
 	//logger::debug("No match found for node '{}'", nodeName);
 	return ""; // no match
+}
+
+
+inline bool isRelightLight(const std::string& nodeName) {
+	auto relightLightFound = false; 
+
+	 if (nodeName.starts_with("RL")) {
+		 relightLightFound = true; 
+	}
+	 return relightLightFound;
 }
 
 //we clone and store NIpointLight nodes in bank (not anymore)

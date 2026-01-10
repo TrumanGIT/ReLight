@@ -352,3 +352,80 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 		cfg.cutoffOverride = isl->cutoffOverride;
 	}
 }
+
+RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* event,
+	RE::BSTEventSource<RE::BGSActorCellEvent>*) {
+
+	static bool firstUpdate = false;
+
+	if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
+		return RE::BSEventNotifyControl::kContinue;
+	}
+	
+	auto player = RE::PlayerCharacter::GetSingleton();
+
+	if (!player) return RE::BSEventNotifyControl::kContinue;
+
+	logger::info(" cell event fired for player");
+
+	auto cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(event->cellID);
+	if (!cell) {
+		return RE::BSEventNotifyControl::kContinue;
+	}
+
+	const bool currentCellIsInterior = cell->IsInteriorCell();
+
+	if (lastCellWasInterior != currentCellIsInterior) {
+		logger::info("player moved from exteiror to interior, or vice versa, reattaching lights");
+
+		if (firstUpdate) {
+			firstUpdate = false;
+			logger::info("first Update skipping light reattach implementation");
+			return RE::BSEventNotifyControl::kContinue;
+		}
+
+		RE::TES::GetSingleton()->ForEachReferenceInRange(player, 20272, [](RE::TESObjectREFR* ref) {
+
+			if (!ref) return RE::BSContainer::ForEachResult::kContinue;
+
+			const auto baseObject = ref->GetBaseObject();
+
+			auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
+
+			if (baseFormID == 0) return RE::BSContainer::ForEachResult::kContinue;
+
+			for (const auto& formID : baseFormsWithAttachedLights) {
+
+				logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
+
+				if (baseFormID == formID) {
+					logger::debug("baseForm ref that needs reinitializing found");
+
+					RE::ObjectRefHandle handle(ref);
+					SKSE::GetTaskInterface()->AddTask([handle]() {
+						if (auto ref = handle.get()) {
+							ref->Disable();
+							ref->Enable(false);
+							logger::debug("ref enabled / disabled (reinitialized)");
+						}
+						});
+				}
+			}
+
+		});
+
+	}
+
+	lastCellWasInterior = currentCellIsInterior;
+
+	return RE::BSEventNotifyControl::kContinue;
+}
+
+void LightData::onKDataLoaded()
+{
+	if (auto* player = RE::PlayerCharacter::GetSingleton()) {
+		player->AsBGSActorCellEventSource()->AddEventSink(LightData::GetSingleton());
+		logger::info("BGSActorCellEvent sink registered");
+	}
+	logger::info("Player BGSActorCellEvent sink registered");
+}

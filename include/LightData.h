@@ -70,15 +70,21 @@ inline RE::NiLight* CallGenDynamic(
 	return func(light, ref, node, forceDynamic, useLightRadius, affectRefOnly);
 }
 
-
 // Backup light data for unused TESObjectLIGH
 
-struct LightData {
+struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
+
+	static LightData* GetSingleton()
+	{
+		static LightData singleton;
+		return &singleton;
+	}
 
 	static bool isISL;
 
 	static std::unordered_map<std::string, LightConfig> defaultConfigs;
 
+	static void onKDataLoaded();
 //	static void refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg);
 	//static void assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight);
 	static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref);
@@ -109,6 +115,9 @@ struct LightData {
 		logger::debug(" nearDistance  {}", params.nearDistance);
 		logger::debug(" depthBias	 {}", params.depthBias);
 	}
+
+private:
+	RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;
 	// void initialize();
 };
 

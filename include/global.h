@@ -39,5 +39,12 @@ static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
 
 extern RE::TESObjectLIGH* dummyLightObject; 
 
+extern std::unordered_set<RE::FormID> baseFormsWithAttachedLights;
+
+extern bool updateLightsEnabled; 
+
+extern bool lastCellWasInterior;
+
+
 
 

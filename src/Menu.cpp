@@ -239,8 +239,7 @@ namespace UI {
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Flicker Intensity",
-                    &selectedIslRt->flickerIntensity,
+                if (ImGuiMCP::SliderFloat("Flicker Intensity", &selectedIslRt->flickerIntensity,
                     0.0f, 5.0f, "%.2f"))
                 {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -258,9 +257,8 @@ namespace UI {
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Flickers / Second",
-                    &selectedIslRt->flickersPerSecond,
-                    0.1f, 20.0f, "%.2f"))
+                if (ImGuiMCP::SliderFloat("Flickers / Second", &selectedIslRt->flickersPerSecond,
+                    0.1f, 5.0f, "%.2f"))
                 {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
@@ -380,6 +378,8 @@ namespace UI {
                 return;
             }
 
+            // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
+            // by flicker equation (they were before Its good to check sometimes)
             logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} ", lightName, currentRt.fade, currentIslRt->startingFade, currentRt.radius, currentIslRt->flickerIntensity, currentIslRt->flickersPerSecond);
 
             for (auto& existingLight : lights) {
@@ -391,8 +391,6 @@ namespace UI {
 
             if (!lightAlreadyInList) {
 
-             
-                
                 lights.push_back(light);
             }
            
@@ -401,8 +399,6 @@ namespace UI {
     }
 
 
-    //TODO::restore starting fade aswell
-
     void restoreLightToDefaults(RE::NiPointer<RE::NiLight> selectedLight) {
         if (!selectedLight) {
             logger::warn("Selected light is null, cannot restore defaults");
@@ -410,7 +406,7 @@ namespace UI {
         }
 
         const std::string lightName = selectedLight->name.c_str();
-        auto defaultIt = LightData::defaultConfigs.find(RemoveSuffix(lightName, "RL"));
+        auto defaultIt = LightData::defaultConfigs.find(removePrefix(lightName, "RL"));
         if (defaultIt == LightData::defaultConfigs.end()) {
             logger::warn("No default config found for '{}'", lightName);
             return;
@@ -438,8 +434,11 @@ namespace UI {
                 activeData = lightData;
 
                 if (auto* isl = ISL_Overlay::Get(light->light.get())) {
+                    isl->startingFade = defaultCfg.fade;
                     isl->cutoffOverride = defaultCfg.cutoffOverride;
                     isl->size = defaultCfg.size;
+                    isl->flickerIntensity = defaultCfg.flickerIntensity;
+                    isl->flickersPerSecond = defaultCfg.flickersPerSecond;
                 }
             }
         }

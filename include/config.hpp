@@ -15,10 +15,10 @@ constexpr int POS_SIZE = 3;
 
 #define FOREACH_BOOL(B) \
 B(shadowLight, false) \
-B(portalStrict, false) \
-B(affectLand, true) \
-B(affectWater, true) \
-B(neverFades, true) \
+//B(portalStrict, false) \
+//B(affectLand, true) \
+//B(affectWater, true) \
+//B(neverFades, true) \
 
 #define FOREACH_FLOAT(F) \
 F(fade, 0.f) \
@@ -26,15 +26,16 @@ F(radius, 0.f) \
 F(size, 1.f) \
 F(cutoffOverride , 0.5f) \
 F(ambientRatio, 0.1f) \
-F(fov, 90.f) \
-F(falloff, 1.f) \
-F(nearDistance, 5.f) \
-F(depthBias, 0.0005f) \
 F(constAttenuation, 0.f) \
 F(linearAttenuation, 0.f) \
 F(quadraticAttenuation, 0.f) \
 F(flickerIntensity, 0.2f) \
 F(flickersPerSecond, 3.f) \
+
+/*F(fov, 90.f) \
+F(falloff, 1.f) \
+F(nearDistance, 5.f) \
+F(depthBias, 0.0005f) \*/
 
 #define BOOL2DEF(B, I) bool B{I};
 #define FLOAT2DEF(B, I) float B{I};

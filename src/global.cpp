@@ -22,13 +22,20 @@ std::vector<std::string> exclusionList;
 
 std::vector<std::string> exclusionListPartialMatch;
 
-std::vector<std::string> priorityList = {};
+std::vector<std::string> priorityList;
 
-std::map<std::string, LightConfig> niPointLightNodeBank = {};
+std::map<std::string, LightConfig> niPointLightNodeBank;
 
 RE::NiPointer<RE::NiPointLight> masterNiPointLight = nullptr; 
 
 RE::TESObjectLIGH* dummyLightObject = nullptr;
+
+std::unordered_set<RE::FormID> baseFormsWithAttachedLights;
+
+bool updateLightsEnabled = true;
+
+bool lastCellWasInterior;
+
 
 // nodeName (lowercased) -> template mesh path
 //std::unordered_map<std::string, std::string>
