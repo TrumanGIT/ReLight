@@ -3,7 +3,6 @@
 #include "global.h"
 #include "logger.hpp"
 #include "ClibUtil/EditorID.hpp"
-
 #include "Functions.h"
 #include "config.hpp"
 #include "LightData.h"
@@ -16,8 +15,12 @@
 bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
                               // isl lights need different configuring then vanilla.. this boool currently isent used
 
+
+							  // lights stored here
+std::map<std::string, LightConfig> LightData::nodeNameToJsonCfg;
+
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
-std::unordered_map<std::string, LightConfig> LightData::defaultConfigs = {}; 
+std::unordered_map<std::string, LightConfig> LightData::defaultConfigs; 
 
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref)
 {
@@ -134,7 +137,7 @@ void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg, st
 	}
 
 
-	if (auto* isl = ISL_Overlay::Get(niPointLight)) {
+	if (auto* isl = Overlay::Get(niPointLight)) {
 
 		isl->size = cfg.size; // isl
 		isl->cutoffOverride = cfg.cutoffOverride; // isl 
@@ -180,7 +183,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 }
 
 /*void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
-	logger::info("Assigning niPointLight... total groups: {}", niPointLightNodeBank.size());
+	logger::info("Assigning niPointLight... total groups: {}", nodeNameToJsonCfg.size());
 	
 	if (!niPointLight) {
 		logger::error("Failed to create ni point light");
@@ -188,7 +191,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	}
 
 	try {
-		for (auto& pair : niPointLightNodeBank) {
+		for (auto& pair : nodeNameToJsonCfg) {
 			const std::string& nodeName = pair.first;
 			Template& temp = pair.second;
 			const LightConfig& cfg = temp.config;
@@ -236,7 +239,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 void LightData::refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg) {
 
-	auto& selectedTemplateNodeBank = niPointLightNodeBank[lightName];
+	auto& selectedTemplateNodeBank = nodeNameToJsonCfg[lightName];
 
 	auto size = selectedTemplateNodeBank.size();
 
@@ -332,7 +335,7 @@ std::string LightData::getBaseNodeName(const std::string& lightName) {
 
 bool LightData::findConfigForLight(LightConfig& cfg, const std::string& lightName) {
 	//const std::string baseName = getBaseNodeName(lightName);
-	for  (auto& [name, temp] : niPointLightNodeBank) {
+	for  (auto& [name, temp] : LightData::nodeNameToJsonCfg) {
 		if (name == lightName) {
 			cfg = temp;
 			return true;
@@ -356,16 +359,17 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
 	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
 
-	if (auto* isl = ISL_Overlay::Get(niLight)) {
+	if (auto* isl = Overlay::Get(niLight)) {
 		cfg.size = isl->size;
 		cfg.cutoffOverride = isl->cutoffOverride;
 	}
 }
 
+// used to reinitiate lights that were cleaned by the engine
+// only when transitioning from exteiror to interior or vice versa
+// only reinitializes lights that need it, vanilla optimizes for us by letting it cull lights when it wants to
 RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* event,
 	RE::BSTEventSource<RE::BGSActorCellEvent>*) {
-
-	static bool firstUpdate = false;
 
 	if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		return RE::BSEventNotifyControl::kContinue;
@@ -386,12 +390,6 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 	if (lastCellWasInterior != currentCellIsInterior) {
 		logger::info("player moved from exteiror to interior, or vice versa, reattaching lights");
-
-		if (firstUpdate) {
-			firstUpdate = false;
-			logger::info("first Update skipping light reattach implementation");
-			return RE::BSEventNotifyControl::kContinue;
-		}
 
 		RE::TES::GetSingleton()->ForEachReferenceInRange(player, 20272, [](RE::TESObjectREFR* ref) {
 
@@ -417,7 +415,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 							ref->Enable(false);
 							logger::debug("ref enabled / disabled (reinitialized)");
 						}
-						});
+					});
 				}
 			}
 

@@ -368,7 +368,7 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 	}
 
 	// No priority specified
-	for (const auto& pair : niPointLightNodeBank) {
+	for (const auto& pair : LightData::nodeNameToJsonCfg) {
 		const auto& name = pair.first;
 		//logger::debug("Checking bank key '{}' against '{}'", name, nodeName);
 
@@ -380,6 +380,7 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 	return ""; // no match
 }
 
+//iterate through the shadow scene nodes active lights t
 inline bool isRelightLight(const std::string& nodeName) {
 	auto relightLightFound = false; 
 
@@ -393,7 +394,7 @@ inline bool isRelightLight(const std::string& nodeName) {
 /*inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
 {
 //	logger::debug("test get next node from bank");
-	for (auto& [name, temp] : niPointLightNodeBank) {
+	for (auto& [name, temp] : nodeNameToJsonCfg) {
 
 		auto& bank = temp.bank;
 
@@ -541,18 +542,6 @@ inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_ro
 
 	return true;
 }*/
-
-inline LightConfig findConfigForNode(const std::string& nodeName)
-{
-	if (nodeName.empty()) return LightConfig();
-    for (auto& pair : niPointLightNodeBank) {
-        const auto& name = pair.first;
-        if (nodeName.find(name) != std::string::npos)
-            return pair.second;
-    }
-    logger::warn("No template found by findConfigForNode for node {}", nodeName);
-    return LightConfig(); // no match
-}
 
 // some nodes are called dummy this is to take care of them.
 /*inline void dummyHandler(RE::NiNode* root, const std::string& nodeName)

@@ -122,10 +122,11 @@ inline std::vector<std::string> GetConfigPaths() {
     return paths;
 }
 
-
 bool loadConfiguration(LightConfig& config, const std::string& configPath);
 
 bool saveConfiguration(const LightConfig& config, const std::string& configPath);
 
 void parseTemplates();
+
+LightConfig findConfigForNode(const std::string& nodeName);
 

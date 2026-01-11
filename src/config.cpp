@@ -148,6 +148,18 @@ void parseTemplates() {
        // Template temp;
       //  temp.config = std::move(cfg);
         LightData::defaultConfigs[cfg.nodeName] = cfg;
-        niPointLightNodeBank[cfg.nodeName] = std::move(cfg);
+        LightData::nodeNameToJsonCfg[cfg.nodeName] = std::move(cfg);
     }
+}
+
+LightConfig findConfigForNode(const std::string& nodeName)
+{
+    if (nodeName.empty()) return LightConfig();
+    for (auto& pair : LightData::nodeNameToJsonCfg) {
+        const auto& name = pair.first;
+        if (nodeName.find(name) != std::string::npos)
+            return pair.second;
+    }
+    logger::warn("No template found by findConfigForNode for node {}", nodeName);
+    return LightConfig(); // no match
 }

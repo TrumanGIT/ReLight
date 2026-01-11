@@ -24,8 +24,6 @@ std::vector<std::string> exclusionListPartialMatch;
 
 std::vector<std::string> priorityList;
 
-std::map<std::string, LightConfig> niPointLightNodeBank;
-
 RE::NiPointer<RE::NiPointLight> masterNiPointLight = nullptr; 
 
 RE::TESObjectLIGH* dummyLightObject = nullptr;

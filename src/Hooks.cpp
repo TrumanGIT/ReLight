@@ -52,7 +52,7 @@ namespace Hooks {
 
 			auto& data = light->light->GetLightRuntimeData();
 
-			if (auto* lightRuntimeData = ISL_Overlay::Get(light->light.get())) {
+			if (auto* lightRuntimeData = Overlay::Get(light->light.get())) {
 
 				const auto r = lightRuntimeData->getRandomFloat(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness);
 

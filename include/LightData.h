@@ -11,10 +11,9 @@
 #include "config.hpp"
 #include "random.h"
 
-
-
-// extend ni point light runtime data so ISL sees our lights otherwise darkness
-struct ISL_Overlay
+// extend ni point light runtime data so Inverse squared lighting sees our lights otherwise darkness
+//also handy data container extention
+struct Overlay
 {
 	std::uint32_t flags;       // I dont think we need this but idk can ignore for now
 	float         cutoffOverride;//ISL need for isl from config
@@ -39,9 +38,9 @@ struct ISL_Overlay
 
 	bool initialized = false;
 
-	static ISL_Overlay* Get(RE::NiLight* niLight)
+	static Overlay* Get(RE::NiLight* niLight)
 	{
-		return reinterpret_cast<ISL_Overlay*>(&niLight->GetLightRuntimeData());
+		return reinterpret_cast<Overlay*>(&niLight->GetLightRuntimeData());
 	}
 
 	uint32_t rngState = 1;
@@ -52,6 +51,7 @@ struct ISL_Overlay
 	}
 };
 
+//the engine func to attach lights to obejects
 inline RE::NiLight* CallGenDynamic(
 	RE::TESObjectLIGH* light,
 	RE::TESObjectREFR* ref,
@@ -72,8 +72,6 @@ inline RE::NiLight* CallGenDynamic(
 	return func(light, ref, node, forceDynamic, useLightRadius, affectRefOnly);
 }
 
-// Backup light data for unused TESObjectLIGH
-
 struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 
 	static LightData* GetSingleton()
@@ -83,6 +81,8 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 	}
 
 	static bool isISL;
+
+	static std::map<std::string, LightConfig> nodeNameToJsonCfg;
 
 	static std::unordered_map<std::string, LightConfig> defaultConfigs;
 

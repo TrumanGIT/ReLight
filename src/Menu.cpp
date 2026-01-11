@@ -184,7 +184,7 @@ namespace UI {
 
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
 
-                auto* selectedIslRt = ISL_Overlay::Get(selectedLight->light.get());
+                auto* selectedIslRt = Overlay::Get(selectedLight->light.get());
 
                 if (!selectedIslRt) {
                     logger::warn("no selected ISL runtime data in skse menu");
@@ -213,7 +213,7 @@ namespace UI {
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
                                 auto& data = light->light->GetLightRuntimeData();
-                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
                                     data.fade = selectedIslRt->startingFade;
                                     islRt->startingFade = selectedIslRt->startingFade;
                                 }
@@ -245,7 +245,7 @@ namespace UI {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
                                     islRt->flickerIntensity = selectedIslRt->flickerIntensity;
                                 }
                                 //spdlog::info("MATCH -> set flickerIntensity to {}",
@@ -263,7 +263,7 @@ namespace UI {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
                                     islRt->flickersPerSecond = selectedIslRt->flickersPerSecond;
                                 }
                             //    spdlog::info("MATCH -> set flickersPerSecond to {}",
@@ -279,7 +279,7 @@ namespace UI {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
                                     islRt->cutoffOverride = selectedIslRt->cutoffOverride;
                                 }
                             }
@@ -293,7 +293,7 @@ namespace UI {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = ISL_Overlay::Get(light->light.get())) {
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
                                     islRt->size = selectedIslRt->size;
                                 }
                             }
@@ -369,7 +369,7 @@ namespace UI {
 
             auto& currentRt = light->light->GetLightRuntimeData();
 
-            auto* currentIslRt = ISL_Overlay::Get(light->light.get());
+            auto* currentIslRt = Overlay::Get(light->light.get());
 
             if (!currentIslRt) {
                 logger::warn("no selected ISL runtime data in skse menu");
@@ -431,7 +431,7 @@ namespace UI {
                 auto& activeData = light->light->GetLightRuntimeData();
                 activeData = lightData;
 
-                if (auto* isl = ISL_Overlay::Get(light->light.get())) {
+                if (auto* isl = Overlay::Get(light->light.get())) {
                     isl->startingFade = defaultCfg.fade;
                     isl->cutoffOverride = defaultCfg.cutoffOverride;
                     isl->size = defaultCfg.size;
