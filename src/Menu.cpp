@@ -189,9 +189,7 @@ namespace UI {
                 if (!selectedIslRt) {
                     logger::warn("no selected ISL runtime data in skse menu");
                     return;
-                }
-
-                
+                }    
 
                 //TODO:: add 'starting radius' so it doesent fight skse menu when ISL is enabled
 

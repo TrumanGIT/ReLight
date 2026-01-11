@@ -372,14 +372,13 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 		const auto& name = pair.first;
 		//logger::debug("Checking bank key '{}' against '{}'", name, nodeName);
 
-		if (name.find(nodeName) != std::string::npos)
+		if (nodeName.find(name) != std::string::npos)
 			return name;
 	}
 
 	//logger::debug("No match found for node '{}'", nodeName);
 	return ""; // no match
 }
-
 
 inline bool isRelightLight(const std::string& nodeName) {
 	auto relightLightFound = false; 

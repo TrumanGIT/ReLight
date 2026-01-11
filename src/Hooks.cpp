@@ -15,34 +15,20 @@
 
 namespace Hooks {
 
-	
-	static bool firstUpdate = true;
 
-	// Po3's hook 
-	void UpdateActivateParents::thunk(RE::TESObjectCELL* a_cell) {
+	 void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
-		func(a_cell);
-
-		auto* player = RE::PlayerCharacter::GetSingleton();
+		func(player, delta);
 
 		if (!player) {
 			logger::warn("player is null cant check cell");
 			return;
 		}
+	
+		//const float baseDelta = RE::BSTimer::GetSingleton()->realTimeDelta;
+		const float deltaTime = RE::BSTimer::GetSingleton()->realTimeDelta;
 
-		auto playerCell = player->GetParentCell();
-
-		if (!playerCell) {
-			logger::warn("playerCell is null cant get player location");
-			updateLightsEnabled = true;
-			return;
-		}
-
-		//update seems to be called more frequently need a new hoook, or equation to find a consitent number to work with.
-		const float baseDelta = RE::BSTimer::GetSingleton()->realTimeDelta;
-		const float deltaTime = playerCell->IsExteriorCell() ? baseDelta / 20.0f : baseDelta;
-
-		//static float deltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
+		//static float 60FPSdeltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
 
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 		if (!ssNode) {
@@ -52,36 +38,21 @@ namespace Hooks {
 
 		auto& rt = ssNode->GetRuntimeData();
 
-		//int sum = 0;
-
 		for (auto& light : rt.activeLights) {
 			if (!light) continue;
 			std::string lightName = light->light->name.c_str();
 
 			if (!lightName.starts_with("RL")) continue;
 
-			//sum++;
-
 			auto match = findPriorityMatch(lightName);
 
 			LightConfig cfg = findConfigForNode(match);
 
-			//`	logger::debug("UpdateActivateParents: Relight light found {}", lightName); 
+			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
 
 			auto& data = light->light->GetLightRuntimeData();
 
 			if (auto* lightRuntimeData = ISL_Overlay::Get(light->light.get())) {
-
-				/*if (!lightRuntimeData->initialized) {
-					//lightRuntimeData->startingFade = cfg.fade;
-					//lightRuntimeData->flickerIntensity = cfg.flickerIntensity;
-					//lightRuntimeData->flickersPerSecond = cfg.flickersPerSecond;
-					//lightRuntimeData->speedRandomness = 1.0f;
-					const uint32_t seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName)); // seed rng with light name hash
-					lightRuntimeData->rngState = seed ? seed : 1; // ensure rng state is not zero othwerwise the generator will always return zero
-					logger::debug("Light name: {}, fade {} startingFade = {}, flickerintesnsity = {}, flickerpersecond = {} seed: {}, speed randomness{}", lightName, data.fade, lightRuntimeData->startingFade, lightRuntimeData->flickerIntensity, lightRuntimeData->flickersPerSecond, seed, lightRuntimeData->speedRandomness);
-					lightRuntimeData->initialized = true;
-				}*/
 
 				const auto r = lightRuntimeData->getRandomFloat(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness);
 
@@ -90,6 +61,22 @@ namespace Hooks {
 			}
 			else logger::warn("no isl overlay for light: {}", lightName);
 		}
+			
+	 }
+	
+	 void PlayerCharacter_Update::Install()
+	{
+
+		func = REL::Relocation<std::uintptr_t>(RE::PlayerCharacter::VTABLE[0])
+			.write_vfunc(0xAD, thunk);
+	}
+
+	static bool firstUpdate = true;
+
+	/*// Po3's hook 
+	void UpdateActivateParents::thunk(RE::TESObjectCELL* a_cell) {
+
+		func(a_cell);
 	}
 
 	void UpdateActivateParents::Install()
@@ -99,7 +86,7 @@ namespace Hooks {
 		UpdateActivateParents::func = trampoline.write_call<5>(target.address(), UpdateActivateParents::thunk);
 
 		logger::info("Hooked TESObjectCELL::UpdateActivateParents");
-	}
+	}*/
 
 	//Po3's hook (disable vanilla lights for a clean base to start with) 
 	RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
@@ -231,8 +218,6 @@ namespace Hooks {
 
 	void Load3D::Install()
 	{
-		logger::info("Installing Load3D hook...");
-
 		func = REL::Relocation<std::uintptr_t>(RE::TESObjectREFR::VTABLE[0])
 			.write_vfunc(idx, thunk);
 
@@ -243,6 +228,7 @@ namespace Hooks {
 		SKSE::AllocTrampoline(1 << 8);
 		TESObjectLIGH_GenDynamic::Install();
 		Load3D::Install();
-		UpdateActivateParents::Install(); 
+		//UpdateActivateParents::Install(); 
+		PlayerCharacter_Update::Install();
 	}
 }

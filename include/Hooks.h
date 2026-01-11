@@ -2,6 +2,19 @@
 
 namespace Hooks {
 
+    //Doodlums hook found in RE Discord
+    
+    
+          struct PlayerCharacter_Update {
+
+              static void thunk(RE::PlayerCharacter* player, float delta);
+
+              static inline REL::Relocation<decltype(thunk)> func;
+
+              static void Install();
+            };
+
+
 
     //PO3
     struct TESObjectLIGH_GenDynamic {
@@ -24,7 +37,7 @@ namespace Hooks {
         static void Install();
     };
 
-    //PO3
+ /*  //PO3
     struct UpdateActivateParents
     {
         static void thunk(RE::TESObjectCELL* a_cell);
@@ -34,7 +47,7 @@ namespace Hooks {
         static void Install();
 
     };
-
+    */
 
     void Install(); 
 
