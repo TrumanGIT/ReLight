@@ -80,8 +80,6 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 		return &singleton;
 	}
 
-	static bool isISL;
-
 	static std::map<std::string, LightConfig> nodeNameToJsonCfg;
 
 	static std::unordered_map<std::string, LightConfig> defaultConfigs;
@@ -98,7 +96,7 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
 	static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
-	static void setISLData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName);
+	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName);
 	static void setRelightFlag(RE::TESObjectLIGH* ligh); 
 	//static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
 	//static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);

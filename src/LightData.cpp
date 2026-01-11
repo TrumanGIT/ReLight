@@ -9,13 +9,6 @@
 #include <string>
 #include <vector>
 
-
-//TODO:: make this isISL Bool apart of ISL Overlay to easily differentiate between isl and non isl lights
-
-bool LightData::isISL = true; // we need a way to determine if isl, idk through config? 
-                              // isl lights need different configuring then vanilla.. this boool currently isent used
-
-
 							  // lights stored here
 std::map<std::string, LightConfig> LightData::nodeNameToJsonCfg;
 
@@ -119,16 +112,18 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 	niPointLight->local.translate.z = cfg.position[2];
 }
 
+
+//not used
 void LightData::setRelightFlag(RE::TESObjectLIGH* ligh)
 {
 	if (!ligh) return;
 
 	auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
-	*rawPtr |= (1u << 15); // set 15th bit (an unused flag to identify our lights) 
+	*rawPtr |= (1u << 15); // set 15th bit (an unused flag to identify our lights like ISL) 
 }
 
 
-void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName) {
+void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName) {
 
 
 	if (!niPointLight) {
@@ -137,19 +132,18 @@ void LightData::setISLData(RE::NiLight* niPointLight, const LightConfig& cfg, st
 	}
 
 
-	if (auto* isl = Overlay::Get(niPointLight)) {
+	if (auto* overlay = Overlay::Get(niPointLight)) {
 
-		isl->size = cfg.size; // isl
-		isl->cutoffOverride = cfg.cutoffOverride; // isl 
-		isl->fade = cfg.fade;
-		isl->radius = cfg.radius;
-		// trick isl into thinking the ref has a base object of type: TESObjectLIGH object
-		isl->lighFormId = 0;
-		isl->startingFade = cfg.fade;
-		isl->flickersPerSecond = cfg.flickersPerSecond;
-		isl->flickerIntensity = cfg.flickerIntensity;
-		isl->speedRandomness = 1.0f; // TODO:: Make this changeable
-		isl->seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName));
+		overlay->size = cfg.size; // isl
+		overlay->cutoffOverride = cfg.cutoffOverride; // isl 
+		overlay->fade = cfg.fade;
+		overlay->radius = cfg.radius;
+		overlay->lighFormId = 0;
+		overlay->startingFade = cfg.fade;
+		overlay->flickersPerSecond = cfg.flickersPerSecond; // relight
+		overlay->flickerIntensity = cfg.flickerIntensity;
+		overlay->speedRandomness = 1.0f; // TODO:: Make this changeable
+		overlay->seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName));
 	}
 }
 
@@ -177,9 +171,8 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	logger::info(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
 
-	if (isISL) {
-		setISLData(niPointLight, cfg, lightName); 
-	}
+		setOverlayData(niPointLight, cfg, lightName); 
+
 }
 
 /*void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
