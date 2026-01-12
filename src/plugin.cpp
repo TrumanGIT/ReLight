@@ -38,6 +38,9 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
 
 
     {
+
+        masterNiPointLight = LightData::createNiPointLight();
+
         LightData::onKDataLoaded(); 
           
         initialize(); 

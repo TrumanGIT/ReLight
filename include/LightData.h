@@ -98,9 +98,8 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 	static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
 	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName);
 	static void setRelightFlag(RE::TESObjectLIGH* ligh); 
-	//static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
-	//static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
-	//static std::string getBaseNodeName(const std::string& lightName);
+	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
+	static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
 	static bool findConfigForLight(LightConfig& cfg, const std::string& lightName);
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);
 

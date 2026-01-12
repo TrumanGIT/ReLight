@@ -102,11 +102,14 @@ namespace UI {
                     return;
                 }
 
-                std::string lightName = niLight->name.c_str();
-                if (lightName.empty()) {
+                std::string lightNameRL = niLight->name.c_str();
+
+                if (lightNameRL.empty()) {
                     logger::debug("Nilight name empty when saving template");
                     return;
                 }
+
+                auto lightName = removePrefix(lightNameRL, "RL");
 
                 LightConfig cfg;
 
@@ -124,8 +127,6 @@ namespace UI {
                 }
 
 //                LightData::refillBankForSelectedTemplate(lightName, cfg);
-
-                logger::debug("refilled Bank for selectedTemplates (probobly)");
             }
 
         }

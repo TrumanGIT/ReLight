@@ -9,13 +9,9 @@
 #include <unordered_set>
 #include "lightdata.h"
 
-
-//TODO:: currently RNG is the same for all candles, I need each light to get their own RNG 
-// otherwise it looks unnatural having all lights flicker at same speed. 
-
 namespace Hooks {
 
-
+	//this is used for flicker it runs every frame and works with SKSE Menu framework menu opem
 	 void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 		func(player, delta);
@@ -40,13 +36,11 @@ namespace Hooks {
 
 		for (auto& light : rt.activeLights) {
 			if (!light) continue;
-			std::string lightName = light->light->name.c_str();
 
-			if (!lightName.starts_with("RL")) continue;
-
-			auto match = findPriorityMatch(lightName);
-
-			LightConfig cfg = findConfigForNode(match);
+			//Check if Relight light by prefix "RL"
+			const char* name = light->light->name.c_str();
+			if (!name || name[0] != 'R' || name[1] != 'L')
+				continue;
 
 			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
 
@@ -59,9 +53,8 @@ namespace Hooks {
 				lightRuntimeData->time += deltaTime * (1 - r) * std::numbers::pi_v<float>;
 				data.fade = lightRuntimeData->startingFade + std::sin(lightRuntimeData->time * lightRuntimeData->flickersPerSecond) * lightRuntimeData->flickerIntensity;
 			}
-			else logger::warn("no isl overlay for light: {}", lightName);
+			else logger::warn("no isl overlay for light: ");
 		}
-			
 	 }
 	
 	 void PlayerCharacter_Update::Install()
@@ -73,20 +66,6 @@ namespace Hooks {
 
 	static bool firstUpdate = true;
 
-	/*// Po3's hook 
-	void UpdateActivateParents::thunk(RE::TESObjectCELL* a_cell) {
-
-		func(a_cell);
-	}
-
-	void UpdateActivateParents::Install()
-	{
-		REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(18458, 18889), 0x52 };  // TESObjectCELL::RunAnimations
-		auto& trampoline = SKSE::GetTrampoline();
-		UpdateActivateParents::func = trampoline.write_call<5>(target.address(), UpdateActivateParents::thunk);
-
-		logger::info("Hooked TESObjectCELL::UpdateActivateParents");
-	}*/
 
 	//Po3's hook (disable vanilla lights for a clean base to start with) 
 	RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
@@ -132,7 +111,8 @@ namespace Hooks {
 		logger::info("Installed TESObjectLIGH::GenDynamic patch");
 	}
 
-	// this is when we attach lights
+	// this is when we attach lights because world position data is loaded at this point and 
+	//your bs lights will reflect your ni point light position. any earlier and they spwan at cell origin
 	RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 	{
 
@@ -199,14 +179,23 @@ namespace Hooks {
 		
 	       LightConfig cfg = findConfigForNode(match);
 
-			auto niLight = CallGenDynamic(dummyLightObject, a_this, a_root, true, true, true);
+		   auto cloneLight =  cloneNiPointLight(masterNiPointLight.get());
+
+		   if (!cloneLight) {
+			   logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
+			   return niAVObject;
+		   }
 
 			//auto niPointer = RE::NiPointer<RE::NiLight>(niLight);
 
-			LightData::setNiPointLightDataFromCfg(niLight, cfg, cfg.nodeName);
+			LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
 
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
-			niLight->name = "RL" + cfg.nodeName;
+			cloneLight->name = "RL" + cfg.nodeName;
+
+			a_root->AttachChild(cloneLight); 
+
+			LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
 			
 			//logger::debug("LightName: {}, created ", match);	
 		}
@@ -220,7 +209,6 @@ namespace Hooks {
 	{
 		func = REL::Relocation<std::uintptr_t>(RE::TESObjectREFR::VTABLE[0])
 			.write_vfunc(idx, thunk);
-
 		logger::info("Hooked TESObjectREFR::Load3D");
 	}
 
@@ -228,7 +216,6 @@ namespace Hooks {
 		SKSE::AllocTrampoline(1 << 8);
 		TESObjectLIGH_GenDynamic::Install();
 		Load3D::Install();
-		//UpdateActivateParents::Install(); 
 		PlayerCharacter_Update::Install();
 	}
 }

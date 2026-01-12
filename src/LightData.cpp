@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-							  // lights stored here
+							
 std::map<std::string, LightConfig> LightData::nodeNameToJsonCfg;
 
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
@@ -139,9 +139,9 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 		overlay->fade = cfg.fade;
 		overlay->radius = cfg.radius;
 		overlay->lighFormId = 0;
-		overlay->startingFade = cfg.fade;
+		overlay->startingFade = cfg.fade; // relight
 		overlay->flickersPerSecond = cfg.flickersPerSecond; // relight
-		overlay->flickerIntensity = cfg.flickerIntensity;
+		overlay->flickerIntensity = cfg.flickerIntensity; //relight
 		overlay->speedRandomness = 1.0f; // TODO:: Make this changeable
 		overlay->seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName));
 	}
@@ -260,7 +260,7 @@ void LightData::refillBankForSelectedTemplate(const std::string& lightName, cons
 		logger::debug("Added cloned light for node '{}' (iteration {})", lightName, i);
 	}
 }
-
+*/
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
@@ -318,16 +318,8 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, c
 	}
 }
 
-std::string LightData::getBaseNodeName(const std::string& lightName) {
-	const std::string suffix = "_rl";
-	if (lightName.size() >= suffix.size() && lightName.compare(lightName.size() - suffix.size(), suffix.size(), suffix) == 0) {
-		return lightName.substr(0, lightName.size() - suffix.size());
-	}
-	return lightName;
-} */ 
-
 bool LightData::findConfigForLight(LightConfig& cfg, const std::string& lightName) {
-	//const std::string baseName = getBaseNodeName(lightName);
+	
 	for  (auto& [name, temp] : LightData::nodeNameToJsonCfg) {
 		if (name == lightName) {
 			cfg = temp;
@@ -352,9 +344,11 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
 	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
 
-	if (auto* isl = Overlay::Get(niLight)) {
-		cfg.size = isl->size;
-		cfg.cutoffOverride = isl->cutoffOverride;
+	if (auto* overlay = Overlay::Get(niLight)) {
+		cfg.size = overlay->size;
+		cfg.cutoffOverride = overlay->cutoffOverride;
+		cfg.flickerIntensity = overlay->flickerIntensity;
+		cfg.flickersPerSecond = overlay->flickersPerSecond;
 	}
 }
 
@@ -411,9 +405,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 					});
 				}
 			}
-
 		});
-
 	}
 
 	lastCellWasInterior = currentCellIsInterior;
@@ -427,5 +419,4 @@ void LightData::onKDataLoaded()
 		player->AsBGSActorCellEventSource()->AddEventSink(LightData::GetSingleton());
 		logger::info("BGSActorCellEvent sink registered");
 	}
-	logger::info("Player BGSActorCellEvent sink registered");
 }
