@@ -193,7 +193,7 @@ namespace Hooks {
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 			cloneLight->name = "RL" + cfg.nodeName;
 
-			a_root->AttachChild(cloneLight); 
+			LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
 
 			LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
 			
@@ -219,3 +219,5 @@ namespace Hooks {
 		PlayerCharacter_Update::Install();
 	}
 }
+
+

@@ -102,7 +102,7 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 	static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
 	static bool findConfigForLight(LightConfig& cfg, const std::string& lightName);
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);
-
+	static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light);
 	static void printLightParams(const RE::ShadowSceneNode::LIGHT_CREATE_PARAMS& params) {
 		logger::debug(" shadowLight	 {}", params.shadowLight);
 		logger::debug(" portalStrict  {}", params.portalStrict);

@@ -147,6 +147,44 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 	}
 }
 
+void LightData::attachLightUsingAttachPath(
+	const LightConfig& cfg,
+	RE::NiNode* root,
+	RE::NiPointLight* light)
+{
+	if (!root || !light) {
+		logger::warn("attachLightUsingAttachPath: null root or light");
+		return;
+	}
+
+	RE::NiAVObject* current = root;
+
+	for (int index : cfg.attachPath) {
+		auto* node = current->AsNode();
+		if (!node) {
+			logger::warn("attachLightUsingAttachPath: object is not a NiNode");
+			return;
+		}
+
+		auto& children = node->GetChildren();
+		if (index < 0 || index >= children.size() || !children[index]) {
+			logger::warn("attachLightUsingAttachPath: index {} out of bounds", index);
+			return;
+		}
+
+		current = children[index].get();
+	}
+
+	// Final attach
+	auto* finalNode = current->AsNode();
+	if (!finalNode) {
+		logger::warn("attachLightUsingAttachPath: final target is not a NiNode");
+		return;
+	}
+
+	finalNode->AttachChild(light);
+}
+
 void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
@@ -172,7 +210,6 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	logger::info(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
 
 		setOverlayData(niPointLight, cfg, lightName); 
-
 }
 
 /*void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {

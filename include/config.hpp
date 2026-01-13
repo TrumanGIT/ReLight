@@ -50,6 +50,7 @@ struct LightConfig {
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
     std::vector<std::string> flags{};             // NiPointLightRunTime->data.flags
+    std::vector<int> attachPath;
 
     void print() {
         logger::info("Path               : {}", configPath);
@@ -61,6 +62,11 @@ struct LightConfig {
         logger::info(" flags    :");
         for (const auto& f: flags) {
             logger::info("  {}", f);
+        }
+        
+        logger::info(" attachPath    :");
+        for (const auto& i : attachPath) {
+            logger::info("  {}", i);
         }
     }
     bool operator<(const LightConfig& other) const {

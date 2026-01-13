@@ -78,6 +78,25 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
             }
         }
 
+        if(data.contains("attachPath") && data["attachPath"].is_array()) {
+            config.attachPath.clear();
+
+            for (const auto& v : data["attachPath"]) {
+                if (!v.is_number_integer()) {
+                    logger::warn("Non-integer value in attachPath in {}", configPath);
+                    continue;
+                }
+
+                int idx = v.get<int>();
+                if (idx < 0) {
+                    logger::warn("Negative index {} in attachPath in {}", idx, configPath);
+                    continue;
+                }
+
+                config.attachPath.push_back(idx);
+            }
+        }
+
         return true;
     }
     catch (const json::exception& e) {
@@ -114,6 +133,8 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 		};
 
 		data["flags"] = config.flags;
+
+        data["attachPath"] = config.attachPath;
 
 		std::ofstream out(configPath, std::ios::trunc);
 		if (!out.is_open()) {
