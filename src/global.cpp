@@ -30,9 +30,9 @@ RE::TESObjectLIGH* dummyLightObject = nullptr;
 
 std::unordered_set<RE::FormID> baseFormsWithAttachedLights;
 
-bool updateLightsEnabled = true;
-
 bool lastCellWasInterior;
+
+ bool islInstalled;
 
 
 // nodeName (lowercased) -> template mesh path

@@ -39,9 +39,9 @@ extern RE::TESObjectLIGH* dummyLightObject;
 
 extern std::unordered_set<RE::FormID> baseFormsWithAttachedLights;
 
-extern bool updateLightsEnabled; 
-
 extern bool lastCellWasInterior;
+
+extern bool islInstalled;
 
 
 

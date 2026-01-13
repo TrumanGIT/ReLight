@@ -39,6 +39,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
 
     {
 
+        
+
         masterNiPointLight = LightData::createNiPointLight();
 
         LightData::onKDataLoaded(); 
@@ -61,8 +63,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     UI::Register();
-
     // Explicitly cast to the correct type
-   
+   hasInverseSquareLighting();
     return true;
 }

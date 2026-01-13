@@ -126,7 +126,7 @@ namespace UI {
                     logger::warn("No config found for light '{}'", lightName);
                 }
 
-//                LightData::refillBankForSelectedTemplate(lightName, cfg);
+                //                LightData::refillBankForSelectedTemplate(lightName, cfg);
             }
 
         }
@@ -138,7 +138,7 @@ namespace UI {
         if (ImGuiMCP::Button("Default")) {
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 auto selectedLight = lights[selectedIndex];
-             
+
 
                 restoreLightToDefaults(selectedLight->light);
 
@@ -190,24 +190,25 @@ namespace UI {
                 if (!selectedIslRt) {
                     logger::warn("no selected ISL runtime data in skse menu");
                     return;
-                }    
+                }
 
                 //TODO:: add 'starting radius' so it doesent fight skse menu when ISL is enabled
-
-                if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                light->light->GetLightRuntimeData().radius = lightData.radius;
+                if (!islInstalled) {
+                    if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
+                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                        if (ssNode) {
+                            auto& rt = ssNode->GetRuntimeData();
+                            for (auto& light : rt.activeLights) {
+                                if (light && light->light->name == selectedLight->light->name) {
+                                    light->light->GetLightRuntimeData().radius = lightData.radius;
+                                }
                             }
                         }
                     }
                 }
 
                 if (ImGuiMCP::SliderFloat("Fade", &selectedIslRt->startingFade, 0.0f, 10.0f, "%.1f")) {
-           
+
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
@@ -218,7 +219,7 @@ namespace UI {
                                     data.fade = selectedIslRt->startingFade;
                                     islRt->startingFade = selectedIslRt->startingFade;
                                 }
-                               // spdlog::info("MATCH -> set fade to {}", data.fade);
+                                // spdlog::info("MATCH -> set fade to {}", data.fade);
                             }
                         }
                     }
@@ -267,41 +268,43 @@ namespace UI {
                                 if (auto* islRt = Overlay::Get(light->light.get())) {
                                     islRt->flickersPerSecond = selectedIslRt->flickersPerSecond;
                                 }
-                            //    spdlog::info("MATCH -> set flickersPerSecond to {}",
-                             //       selectedIslRt->flickersPerSecond);
+                                //    spdlog::info("MATCH -> set flickersPerSecond to {}",
+                                 //       selectedIslRt->flickersPerSecond);
                             }
                         }
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = Overlay::Get(light->light.get())) {
-                                    islRt->cutoffOverride = selectedIslRt->cutoffOverride;
+                if (islInstalled) {
+                    if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
+                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                        if (ssNode) {
+                            auto& rt = ssNode->GetRuntimeData();
+                            for (auto& light : rt.activeLights) {
+                                if (light && light->light->name == selectedLight->light->name) {
+                                    if (auto* islRt = Overlay::Get(light->light.get())) {
+                                        islRt->cutoffOverride = selectedIslRt->cutoffOverride;
+                                    }
                                 }
                             }
                         }
                     }
                 }
-
-                if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.00f, 10.00f, "%.2f")) {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = Overlay::Get(light->light.get())) {
-                                    islRt->size = selectedIslRt->size;
+                if (islInstalled) {
+                    if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.00f, 10.00f, "%.2f")) {
+                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                        if (ssNode) {
+                            auto& rt = ssNode->GetRuntimeData();
+                            for (auto& light : rt.activeLights) {
+                                if (light && light->light->name == selectedLight->light->name) {
+                                    if (auto* islRt = Overlay::Get(light->light.get())) {
+                                        islRt->size = selectedIslRt->size;
+                                    }
                                 }
                             }
                         }
                     }
                 }
-
             }
         }
     }
@@ -365,7 +368,7 @@ namespace UI {
 
 
         for (auto& light : rt.activeLights) {
-            if (!light) continue; 
+            if (!light) continue;
             auto lightName = light->light->name;
 
             auto& currentRt = light->light->GetLightRuntimeData();
@@ -392,7 +395,7 @@ namespace UI {
 
                 lights.push_back(light);
             }
-           
+
             lightAlreadyInList = false;
         }
     }
@@ -444,5 +447,4 @@ namespace UI {
 
         logger::info("Restored '{}' to default config", lightName);
     }
-
 }
