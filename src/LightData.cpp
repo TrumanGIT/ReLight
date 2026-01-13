@@ -21,19 +21,15 @@ bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* 
 		return false;
 	}
 
+	if (excludeLightEditorID(light)) return false;
+
 	auto player = RE::PlayerCharacter::GetSingleton();
 
 	if (IsInSoulCairnOrApocrypha(player)) {
 		logger::debug("player is in apocrypha or soul cairn so we should not disable light");
 		return false;
 	}
-	if (disableShadowCasters == false &&
-		light->data.flags.any(RE::TES_LIGHT_FLAGS::kOmniShadow,
-			RE::TES_LIGHT_FLAGS::kHemiShadow, RE::TES_LIGHT_FLAGS::kSpotShadow))
-	{
-		return false;
-	}
-
+	 
 	return true;
 }
 
@@ -181,6 +177,10 @@ void LightData::attachLightUsingAttachPath(
 		logger::warn("attachLightUsingAttachPath: final target is not a NiNode");
 		return;
 	}
+
+	auto finalNodeName = finalNode->name.c_str();
+
+	logger::debug("attached light to node {}", finalNodeName);
 
 	finalNode->AttachChild(light);
 }
@@ -427,7 +427,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 			for (const auto& formID : baseFormsWithAttachedLights) {
 
-				logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
+				//logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
 
 				if (baseFormID == formID) {
 					logger::debug("baseForm ref that needs reinitializing found");

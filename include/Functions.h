@@ -178,11 +178,6 @@ inline void iniParser()
 			return (v == "true" || v == "1" || v == "yes");
 			};
 
-		if (key == "disableshadowcasters") {
-			disableShadowCasters = parseBool(vLow);
-			continue;
-		}
-
 		if (key == "disabletorchlights") {
 			disableTorchLights = parseBool(vLow);
 			continue;

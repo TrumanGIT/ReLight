@@ -80,18 +80,14 @@ namespace Hooks {
 		if (!ref || !light)
 			return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-		if (LightData::excludeLightEditorID(light))
-			return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
-
-		// get the name of the mod owning the light
-	//	const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
-		//std::string modName = refOriginFile ? refOriginFile->fileName : "";
-
-		//toLower(modName);
+		//if (light->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry)) {
+			//std::string edid = clib_util::editorID::get_editorID(light);
+			//logger::debug("torch with editor ID: {}  found... disabling", edid);
+			//return nullptr; 
+		// }
 
 		if (LightData::shouldDisableLight(light, ref))
 			return nullptr;
-		
 
 		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 	}

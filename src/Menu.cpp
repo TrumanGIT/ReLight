@@ -324,9 +324,6 @@ namespace UI {
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info)\n";
         outFile << "loggingLevel=" << loggingLevel << "\n\n";
 
-        outFile << "; disable all shadow - casting light references(except skylights) (default = true)\n";
-        outFile << "disableShadowCasters=" << (disableShadowCasters ? "true" : "false") << "\n\n";
-
         outFile << "; disable light references for carryable torches(default = true)\n";
         outFile << "disableTorchLights=" << (disableTorchLights ? "true" : "false") << "\n\n";
 
