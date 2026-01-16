@@ -253,6 +253,11 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 
 inline RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight) {
 
+	if (!niPointLight) {
+		logger::warn("no ni point light to clone!");
+			return nullptr;
+	}
+
 	RE::NiCloningProcess cloningProcess;
 	auto cloneAsNiAv = niPointLight->CreateClone(cloningProcess);
 	if (!cloneAsNiAv) {
