@@ -35,17 +35,10 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         break;
     }
     case SKSE::MessagingInterface::kDataLoaded:
-
-
     {
-
-        
-
         masterNiPointLight = LightData::createNiPointLight();
 
         LightData::onKDataLoaded(); 
-          
-        initialize(); 
  
         Hooks::Install();
         break;

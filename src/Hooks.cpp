@@ -20,11 +20,18 @@ namespace Hooks {
 			logger::warn("player is null cant check cell");
 			return;
 		}
-	
-		//const float baseDelta = RE::BSTimer::GetSingleton()->realTimeDelta;
-		const float deltaTime = RE::BSTimer::GetSingleton()->realTimeDelta;
 
-		//static float 60FPSdeltaTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
+		//const float deltaTime = RE::BSTimer::GetSingleton()->realTimeDelta;
+	
+		//const float baseDelta = RE::BSflickerTimer::GetSingleton()->realflickerTimeDelta;
+
+		//static float 60FPSdeltaflickerTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
+
+
+		for (auto& [configID, dataExt] : LightData::configIDToJsonCfg) {
+			const auto r = getRandomFloat(-1, 1, dataExt.rngState);
+			dataExt.flickerTime += delta * (1 - r) * std::numbers::pi_v<float>;
+		}
 
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 		if (!ssNode) {
@@ -32,9 +39,9 @@ namespace Hooks {
 			return;
 		}
 
-		auto& rt = ssNode->GetRuntimeData();
+		auto& ssRt = ssNode->GetRuntimeData();
 
-		for (auto& light : rt.activeLights) {
+		for (auto& light : ssRt.activeLights) {
 			if (!light) continue;
 
 			//Check if Relight light by prefix "RL"
@@ -42,18 +49,14 @@ namespace Hooks {
 			if (!name || name[0] != 'R' || name[1] != 'L')
 				continue;
 
+			auto& rt = light->light->GetLightRuntimeData(); 
+
+			auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
+
 			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
 
-			auto& data = light->light->GetLightRuntimeData();
-
-			if (auto* lightRuntimeData = Overlay::Get(light->light.get())) {
-
-				const auto r = lightRuntimeData->getRandomFloat(-lightRuntimeData->speedRandomness, lightRuntimeData->speedRandomness);
-
-				lightRuntimeData->time += deltaTime * (1 - r) * std::numbers::pi_v<float>;
-				data.fade = lightRuntimeData->startingFade + std::sin(lightRuntimeData->time * lightRuntimeData->flickersPerSecond) * lightRuntimeData->flickerIntensity;
-			}
-			else logger::warn("no isl overlay for light: ");
+				//dataExt.flickerTime += delta * (1 - r) * std::numbers::pi_v<float>;
+				rt.fade = dataExt.startingFade + std::sin(dataExt.flickerTime * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
 		}
 	 }
 	
@@ -215,5 +218,3 @@ namespace Hooks {
 		PlayerCharacter_Update::Install();
 	}
 }
-
-

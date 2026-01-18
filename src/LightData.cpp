@@ -9,10 +9,12 @@
 #include <string>
 #include <vector>
 
+
+ std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
 							
 std::map<std::string, LightConfig> LightData::nodeNameToJsonCfg;
 
-// at runtime save a copy of each tempaltes settings so we can restore to defaults later
+// at runflickerTime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<std::string, LightConfig> LightData::defaultConfigs; 
 
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref)
@@ -135,11 +137,7 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 		overlay->fade = cfg.fade;
 		overlay->radius = cfg.radius;
 		overlay->lighFormId = 0;
-		overlay->startingFade = cfg.fade; // relight
-		overlay->flickersPerSecond = cfg.flickersPerSecond; // relight
-		overlay->flickerIntensity = cfg.flickerIntensity; //relight
-		overlay->speedRandomness = 1.0f; // TODO:: Make this changeable
-		overlay->seed = static_cast<uint32_t>(std::hash<std::string>{}(lightName));
+		overlay->unk138 = static_cast<std::uint32_t>(cfg.configID); 
 	}
 }
 
@@ -197,7 +195,6 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	data.fade = cfg.fade;
 	data.radius = getNiPointLightRadius(cfg);
 
-	
 	logger::info(" radius set to: {} ", cfg.radius);
 	logger::info(" fade set to: {} ", cfg.fade);
 
@@ -209,7 +206,9 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	logger::info(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
 
-		setOverlayData(niPointLight, cfg, lightName); 
+		if (islInstalled) setOverlayData(niPointLight, cfg, lightName); 
+
+		data.unk138 = cfg.configID;
 }
 
 /*void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
@@ -369,6 +368,8 @@ bool LightData::findConfigForLight(LightConfig& cfg, const std::string& lightNam
 void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	auto& rt = niLight->GetLightRuntimeData();
 
+    auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
+
 	cfg.radius = rt.radius.x;
 
 	cfg.fade = rt.fade;
@@ -381,11 +382,12 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
 	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
 
+	cfg.flickerIntensity = dataExt.flickerIntensity;
+	cfg.flickersPerSecond = dataExt.flickersPerSecond;
+
 	if (auto* overlay = Overlay::Get(niLight)) {
 		cfg.size = overlay->size;
 		cfg.cutoffOverride = overlay->cutoffOverride;
-		cfg.flickerIntensity = overlay->flickerIntensity;
-		cfg.flickersPerSecond = overlay->flickersPerSecond;
 	}
 }
 

@@ -11,7 +11,7 @@
 #include "config.hpp"
 #include "random.h"
 
-// extend ni point light runtime data so Inverse squared lighting sees our lights otherwise darkness
+// extend ni point light runflickerTime data so Inverse squared lighting sees our lights otherwise darkness
 //also handy data container extention
 struct Overlay
 {
@@ -25,29 +25,9 @@ struct Overlay
 	float         fade;
 	std::uint32_t unk138;
 
-	float         flickerIntensity = 0.2f;   // Relight specific values
-	float         flickersPerSecond = 3.0f;  // Relight specific values
-
-	float speedRandomness = 1.0; // this is if we want random flickers or not
-
-	float seed; 
-
-	float time; // used in flicker calcs
-
-	float startingFade; // used in flicker calcs 
-
-	bool initialized = false;
-
 	static Overlay* Get(RE::NiLight* niLight)
 	{
 		return reinterpret_cast<Overlay*>(&niLight->GetLightRuntimeData());
-	}
-
-	uint32_t rngState = 1;
-
-	float getRandomFloat(const float& min, const float& max)
-	{
-		return min + (max - min) * Random::rand(rngState);
 	}
 };
 
@@ -79,6 +59,8 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 		static LightData singleton;
 		return &singleton;
 	}
+
+	static std::map<uint64_t, LightConfig> configIDToJsonCfg;
 
 	static std::map<std::string, LightConfig> nodeNameToJsonCfg;
 

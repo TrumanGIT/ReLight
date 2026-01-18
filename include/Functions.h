@@ -96,7 +96,7 @@ inline bool containsAll(std::string ID,
 }
 
 
-//TODO:: Log set values for debugging (saved me alot of time with users) 
+//TODO:: Log set values for debugging (saved me alot of flickerTime with users) 
 inline void iniParser()
 {
 	std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
@@ -614,4 +614,9 @@ inline void hasInverseSquareLighting()
 	islInstalled = std::filesystem::exists(path);
 
 	logger::info("info isl found?: {}", islInstalled);
+}
+
+inline float getRandomFloat(const float& min, const float& max, uint32_t rngState)
+{
+	return min + (max - min) * Random::rand(rngState);
 }

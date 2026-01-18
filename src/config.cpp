@@ -159,15 +159,21 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 void parseTemplates() {
     logger::info("Parsing light templates..");
     std::vector<std::string> paths = GetConfigPaths();
+    static uint64_t nextID = 1;
 
     for (const auto& p : paths) {
         logger::info(" reading.. {}", p);
         LightConfig cfg;
         loadConfiguration(cfg, p);
         cfg.configPath = p;
-        cfg.print();
+        cfg.configID = nextID++;
+        cfg.seed = cfg.seed = static_cast<uint32_t>(std::hash<std::string>{}(cfg.nodeName)); cfg.print();
+        cfg.rngState = cfg.seed ? cfg.seed : 1;
+        cfg.startingFade = cfg.fade;
        // Template temp;
       //  temp.config = std::move(cfg);
+
+        LightData::configIDToJsonCfg[cfg.configID] = cfg;
         LightData::defaultConfigs[cfg.nodeName] = cfg;
         LightData::nodeNameToJsonCfg[cfg.nodeName] = std::move(cfg);
     }

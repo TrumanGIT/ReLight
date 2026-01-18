@@ -79,7 +79,7 @@ namespace UI {
         }
     }
 
-    void __stdcall RenderLightEditor() {
+   void __stdcall RenderLightEditor() {
 
         static int selectedIndex = -1;
 
@@ -139,7 +139,6 @@ namespace UI {
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 auto selectedLight = lights[selectedIndex];
 
-
                 restoreLightToDefaults(selectedLight->light);
 
                 logger::info("Restored defaults for '{}'", selectedLight->light->name.c_str());
@@ -179,11 +178,12 @@ namespace UI {
                 }
             }
 
-
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 auto selectedLight = lights[selectedIndex];
 
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
+
+                auto& dataExt = LightData::configIDToJsonCfg[lightData.unk138];
 
                 auto* selectedIslRt = Overlay::Get(selectedLight->light.get());
 
@@ -207,7 +207,7 @@ namespace UI {
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Fade", &selectedIslRt->startingFade, 0.0f, 10.0f, "%.1f")) {
+                if (ImGuiMCP::SliderFloat("Fade", &dataExt.startingFade, 0.0f, 10.0f, "%.1f")) {
 
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
@@ -215,10 +215,7 @@ namespace UI {
                         for (auto& light : rt.activeLights) {
                             if (light && light->light->name == selectedLight->light->name) {
                                 auto& data = light->light->GetLightRuntimeData();
-                                if (auto* islRt = Overlay::Get(light->light.get())) {
-                                    data.fade = selectedIslRt->startingFade;
-                                    islRt->startingFade = selectedIslRt->startingFade;
-                                }
+                                    data.fade = dataExt.startingFade;
                                 // spdlog::info("MATCH -> set fade to {}", data.fade);
                             }
                         }
@@ -239,40 +236,15 @@ namespace UI {
                     }
                 }
 
-                if (ImGuiMCP::SliderFloat("Flicker Intensity", &selectedIslRt->flickerIntensity,
+                if (ImGuiMCP::SliderFloat("Flicker Intensity", &dataExt.flickerIntensity,
                     0.0f, 5.0f, "%.2f"))
                 {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = Overlay::Get(light->light.get())) {
-                                    islRt->flickerIntensity = selectedIslRt->flickerIntensity;
-                                }
-                                //spdlog::info("MATCH -> set flickerIntensity to {}",
-                                  //  selectedIslRt->flickerIntensity);
-                            }
-                        }
-                    }
                 }
 
-                if (ImGuiMCP::SliderFloat("Flickers / Second", &selectedIslRt->flickersPerSecond,
+                if (ImGuiMCP::SliderFloat("Flickers / Second", &dataExt.flickersPerSecond,
                     0.1f, 5.0f, "%.2f"))
                 {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                if (auto* islRt = Overlay::Get(light->light.get())) {
-                                    islRt->flickersPerSecond = selectedIslRt->flickersPerSecond;
-                                }
-                                //    spdlog::info("MATCH -> set flickersPerSecond to {}",
-                                 //       selectedIslRt->flickersPerSecond);
-                            }
-                        }
-                    }
+
                 }
 
                 if (islInstalled) {
@@ -364,13 +336,15 @@ namespace UI {
         auto& rt = ssNode->GetRuntimeData();
 
 
-        for (auto& light : rt.activeLights) {
+        for (auto& light : rt.activeShadowLights) {
             if (!light) continue;
             auto lightName = light->light->name;
 
             auto& currentRt = light->light->GetLightRuntimeData();
 
             auto* currentIslRt = Overlay::Get(light->light.get());
+
+            auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
             if (!currentIslRt) {
                 logger::warn("no selected ISL runtime data in skse menu");
@@ -379,7 +353,7 @@ namespace UI {
 
             // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
             // by flicker equation (they were before Its good to check sometimes)
-            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} ", lightName, currentRt.fade, currentIslRt->startingFade, currentRt.radius, currentIslRt->flickerIntensity, currentIslRt->flickersPerSecond);
+            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} ", lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond);
 
             for (auto& existingLight : lights) {
                 if (existingLight->light->name == lightName) {
@@ -415,11 +389,18 @@ namespace UI {
 
         // Update selected light runtime data
         auto& lightData = selectedLight->GetLightRuntimeData();
+
+        auto& dataExt = LightData::configIDToJsonCfg[lightData.unk138];
+
         lightData.radius = LightData::getNiPointLightRadius(defaultCfg);
         lightData.fade = defaultCfg.fade;
         lightData.diffuse.red = defaultCfg.diffuseColor[0] / 255.0f;
         lightData.diffuse.green = defaultCfg.diffuseColor[1] / 255.0f;
         lightData.diffuse.blue = defaultCfg.diffuseColor[2] / 255.0f;
+
+        dataExt.startingFade = defaultCfg.startingFade; 
+        dataExt.flickerIntensity = defaultCfg.flickerIntensity;
+        dataExt.flickersPerSecond = defaultCfg.flickersPerSecond;
 
         // Propagate to active lights in the shader node
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -430,14 +411,14 @@ namespace UI {
                     continue;
 
                 auto& activeData = light->light->GetLightRuntimeData();
+
                 activeData = lightData;
 
+                if (!islInstalled) return; 
+
                 if (auto* isl = Overlay::Get(light->light.get())) {
-                    isl->startingFade = defaultCfg.fade;
                     isl->cutoffOverride = defaultCfg.cutoffOverride;
                     isl->size = defaultCfg.size;
-                    isl->flickerIntensity = defaultCfg.flickerIntensity;
-                    isl->flickersPerSecond = defaultCfg.flickersPerSecond;
                 }
             }
         }

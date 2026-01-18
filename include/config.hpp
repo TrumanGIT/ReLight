@@ -33,6 +33,8 @@ F(linearAttenuation, 0.f) \
 F(quadraticAttenuation, 0.f) \
 F(flickerIntensity, 0.2f) \
 F(flickersPerSecond, 3.f) \
+F(flickerTime, 0.0f) \
+F(startingFade, 0.f) \
 F(size, 1.f) \
 F(cutoffOverride , 0.5f) \
 
@@ -46,11 +48,15 @@ struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
     std::string configPath{};                     // save the path from where this config is loaded
-    std::string nodeName{};                       //NiPointLightRunTime->data.radius
-    std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunTime->data.color.red, blue green 
+    std::string nodeName{};                       //NiPointLightRunflickerTime->data.radius
+    std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
-    std::vector<std::string> flags{};             // NiPointLightRunTime->data.flags
+    std::vector<std::string> flags{};             // NiPointLightRunflickerTime->data.flags
     std::vector<int> attachPath;
+    uint64_t configID;
+    uint32_t seed;
+    uint32_t rngState;
+
 
     void print() {
         logger::info("Path               : {}", configPath);
@@ -59,6 +65,8 @@ struct LightConfig {
         FOREACH_FLOAT(FLOAT2PRINT);
         logger::info(" position          : [{}, {}, {}] ", position[0], position[1], position[2]);
         logger::info(" color             : [{}, {}, {}] ", diffuseColor[0], diffuseColor[1], diffuseColor[2]);
+        logger::info("configId: {}", configID);
+        logger::info("rngState: {}", rngState);
         logger::info(" flags    :");
         for (const auto& f: flags) {
             logger::info("  {}", f);
