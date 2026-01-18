@@ -142,5 +142,7 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 
 void parseTemplates();
 
+void sortFilePathOrNodeName(const LightConfig& cfg);
+
 LightConfig findConfigForNode(const std::string& nodeName);
 

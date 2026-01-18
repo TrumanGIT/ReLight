@@ -355,39 +355,19 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 	return false;
 }
 
-//TODO:: think of a better way to handle priority, first we look at every loaded node and check its name in the priority list, 
-//then check every config for a match using node names, could prolly be optimized. 
 
 inline std::string findPriorityMatch(const std::string& nodeName)
 {
 	//  Check priority list created from ini file first
 	for (const auto& nodeNameInPriorityList : priorityList) {
-	//	logger::debug("Checking priority list entry '{}' against '{}'", nodeNameInPriorityList, nodeName);
+
+		//	logger::debug("Checking priority list entry '{}' against '{}'", nodeNameInPriorityList, nodeName);
 		if (nodeName.find(nodeNameInPriorityList) != std::string::npos)
 			return nodeNameInPriorityList;
 	}
 
-	// No priority specified
-	for (const auto& pair : LightData::nodeNameToJsonCfg) {
-		const auto& name = pair.first;
-		//logger::debug("Checking bank key '{}' against '{}'", name, nodeName);
-
-		if (nodeName.find(name) != std::string::npos)
-			return name;
-	}
-
 	//logger::debug("No match found for node '{}'", nodeName);
 	return ""; // no match
-}
-
-//iterate through the shadow scene nodes active lights t
-inline bool isRelightLight(const std::string& nodeName) {
-	auto relightLightFound = false; 
-
-	 if (nodeName.starts_with("RL")) {
-		 relightLightFound = true; 
-	}
-	 return relightLightFound;
 }
 
 //we clone and store NIpointLight nodes in bank (not anymore)

@@ -154,8 +154,23 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 	}
 }
 
-// hopfully I dident break this i removed template bc I removed the ni point light bank 
-//(nodebank map now just contians configs )
+void sortFilePathOrNodeName(const LightConfig& cfg) {
+    // add to priority list if a node name
+
+        // add to meshfile path if contains a "/"
+ //   if (cfg.nodeName.contains("/")) {
+
+   //     meshFilePaths.push_back(cfg.nodeName);
+    //}
+
+    if (std::find(priorityList.begin(),
+        priorityList.end(),
+        cfg.nodeName) == priorityList.end())
+    {
+        priorityList.push_back(cfg.nodeName);
+    }
+}
+
 void parseTemplates() {
     logger::info("Parsing light templates..");
     std::vector<std::string> paths = GetConfigPaths();
@@ -172,7 +187,7 @@ void parseTemplates() {
         cfg.startingFade = cfg.fade;
        // Template temp;
       //  temp.config = std::move(cfg);
-
+        sortFilePathOrNodeName();
         LightData::configIDToJsonCfg[cfg.configID] = cfg;
         LightData::defaultConfigs[cfg.nodeName] = cfg;
         LightData::nodeNameToJsonCfg[cfg.nodeName] = std::move(cfg);

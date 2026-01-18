@@ -21,13 +21,6 @@ namespace Hooks {
 			return;
 		}
 
-		//const float deltaTime = RE::BSTimer::GetSingleton()->realTimeDelta;
-	
-		//const float baseDelta = RE::BSflickerTimer::GetSingleton()->realflickerTimeDelta;
-
-		//static float 60FPSdeltaflickerTime = 0.016f; // this is relevent to how many frames per second the hook is called, default 60fps
-
-
 		for (auto& [configID, dataExt] : LightData::configIDToJsonCfg) {
 			const auto r = getRandomFloat(-1, 1, dataExt.rngState);
 			dataExt.flickerTime += delta * (1 - r) * std::numbers::pi_v<float>;
@@ -134,13 +127,6 @@ namespace Hooks {
 			return niAVObject;
 		}
 
-		auto ui = RE::UI::GetSingleton();
-
-		if (ui && ui->IsMenuOpen("InventoryMenu")) {
-			//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-			return niAVObject;
-		}
-
 		// grab name of NiNode (usually 1:1 with mesh names)
 		std::string nodeName = a_root->name.c_str();
 		toLower(nodeName);
@@ -150,6 +136,13 @@ namespace Hooks {
 
 		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos*/) {
 		//	logger::debug("Load3D() matched node name: {}", nodeName);
+
+			auto ui = RE::UI::GetSingleton();
+
+			if (ui && ui->IsMenuOpen("InventoryMenu")) {
+				//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
+				return niAVObject;
+			}
 
 			if (isExclude(nodeName, a_root)) return niAVObject;
 
