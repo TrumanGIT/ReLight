@@ -21,11 +21,6 @@ namespace Hooks {
 			return;
 		}
 
-		for (auto& [configID, dataExt] : LightData::configIDToJsonCfg) {
-			const auto r = getRandomFloat(-1, 1, dataExt.rngState);
-			dataExt.flickerTime += delta * (1 - r) * std::numbers::pi_v<float>;
-		}
-
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 		if (!ssNode) {
 			logger::warn("ShadowSceneNode[0] is null!");
@@ -42,14 +37,21 @@ namespace Hooks {
 			if (!name || name[0] != 'R' || name[1] != 'L')
 				continue;
 
-			auto& rt = light->light->GetLightRuntimeData(); 
+			// to avoid manipulating memory, scale acts as a free float value, in this case a flicker timer. could be any float just needs to be unsued
+			auto& scale = light->light->local.scale;
 
+			auto& rt = light->light->GetLightRuntimeData(); 
+			
+			// to avoid manipulating memory, I use the ni lights unkown value as a map key for fast lookups. 
 			auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
+
+			uint32_t seed = static_cast<uint32_t>(reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
 
 			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
 
-				//dataExt.flickerTime += delta * (1 - r) * std::numbers::pi_v<float>;
-				rt.fade = dataExt.startingFade + std::sin(dataExt.flickerTime * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
+			const auto r = getRandomFloat(-1, 1, seed);
+			scale += delta * (1 - r) * std::numbers::pi_v<float>;
+			rt.fade = dataExt.startingFade + std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
 		}
 	 }
 	

@@ -336,7 +336,7 @@ namespace UI {
         auto& rt = ssNode->GetRuntimeData();
 
 
-        for (auto& light : rt.activeShadowLights) {
+        for (auto& light : rt.activeLights) {
             if (!light) continue;
             auto lightName = light->light->name;
 
