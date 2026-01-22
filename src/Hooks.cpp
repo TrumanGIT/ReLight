@@ -179,7 +179,6 @@ namespace Hooks {
 			   logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
 			   return niAVObject;
 		   }
-
 			//auto niPointer = RE::NiPointer<RE::NiLight>(niLight);
 
 			LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);

@@ -36,7 +36,9 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
-        masterNiPointLight = LightData::createNiPointLight();
+        // create master point light. must clone it or crash idk why (post create is backgorund hook calling it
+        PointLight pl;
+        masterNiPointLight = pl.light;
 
         LightData::onKDataLoaded(); 
  

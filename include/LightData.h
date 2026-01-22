@@ -11,6 +11,23 @@
 #include "config.hpp"
 #include "random.h"
 
+
+class PointLight
+{
+public:
+	RE::NiPointer<RE::NiPointLight> light;
+
+	PointLight()
+	{
+		RE::NiPointer<RE::NiPointLight> tmp;
+		tmp.reset(RE::NiPointLight::Create());
+
+		auto* cloned = tmp->Clone();
+		light.reset(static_cast<RE::NiPointLight*>(cloned));
+	}
+};
+
+
 // extend ni point light runflickerTime data so Inverse squared lighting sees our lights otherwise darkness
 //also handy data container extention
 struct Overlay

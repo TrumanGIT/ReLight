@@ -258,8 +258,8 @@ inline RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight) {
 			return nullptr;
 	}
 
-	RE::NiCloningProcess cloningProcess;
-	auto cloneAsNiAv = niPointLight->CreateClone(cloningProcess);
+
+	auto cloneAsNiAv = niPointLight->Clone();
 	if (!cloneAsNiAv) {
 		logger::error("Failed to clone NiNode");
 		return nullptr;
