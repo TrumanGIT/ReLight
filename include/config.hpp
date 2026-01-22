@@ -5,7 +5,6 @@
 #include <filesystem>
 #include <fstream>
 #include <array>
-//#include "global.h"
 #include "logger.hpp"
 
 namespace fs = std::filesystem;
@@ -54,8 +53,6 @@ struct LightConfig {
     std::vector<std::string> flags{};             // NiPointLightRunflickerTime->data.flags
     std::vector<int> attachPath;
     uint64_t configID;
-    uint32_t seed;
-    uint32_t rngState;
 
 
     void print() {
@@ -66,7 +63,6 @@ struct LightConfig {
         logger::info(" position          : [{}, {}, {}] ", position[0], position[1], position[2]);
         logger::info(" color             : [{}, {}, {}] ", diffuseColor[0], diffuseColor[1], diffuseColor[2]);
         logger::info("configId: {}", configID);
-        logger::info("rngState: {}", rngState);
         logger::info(" flags    :");
         for (const auto& f: flags) {
             logger::info("  {}", f);
@@ -82,10 +78,6 @@ struct LightConfig {
     }
 };
 
-//struct Template {
-  //  LightConfig config;
- //   std::vector<RE::NiPointer<RE::NiPointLight>> bank;
-//};
 
 inline std::string ToUTF8(const fs::path& p) {
     auto u8 = p.u8string();

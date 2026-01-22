@@ -13,7 +13,7 @@
 
 namespace logger = SKSE::log;
 
-inline void initialize() {
+/*inline void initialize() {
      logger::info("loading forms");
    auto dataHandler = RE::TESDataHandler::GetSingleton();
    //LoadScreenLightMain (seemingly unsued, does not come through the  light gen hook so useful as a dymmy) 
@@ -21,7 +21,7 @@ inline void initialize() {
    if (!dummyLightObject) {
         logger::info("TESObjectLIGH dummyLightObject (0x00105300) not found");
     }
-}
+}*/
 
 inline void isPlayerInInteriorCell(){
 
@@ -94,7 +94,6 @@ inline bool containsAll(std::string ID,
 	}
 	return true;
 }
-
 
 //TODO:: Log set values for debugging (saved me alot of flickerTime with users) 
 inline void iniParser()
@@ -258,7 +257,6 @@ inline RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight) {
 			return nullptr;
 	}
 
-
 	auto cloneAsNiAv = niPointLight->Clone();
 	if (!cloneAsNiAv) {
 		logger::error("Failed to clone NiNode");
@@ -267,10 +265,8 @@ inline RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight) {
 
 	auto niPointLightClone = netimmerse_cast<RE::NiPointLight*>(cloneAsNiAv);
 
-	// Successfully cloned node
 	return niPointLightClone;
 }
-
 
 inline void glowOrbRemover(RE::NiNode* node)
 {
@@ -370,90 +366,6 @@ inline std::string findPriorityMatch(const std::string& nodeName)
 	return ""; // no match
 }
 
-//we clone and store NIpointLight nodes in bank (not anymore)
-/*inline RE::NiPointer<RE::NiPointLight> getNextNodeFromBank(const std::string& nodeName)
-{
-//	logger::debug("test get next node from bank");
-	for (auto& [name, temp] : nodeNameToJsonCfg) {
-
-		auto& bank = temp.bank;
-
-		if (nodeName.find(name) == std::string::npos)
-			continue;
-
-		logger::debug("node name found in a config ");
-
-		if (bank.empty()) {
-			logger::warn("getNextNodeFromBank: '{}' has no nodes available", nodeName);
-			return nullptr;
-		}
-
-		static std::unordered_map<std::string, std::size_t> counters;
-		auto& count = counters[nodeName];
-
-		if (count >= bank.size())
-			count = 0;
-
-		RE::NiPointer<RE::NiPointLight> obj = bank[count];
-		if (!obj) {
-			logger::warn("getNextNodeFromBank: '{}' index {} is null", nodeName, count);
-			return nullptr;
-		}
-
-		logger::debug("got Next Node From Bank for node '{}' count {}", nodeName, count);
-
-		count++;
-		return obj;
-	}
-
-	logger::warn("getNextNodeFromBank: '{}' no matching LightConfig found", nodeName);
-	return nullptr;
-}
-
-// torches need special placement of light so they dont light up when not equipped. 
-inline bool TorchHandler(const std::string& nodeName, RE::NiNode* a_root)
-{
-	if (nodeName == "torch") {
-		RE::NiNode* attachLight = nullptr;
-		RE::NiNode* torchFire = nullptr;
-
-		// must null check everything or crash city. 
-
-		for (auto& child : a_root->GetChildren()) {
-			if (!child) continue; // 
-			auto childNode = child->AsNode();
-			if (childNode && childNode->name == "TorchFire") {
-				torchFire = childNode;
-				break;
-			}
-		}
-
-		if (torchFire) {
-			for (auto& child : torchFire->GetChildren()) {
-				if (!child) continue;
-				auto childNode = child->AsNode();
-				if (childNode && childNode->name == "AttachLight") {
-					attachLight = childNode;
-					break;
-				}
-			}
-		}
-
-		if (attachLight) {
-			RE::NiPointer<RE::NiAVObject> nodePtr = getNextNodeFromBank("torch");
-			if (nodePtr) {
-				attachLight->AttachChild(nodePtr.get());
-				// logger::info("attached light to torch at specific spot {}", nodeName);
-				return true;
-			}
-		}
-		else {
-			logger::warn("hand held torch light placement failed for {}", nodeName);
-		}
-	}
-	return false;
-}
-
 //TODO:: Reimplement
 
 inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
@@ -481,7 +393,7 @@ inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<R
 	return true;
 }
 // some nodes are called scene root this is to take care of them. 
-inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, const std::string& nodeName)
+/*inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, const std::string& nodeName)
 {
 	// Skip if nodeName does not contain "scene"
 	if (nodeName.find("scene") == std::string::npos)

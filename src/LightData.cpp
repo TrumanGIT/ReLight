@@ -1,4 +1,4 @@
-#pragma once
+
 #include <cstdint>
 #include "global.h"
 #include "logger.hpp"
@@ -9,11 +9,9 @@
 #include <string>
 #include <vector>
 
-
- std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
-							
+// Members (config to json id is for faster lookups, used in flicker logic) 
+std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
 std::map<std::string, LightConfig> LightData::nodeNameToJsonCfg;
-
 // at runflickerTime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<std::string, LightConfig> LightData::defaultConfigs; 
 
@@ -67,17 +65,6 @@ parseLightFlags(const T& obj)
 	return flags;
 }*/
 
-// create ni point light and wrap in ni pointer for safe keeping
-RE::NiPointer<RE::NiPointLight> LightData::createNiPointLight() {
-	auto* niPointLight = RE::NiPointLight::Create();
-	if (!niPointLight) {
-		logger::info("nipoint light creation failed");
-		return nullptr; 
-	}
-
-	return RE::NiPointer<RE::NiPointLight>(niPointLight);
-}
-
 RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
 {
 	return RE::NiPoint3(cfg.radius, cfg.radius, cfg.radius);
@@ -104,24 +91,30 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, cons
 
 void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig& cfg)
 {
-	if (!niPointLight) return;
+	if (!niPointLight) {
+		logger::warn("nullptr passed to set ni point light ambient and diffuse");
+		return;
+	}
 	niPointLight->local.translate.x = cfg.position[0];
 	niPointLight->local.translate.y = cfg.position[1];
 	niPointLight->local.translate.z = cfg.position[2];
 }
 
 
-//not used
+/*not used
 void LightData::setRelightFlag(RE::TESObjectLIGH* ligh)
 {
-	if (!ligh) return;
+	if (!ligh) {
+		logger::warn("nullptr passed to set ni point light ambient and diffuse");
+		return;
+	}
 
 	auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
 	*rawPtr |= (1u << 15); // set 15th bit (an unused flag to identify our lights like ISL) 
-}
+}*/
 
 
-void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName) {
+void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg,const std::string& lightName) {
 
 
 	if (!niPointLight) {
@@ -169,7 +162,6 @@ void LightData::attachLightUsingAttachPath(
 		current = children[index].get();
 	}
 
-	// Final attach
 	auto* finalNode = current->AsNode();
 	if (!finalNode) {
 		logger::warn("attachLightUsingAttachPath: final target is not a NiNode");
@@ -183,32 +175,34 @@ void LightData::attachLightUsingAttachPath(
 	finalNode->AttachChild(light);
 }
 
-void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName) {
+void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const std::string& lightName) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
 	}
 	auto& data = niPointLight->GetLightRuntimeData();
 
-	logger::info(" Setting Light Data for {} from Configs", cfg.nodeName);
+	logger::debug(" Setting Light Data for {} from Configs", cfg.nodeName);
 
 	data.fade = cfg.fade;
 	data.radius = getNiPointLightRadius(cfg);
 
-	logger::info(" radius set to: {} ", cfg.radius);
-	logger::info(" fade set to: {} ", cfg.fade);
+	logger::debug(" radius set to: {} ", cfg.radius);
+	logger::debug(" fade set to: {} ", cfg.fade);
 
 	setNiPointLightPos(niPointLight, cfg);
 
-	logger::info(" position set to: x:{} y:{} z:{} ", cfg.position[0], cfg.position[1], cfg.position[2]);
+	logger::debug(" position set to: x:{} y:{} z:{} ", cfg.position[0], cfg.position[1], cfg.position[2]);
 
 	setNiPointLightAmbientAndDiffuse(niPointLight, cfg);
 
-	logger::info(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
+	logger::debug(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
 
-		if (islInstalled) setOverlayData(niPointLight, cfg, lightName); 
 
-		data.unk138 = cfg.configID;
+	data.unk138 = cfg.configID;
+
+	if (islInstalled) setOverlayData(niPointLight, cfg, lightName); 
+
 }
 
 /*void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
@@ -385,6 +379,8 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg.flickerIntensity = dataExt.flickerIntensity;
 	cfg.flickersPerSecond = dataExt.flickersPerSecond;
 
+	if (!islInstalled) return;
+
 	if (auto* overlay = Overlay::Get(niLight)) {
 		cfg.size = overlay->size;
 		cfg.cutoffOverride = overlay->cutoffOverride;
@@ -393,7 +389,6 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 
 // used to reinitiate lights that were cleaned by the engine
 // only when transitioning from exteiror to interior or vice versa
-// only reinitializes lights that need it, vanilla optimizes for us by letting it cull lights when it wants to
 RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* event,
 	RE::BSTEventSource<RE::BGSActorCellEvent>*) {
 
@@ -452,7 +447,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 	return RE::BSEventNotifyControl::kContinue;
 }
 
-void LightData::onKDataLoaded()
+void LightData::registerEventSink()
 {
 	if (auto* player = RE::PlayerCharacter::GetSingleton()) {
 		player->AsBGSActorCellEventSource()->AddEventSink(LightData::GetSingleton());

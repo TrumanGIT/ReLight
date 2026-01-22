@@ -49,6 +49,7 @@ namespace Hooks {
 
 			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
 
+			// the 1st 2 args of get random float can change up the rng randomness if desired could make a variable
 			const auto r = getRandomFloat(-1, 1, seed);
 			scale += delta * (1 - r) * std::numbers::pi_v<float>;
 			rt.fade = dataExt.startingFade + std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
@@ -61,8 +62,6 @@ namespace Hooks {
 		func = REL::Relocation<std::uintptr_t>(RE::PlayerCharacter::VTABLE[0])
 			.write_vfunc(0xAD, thunk);
 	}
-
-	static bool firstUpdate = true;
 
 
 	//Po3's hook (disable vanilla lights for a clean base to start with) 
@@ -109,7 +108,6 @@ namespace Hooks {
 	//your bs lights will reflect your ni point light position. any earlier and they spwan at cell origin
 	RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 	{
-
 		if (!a_this) {
 			logger::warn("Load3D called with null a_this");
 			return func(a_this, a_backgroundLoading);
@@ -139,14 +137,14 @@ namespace Hooks {
 		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos*/) {
 		//	logger::debug("Load3D() matched node name: {}", nodeName);
 
+			if (isExclude(nodeName, a_root)) return niAVObject;
+
 			auto ui = RE::UI::GetSingleton();
 
 			if (ui && ui->IsMenuOpen("InventoryMenu")) {
 				//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
 				return niAVObject;
 			}
-
-			if (isExclude(nodeName, a_root)) return niAVObject;
 
 			const auto baseObject = a_this->GetBaseObject(); 
 
@@ -164,10 +162,7 @@ namespace Hooks {
 			if (removeFakeGlowOrbs)
 				glowOrbRemover(a_root);
 
-		//	if (TorchHandler(nodeName, a_root))
-			//	return niAVObject;
-
-			//TO DO:: need a new way to handle nordic meshes bc we cant iterate through a nif template like with mlo2
+			//TO DO:: need a way to add more then 1 light
 		   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 				return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
 		
@@ -179,7 +174,6 @@ namespace Hooks {
 			   logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
 			   return niAVObject;
 		   }
-			//auto niPointer = RE::NiPointer<RE::NiLight>(niLight);
 
 			LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
 

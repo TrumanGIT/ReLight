@@ -155,6 +155,7 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 }
 
 // ini parser already filled the users desired, priority nodes, so these ones have no priority
+// doesnet actually sort file path or node name atm.
 void sortFilePathOrNodeName(const LightConfig& cfg) {
     // add to priority list if a node name
 
@@ -183,11 +184,7 @@ void parseTemplates() {
         loadConfiguration(cfg, p);
         cfg.configPath = p;
         cfg.configID = nextID++;
-        cfg.seed = cfg.seed = static_cast<uint32_t>(std::hash<std::string>{}(cfg.nodeName)); cfg.print();
-        cfg.rngState = cfg.seed ? cfg.seed : 1;
         cfg.startingFade = cfg.fade;
-       // Template temp;
-      //  temp.config = std::move(cfg);
         sortFilePathOrNodeName(cfg);
         LightData::configIDToJsonCfg[cfg.configID] = cfg;
         LightData::defaultConfigs[cfg.nodeName] = cfg;

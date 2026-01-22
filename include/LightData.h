@@ -11,10 +11,8 @@
 #include "config.hpp"
 #include "random.h"
 
-
-class PointLight
+struct PointLight
 {
-public:
 	RE::NiPointer<RE::NiPointLight> light;
 
 	PointLight()
@@ -32,7 +30,7 @@ public:
 //also handy data container extention
 struct Overlay
 {
-	std::uint32_t flags;       // I dont think we need this but idk can ignore for now
+	std::uint32_t flags;       // this is needeed for linear lighting, must apply the flag
 	float         cutoffOverride;//ISL need for isl from config
 	RE::FormID    lighFormId; // ISL dont need
 	RE::NiColor   diffuse;
@@ -48,27 +46,6 @@ struct Overlay
 	}
 };
 
-//the engine func to attach lights to obejects
-inline RE::NiLight* CallGenDynamic(
-	RE::TESObjectLIGH* light,
-	RE::TESObjectREFR* ref,
-	RE::NiNode* node,
-	bool forceDynamic,
-	bool useLightRadius,
-	bool affectRefOnly)
-{
-	using func_t = RE::NiLight* (
-		RE::TESObjectLIGH*,
-		RE::TESObjectREFR*,
-		RE::NiNode*,
-		bool,
-		bool,
-		bool);
-
-	static REL::Relocation<func_t> func{ RELOCATION_ID(17208, 17610) };
-	return func(light, ref, node, forceDynamic, useLightRadius, affectRefOnly);
-}
-
 struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 
 	static LightData* GetSingleton()
@@ -83,20 +60,19 @@ struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
 
 	static std::unordered_map<std::string, LightConfig> defaultConfigs;
 
-	static void onKDataLoaded();
+	static void registerEventSink();
 //	static void refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg);
 	//static void assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight);
 	static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref);
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
-	// template <class T>
+	// template <class T> 
 	// inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName);
+	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg,const std::string& lightName);
 	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
-	static  RE::NiPointer<RE::NiPointLight> createNiPointLight();
-	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg, std::string lightName);
-	static void setRelightFlag(RE::TESObjectLIGH* ligh); 
+	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg, const std::string& lightName);
+	//static void setRelightFlag(RE::TESObjectLIGH* ligh); 
 	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
 	static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
 	static bool findConfigForLight(LightConfig& cfg, const std::string& lightName);
