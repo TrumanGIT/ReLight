@@ -36,11 +36,11 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
-        // create master point light. must clone it or crash idk why (post create is backgorund hook calling it
+        // create master point light. must clone it or crash idk why
         PointLight pl;
         masterNiPointLight = pl.light;
 
-        LightData::onKDataLoaded(); 
+        LightData::registerEventSink(); 
  
         Hooks::Install();
         break;
@@ -58,7 +58,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     UI::Register();
-    // Explicitly cast to the correct type
    hasInverseSquareLighting();
     return true;
 }

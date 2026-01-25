@@ -180,17 +180,46 @@ void parseTemplates() {
 
     for (const auto& p : paths) {
         logger::info(" reading.. {}", p);
-        LightConfig cfg;
-        loadConfiguration(cfg, p);
-        cfg.configPath = p;
-        cfg.configID = nextID++;
-        cfg.startingFade = cfg.fade;
-        sortFilePathOrNodeName(cfg);
-        LightData::configIDToJsonCfg[cfg.configID] = cfg;
-        LightData::defaultConfigs[cfg.nodeName] = cfg;
-        LightData::nodeNameToJsonCfg[cfg.nodeName] = std::move(cfg);
+
+        std::ifstream configFile(p);
+        if (!configFile.is_open()) {
+            logger::error("Failed to open config file: {}", p);
+            continue;
+        }
+
+        std::string raw((std::istreambuf_iterator<char>(configFile)), std::istreambuf_iterator<char>());
+        json data = json::parse(raw, nullptr, true, true);
+
+        // Determine node names
+        std::vector<std::string> nodeNames;
+        if (data.contains("nodeName")) {
+            if (data["nodeName"].is_string()) {
+                nodeNames.push_back(data["nodeName"].get<std::string>());
+            }
+            else if (data["nodeName"].is_array()) {
+                nodeNames = data["nodeName"].get<std::vector<std::string>>();
+            }
+        }
+
+        // Create a LightConfig for each node name
+        for (const auto& nodeName : nodeNames) {
+            LightConfig cfg;
+            loadConfiguration(cfg, p); 
+            cfg.configPath = p;
+            cfg.configID = nextID++;
+            cfg.startingFade = cfg.fade;
+            cfg.nodeName = nodeName;
+
+            sortFilePathOrNodeName(cfg);
+
+            LightData::configIDToJsonCfg[cfg.configID] = cfg;
+            LightData::defaultConfigs[cfg.nodeName] = cfg;
+            LightData::nodeNameToJsonCfg[cfg.nodeName] = std::move(cfg);
+        }
     }
 }
+
+
 
 LightConfig findConfigForNode(const std::string& nodeName)
 {

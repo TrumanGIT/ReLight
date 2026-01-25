@@ -54,6 +54,32 @@ namespace Hooks {
 			scale += delta * (1 - r) * std::numbers::pi_v<float>;
 			rt.fade = dataExt.startingFade + std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
 		}
+		
+		for (auto& light : ssRt.activeShadowLights) {
+			if (!light) continue;
+
+			//Check if Relight light by prefix "RL"
+			const char* name = light->light->name.c_str();
+			if (!name || name[0] != 'R' || name[1] != 'L')
+				continue;
+
+			// to avoid manipulating memory, scale acts as a free float value, in this case a flicker timer. could be any float just needs to be unsued
+			auto& scale = light->light->local.scale;
+
+			auto& rt = light->light->GetLightRuntimeData();
+
+			// to avoid manipulating memory, I use the ni lights unkown value as a map key for fast lookups. 
+			auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
+
+			uint32_t seed = static_cast<uint32_t>(reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
+
+			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
+
+			// the 1st 2 args of get random float can change up the rng randomness if desired could make a variable
+			const auto r = getRandomFloat(-1, 1, seed);
+			scale += delta * (1 - r) * std::numbers::pi_v<float>;
+			rt.fade = dataExt.startingFade + std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
+		}
 	 }
 	
 	 void PlayerCharacter_Update::Install()
