@@ -10,11 +10,10 @@
 #include "ClibUtil/EditorID.hpp"
 #include "config.hpp"
 #include "random.h"
+#include "global.h"
 
 struct PointLight
 {
-	
-
 	PointLight()
 	{
 		RE::NiPointer<RE::NiPointLight> tmp;
