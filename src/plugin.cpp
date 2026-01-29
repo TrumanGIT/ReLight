@@ -15,9 +15,9 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     {
         break;
     }
-    case SKSE::MessagingInterface::kSaveGame: 
+    case SKSE::MessagingInterface::kSaveGame:
     {
-		break;
+        break;
     }
     case SKSE::MessagingInterface::kPreLoadGame:
     {
@@ -25,13 +25,13 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kPostLoadGame:
     {
-      //  isPlayerInInteriorCell(); 
-       
+        isPlayerInInteriorCell();
+
         break;
     }
     case SKSE::MessagingInterface::kNewGame:
     {
-    //    isPlayerInInteriorCell();
+        isPlayerInInteriorCell();
         break;
     }
     case SKSE::MessagingInterface::kDataLoaded:
@@ -39,23 +39,24 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         // create master point light. must clone it or crash idk why
         PointLight pl;
 
-     //   LightData::registerEventSink(); 
- 
-       // Hooks::Install();
+        LightData::registerEventSink();
+
+        Hooks::Install();
         break;
     }
     default:
         break;
     }
+}
 
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
     setupLog(spdlog::level::info);
     logger::info("Relight Plugin is Loaded");
- //   iniParser();
-//    parseTemplates();
+    iniParser();
+    parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
-   // UI::Register();
- //  hasInverseSquareLighting();
+    UI::Register();
+   hasInverseSquareLighting();
     return true;
 }
