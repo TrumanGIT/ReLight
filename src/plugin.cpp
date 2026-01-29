@@ -38,7 +38,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     {
         // create master point light. must clone it or crash idk why
         PointLight pl;
-        masterNiPointLight = pl.light;
 
         LightData::registerEventSink(); 
  
@@ -48,7 +47,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     default:
         break;
     }
-}
 
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
