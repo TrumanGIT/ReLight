@@ -13,7 +13,7 @@
 
 struct PointLight
 {
-	RE::NiPointer<RE::NiPointLight> light;
+	
 
 	PointLight()
 	{
@@ -21,7 +21,7 @@ struct PointLight
 		tmp.reset(RE::NiPointLight::Create());
 
 		auto* cloned = tmp->Clone();
-		light.reset(static_cast<RE::NiPointLight*>(cloned));
+		masterNiPointLight.reset(static_cast<RE::NiPointLight*>(cloned));
 	}
 };
 
