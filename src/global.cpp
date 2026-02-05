@@ -1,4 +1,4 @@
-#include "global.h"
+/*#include "global.h"
 #include <map>
 #include <array>
 #include <string>
@@ -13,8 +13,7 @@ bool removeFakeGlowOrbs = true;
 
 int loggingLevel = 2; // default to info
 
-RE::FormID soulCairnFormID = 0x2001408;
-RE::FormID apocryphaFormID = 0x0401C0B2; 
+
 
 std::vector<std::string> whitelist; // to whitelist light refs from mods by plugin name
 
@@ -24,8 +23,6 @@ std::vector<std::string> exclusionListPartialMatch;
 
 std::vector<std::string> priorityList;
 
-RE::NiPointer<RE::NiPointLight> masterNiPointLight = nullptr; 
-
 RE::TESObjectLIGH* dummyLightObject = nullptr;
 
 std::unordered_set<RE::FormID> baseFormsWithAttachedLights;
@@ -33,7 +30,7 @@ std::unordered_set<RE::FormID> baseFormsWithAttachedLights;
 bool lastCellWasInterior;
 
  bool islInstalled;
-
+ */
 
 // nodeName (lowercased) -> template mesh path
 //std::unordered_map<std::string, std::string>

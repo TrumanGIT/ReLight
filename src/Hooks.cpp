@@ -154,14 +154,14 @@ namespace Hooks {
 		}
 
 		// grab name of NiNode (usually 1:1 with mesh names)
-		std::string nodeName = a_root->name.c_str();
-		toLower(nodeName);
-
+	
 		// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
-		auto match = findPriorityMatch(nodeName);
+		const auto match = findPriorityMatch(a_root->name);
 
 		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos*/) {
 		//	logger::debug("Load3D() matched node name: {}", nodeName);
+
+			const std::string nodeName = match.c_str();
 
 			if (isExclude(nodeName, a_root)) return niAVObject;
 
@@ -177,7 +177,7 @@ namespace Hooks {
 			const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
 
 			if (baseFormID != 0) {
-				baseFormsWithAttachedLights.emplace(baseFormID);
+				globals::baseFormsWithAttachedLights.emplace(baseFormID);
 				logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName, baseFormID);
 			}
 				
@@ -185,16 +185,16 @@ namespace Hooks {
 			 // if (handleSceneRoot(a_nifPath, a_root, nodeName))
 			  //    return niAVObject;
 
-			if (removeFakeGlowOrbs)
+			if (globals::removeFakeGlowOrbs)
 				glowOrbRemover(a_root);
 
 			//TO DO:: need a way to add more then 1 light
 		   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 				return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
 		
-	       LightConfig cfg = findConfigForNode(match);
+	       LightConfig cfg = findConfigForNode(nodeName);
 
-		   auto cloneLight =  cloneNiPointLight(masterNiPointLight.get());
+		   auto cloneLight =  cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
 		   if (!cloneLight) {
 			   logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);

@@ -14,13 +14,21 @@
 
 struct PointLight
 {
+	RE::NiPointer<RE::NiPointLight> node;
 	PointLight()
 	{
 		RE::NiPointer<RE::NiPointLight> tmp;
 		tmp.reset(RE::NiPointLight::Create());
 
 		auto* cloned = tmp->Clone();
-		masterNiPointLight.reset(static_cast<RE::NiPointLight*>(cloned));
+		node.reset(netimmerse_cast<RE::NiPointLight*>(cloned));
+	}
+
+	static PointLight& getMasterPointLight() {
+		static PointLight pl; 
+
+		return pl;
+
 	}
 };
 
@@ -45,7 +53,7 @@ struct Overlay
 	}
 };
 
-struct LightData : public RE::BSTEventSink<RE::BGSActorCellEvent> {
+struct LightData : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
 	static LightData* GetSingleton()
 	{

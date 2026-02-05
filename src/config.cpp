@@ -165,11 +165,13 @@ void sortFilePathOrNodeName(const LightConfig& cfg) {
    //     meshFilePaths.push_back(cfg.nodeName);
     //}
 
-    if (std::find(priorityList.begin(),
-        priorityList.end(),
-        cfg.nodeName) == priorityList.end())
+    RE::BSFixedString nodeNameBS(cfg.nodeName.c_str());
+
+    if (std::find(globals::priorityList.begin(),
+        globals::priorityList.end(),
+        nodeNameBS) == globals::priorityList.end())
     {
-        priorityList.push_back(cfg.nodeName);
+        globals::priorityList.push_back(nodeNameBS);
     }
 }
 
@@ -218,8 +220,6 @@ void parseTemplates() {
         }
     }
 }
-
-
 
 LightConfig findConfigForNode(const std::string& nodeName)
 {

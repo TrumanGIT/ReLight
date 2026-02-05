@@ -9,6 +9,7 @@
 #include "LightData.h"
 
 
+
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     switch (msg->type) {
     case SKSE::MessagingInterface::kPostLoad:
@@ -37,11 +38,9 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     case SKSE::MessagingInterface::kDataLoaded:
     {
         // create master point light. must clone it or crash idk why
-        PointLight pl;
-
-        //LightData::registerEventSink();
-
-       // Hooks::Install();
+        PointLight::getMasterPointLight();
+        LightData::registerEventSink();
+        Hooks::Install();
         break;
     }
     default:
@@ -53,10 +52,10 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
     setupLog(spdlog::level::info);
     logger::info("Relight Plugin is Loaded");
-  //  iniParser();
-   // parseTemplates();
+    iniParser();
+    parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
-  //  UI::Register();
-   //hasInverseSquareLighting();
+    UI::Register();
+   hasInverseSquareLighting();
     return true;
 }

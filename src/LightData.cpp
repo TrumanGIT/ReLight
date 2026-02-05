@@ -39,7 +39,7 @@ bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
 	std::string edid = clib_util::editorID::get_editorID(light);
 
 	if (!edid.empty()) {
-		for (const auto& group : keywordLightGroups) {
+		for (const auto& group : globals::keywordLightGroups) {
 			if (containsAll(edid, group)) {
 				logger::info("Excluding light by editorID: {}", edid);
 				return true;
@@ -201,7 +201,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	data.unk138 = cfg.configID;
 
-	if (islInstalled) setOverlayData(niPointLight, cfg, lightName); 
+	if (globals::islInstalled) setOverlayData(niPointLight, cfg, lightName);
 
 }
 
@@ -379,7 +379,7 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg.flickerIntensity = dataExt.flickerIntensity;
 	cfg.flickersPerSecond = dataExt.flickersPerSecond;
 
-	if (!islInstalled) return;
+	if (!globals::islInstalled) return;
 
 	if (auto* overlay = Overlay::Get(niLight)) {
 		cfg.size = overlay->size;
@@ -409,7 +409,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 	const bool currentCellIsInterior = cell->IsInteriorCell();
 
-	if (lastCellWasInterior != currentCellIsInterior) {
+	if (globals::lastCellWasInterior != currentCellIsInterior) {
 		logger::info("player moved from exteiror to interior, or vice versa, reattaching lights");
 
 		RE::TES::GetSingleton()->ForEachReferenceInRange(player, 20272, [](RE::TESObjectREFR* ref) {
@@ -422,7 +422,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 			if (baseFormID == 0) return RE::BSContainer::ForEachResult::kContinue;
 
-			for (const auto& formID : baseFormsWithAttachedLights) {
+			for (const auto& formID : globals::baseFormsWithAttachedLights) {
 
 				//logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
 
@@ -442,7 +442,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 		});
 	}
 
-	lastCellWasInterior = currentCellIsInterior;
+	globals::lastCellWasInterior = currentCellIsInterior;
 
 	return RE::BSEventNotifyControl::kContinue;
 }

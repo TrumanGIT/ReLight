@@ -42,39 +42,39 @@ namespace UI {
 
         ImGuiMCP::Separator();
 
-        ImGuiMCP::Checkbox("Disable Shadow Casters", (bool*)&disableShadowCasters);
+        ImGuiMCP::Checkbox("Disable Shadow Casters", (bool*)&globals::disableShadowCasters);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove shadow-casting from lights");
 
-        ImGuiMCP::Checkbox("Disable Torch Lights", &disableTorchLights);
+        ImGuiMCP::Checkbox("Disable Torch Lights", &globals::disableTorchLights);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Turn off all torch-type lights");
 
-        ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &removeFakeGlowOrbs);
+        ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &globals::removeFakeGlowOrbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
 
         ImGuiMCP::Separator();
 
-        ImGuiMCP::SliderInt("Logging Level", &loggingLevel, 0, 3);
+        ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Logging Level (0: critical, 1: warnings/errors, 2: info)");
 
         ImGuiMCP::Separator();
 
         if (ImGuiMCP::CollapsingHeader("Whitelist (by plugin name)")) {
-            for (auto& entry : whitelist)
+            for (auto& entry : globals::whitelist)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
 
         if (ImGuiMCP::CollapsingHeader("Priority Nodes")) {
-            for (auto& entry : priorityList)
+            for (auto& entry : globals::priorityList)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
 
         if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Exact)")) {
-            for (auto& entry : exclusionList)
+            for (auto& entry : globals::exclusionList)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
 
         if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Partial Match)")) {
-            for (auto& entry : exclusionListPartialMatch)
+            for (auto& entry : globals::exclusionListPartialMatch)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
     }
@@ -194,7 +194,7 @@ namespace UI {
 
 
            //TODO:: add 'starting radius' so it doesnt fight skse menu when ISL is enabled
-                if (!islInstalled) {
+                if (!globals::islInstalled) {
                     if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
@@ -292,7 +292,7 @@ namespace UI {
                 }
 
                 // ISL sliders
-                if (islInstalled) {
+                if (globals::islInstalled) {
                     if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
@@ -335,7 +335,6 @@ namespace UI {
                         }
                     }   
                 }
-
             }
         }
     }
@@ -353,33 +352,33 @@ namespace UI {
 
         outFile << "; ReLight INI\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info)\n";
-        outFile << "loggingLevel=" << loggingLevel << "\n\n";
+        outFile << "loggingLevel=" << globals::loggingLevel << "\n\n";
 
         outFile << "; disable light references for carryable torches(default = true)\n";
-        outFile << "disableTorchLights=" << (disableTorchLights ? "true" : "false") << "\n\n";
+        outFile << "disableTorchLights=" << (globals::disableTorchLights ? "true" : "false") << "\n\n";
 
         outFile << "; remove fake glow orbs (default = true)\n";
-        outFile << "removeFakeGlowOrbs=" << (removeFakeGlowOrbs ? "true" : "false") << "\n\n";
+        outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
 
         outFile << "; add esps by name to undisable their lights (usually not needed)\n";
         outFile << "whitelist=";
-        for (size_t i = 0; i < whitelist.size(); i++) {
-            outFile << whitelist[i];
-            if (i + 1 < whitelist.size()) outFile << ",";
+        for (size_t i = 0; i < globals::whitelist.size(); i++) {
+            outFile << globals::whitelist[i];
+            if (i + 1 < globals::whitelist.size()) outFile << ",";
         }
         outFile << "\n\n";
 
         outFile << "; exclude specific nodes\n";
-        for (auto& node : exclusionList)
+        for (auto& node : globals::exclusionList)
             outFile << node << "\n";
 
         outFile << "\n; exclude partial nodes\n";
-        for (auto& node : exclusionListPartialMatch)
+        for (auto& node : globals::exclusionListPartialMatch)
             outFile << node << "\n";
 
         outFile << "\n; priority list (higher = first match. Usefull for candlechandelier ect to get correct lighting)\n";
-        for (auto& node : priorityList)
-            outFile << node << "\n";
+        for (auto& node : globals::priorityList)
+            outFile << node.c_str() << "\n";
 
         outFile.close();
         logger::info("ReLight.ini saved successfully!");
@@ -511,7 +510,7 @@ namespace UI {
 
                 light->light->local.translate = selectedLight->local.translate;
 
-                if (!islInstalled) continue;
+                if (!globals::islInstalled) continue;
 
                 if (auto* isl = Overlay::Get(light->light.get())) {
                     isl->cutoffOverride = defaultCfg.cutoffOverride;
@@ -529,7 +528,7 @@ namespace UI {
 
                 light->light->local.translate = selectedLight->local.translate;
 
-                if (!islInstalled) continue;
+                if (!globals::islInstalled) continue;
 
                 if (auto* isl = Overlay::Get(light->light.get())) {
                     isl->cutoffOverride = defaultCfg.cutoffOverride;

@@ -2,47 +2,39 @@
 #include <unordered_set>
 #include <unordered_map>
 #include "config.hpp"
+#include <vector>
+#include <string>
 
+namespace globals
+{
+    inline bool disableShadowCasters = false;
+    inline bool disableTorchLights = false;
+    inline bool removeFakeGlowOrbs = false;
 
-extern bool disableShadowCasters;
-extern bool disableTorchLights;
-extern bool removeFakeGlowOrbs;
+    inline bool lastCellWasInterior = false;
+    inline bool islInstalled = false;
 
-extern int loggingLevel;
+    inline RE::BSFixedString EMPTY_BSSTRING; 
 
-extern RE::FormID soulCairnFormID;
+    inline int loggingLevel = 0;
 
-extern RE::FormID apocryphaFormID;
+    inline std::vector<std::string> whitelist{};
+    inline std::vector<std::string> exclusionList{};
+    inline std::vector<std::string> exclusionListPartialMatch{};
+    inline std::vector<RE::BSFixedString> priorityList{};
 
-extern std::vector<std::string> whitelist;
+    inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
+    inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
 
-extern std::vector<std::string> exclusionList;
+    inline RE::TESObjectLIGH* dummyLightObject = nullptr;
 
-extern std::vector<std::string> exclusionListPartialMatch;
+    inline const std::vector<std::vector<std::string_view>> keywordLightGroups = {
+        { "sun", "light" },   // both must be present
+        { "window" },
+        { "loadscreen" },
+        { "magic" },
+        { "fog" },
+        { "loadscreenlightmain" }
+    };
 
-extern std::unordered_set<RE::FormID> excludedLightFormIDs;
-
-extern std::vector<std::string> priorityList;
-
-extern RE::NiPointer<RE::NiPointLight> masterNiPointLight;
-
-static const std::vector<std::vector<std::string_view>> keywordLightGroups = {
-    {"sun", "light"},   // both must be present
-    {"window"},
-    {"loadscreen"},
-    {"magic"},
-    {"fog"},
-    {"loadscreenlightmain"}
-};
-
-extern RE::TESObjectLIGH* dummyLightObject; 
-
-extern std::unordered_set<RE::FormID> baseFormsWithAttachedLights;
-
-extern bool lastCellWasInterior;
-
-extern bool islInstalled;
-
-
-
-
+}

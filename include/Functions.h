@@ -37,8 +37,8 @@ if (!playerCell) {
 	return; // or set default: lastCellWasInterior = false;
 }
 
-lastCellWasInterior = playerCell->IsInteriorCell();
-logger::info("Initialized lastCellWasInterior to {}", lastCellWasInterior); 
+globals::lastCellWasInterior = playerCell->IsInteriorCell();
+logger::info("Initialized lastCellWasInterior to {}", globals::lastCellWasInterior);
 }
 
 inline std::string removePrefix(const std::string& str, const std::string& prefix)
@@ -140,19 +140,19 @@ inline void iniParser()
 		{
 		case exact:
 			toLower(line);
-			exclusionList.push_back(line);
+			globals::exclusionList.push_back(line);
 			logger::info("Added exact exclude: {}", line);
 			continue;
 
 		case partial:
 			toLower(line);
-			exclusionListPartialMatch.push_back(line);
+			globals::exclusionListPartialMatch.push_back(line);
 			logger::info("Added partial exclude: {}", line);
 			continue;
 
 		case priority:
 			 toLower(line);
-			priorityList.push_back(line);
+			 globals::priorityList.push_back(line);
 			logger::info("Added priority node: {}", line);
 			continue;
 
@@ -178,26 +178,26 @@ inline void iniParser()
 			};
 
 		if (key == "disabletorchlights") {
-			disableTorchLights = parseBool(vLow);
+			globals::disableTorchLights = parseBool(vLow);
 			continue;
 		}
 
 		if (key == "removefakegloworbs") {
-			removeFakeGlowOrbs = parseBool(vLow);
+			globals::removeFakeGlowOrbs = parseBool(vLow);
 			continue;
 		}
 
 		if (key == "whitelist") {
-			splitString(value, ',', whitelist);
+			splitString(value, ',', globals::whitelist);
 			continue;
 		}
 
 		if (key == "logginglevel") {
-			loggingLevel = std::stoi(value);
-			loggingLevel = std::clamp(loggingLevel, 0, 3);
-			logger::info("Logging level set to {}", loggingLevel);
+			globals::loggingLevel = std::stoi(value);
+			globals::loggingLevel = std::clamp(globals::loggingLevel, 0, 3);
+			logger::info("Logging level set to {}", globals::loggingLevel);
 			spdlog::level::level_enum user_level = spdlog::level::info;
-			switch (loggingLevel) {
+			switch (globals::loggingLevel) {
 				case 0:
 				{
 					user_level = spdlog::level::critical;
@@ -234,6 +234,10 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 	if (!player) {
 		return false;
 	}
+
+	static RE::FormID soulCairnFormID = 0x2001408;
+	static RE::FormID apocryphaFormID = 0x0401C0B2;
+
 	auto worldspace = player->GetWorldspace();
 	if (!worldspace) {
 		// logger::info("worldSpace not valid cant get location");
@@ -304,7 +308,7 @@ inline void glowOrbRemover(RE::NiNode* node)
 
 inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::NiNode* root)
 {
-	if (nodeName == "mpscandleflame01.nif" && removeFakeGlowOrbs) {
+	if (nodeName == "mpscandleflame01.nif" && globals::removeFakeGlowOrbs) {
 		if (!root)
 			return true;
 
@@ -327,13 +331,13 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 	}
 
 	// Exact matches in exclusion list
-	for (const auto& exclude : exclusionList) {
+	for (const auto& exclude : globals::exclusionList) {
 		if (nodeName == exclude)
 			return true;
 	}
 
 	// Partial matches in exclusion list
-	for (const auto& exclude : exclusionListPartialMatch) {
+	for (const auto& exclude : globals::exclusionListPartialMatch) {
 		if (nodeName.find(exclude) != std::string::npos)
 			return true;
 	}
@@ -351,24 +355,20 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 	return false;
 }
 
-
-inline std::string findPriorityMatch(const std::string& nodeName)
+inline const RE::BSFixedString& findPriorityMatch(const RE::BSFixedString& nodeName)
 {
-	//  Check priority list created from ini file first
-	for (const auto& nodeNameInPriorityList : priorityList) {
-
-		//	logger::debug("Checking priority list entry '{}' against '{}'", nodeNameInPriorityList, nodeName);
-		if (nodeName.find(nodeNameInPriorityList) != std::string::npos)
+	for (const auto& nodeNameInPriorityList : globals::priorityList) {
+		if (nodeName.contains(nodeNameInPriorityList))
 			return nodeNameInPriorityList;
 	}
 
-	//logger::debug("No match found for node '{}'", nodeName);
-	return ""; // no match
+	return ""; // safe, reference exists
 }
+
 
 //TODO:: Reimplement
 
-inline bool applyCorrectNordicHallTemplate(std::string nodeName, RE::NiPointer<RE::NiNode>& a_root)
+inline bool applyCorrectNordicHallTemplate(std::string nodeName)
 {
 	static const std::unordered_set<std::string> nordicHallMeshes = {
 	"norcathallsm1way01",
@@ -503,9 +503,9 @@ inline void hasInverseSquareLighting()
 	const auto path =
 		std::filesystem::path("Data/Shaders/Features/InverseSquareLighting.ini");
 
-	islInstalled = std::filesystem::exists(path);
+	globals::islInstalled = std::filesystem::exists(path);
 
-	logger::info("info isl found?: {}", islInstalled);
+	logger::info("info isl found?: {}", globals::islInstalled);
 }
 
 inline float getRandomFloat(const float& min, const float& max, uint32_t rngState)
