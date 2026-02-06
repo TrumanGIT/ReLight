@@ -20,8 +20,8 @@ namespace globals
 
     inline std::vector<std::string> meshPaths{};
     inline std::vector<std::string> whitelist{};
-    inline std::vector<std::string> exclusionList{};
-    inline std::vector<std::string> exclusionListPartialMatch{};
+    inline std::vector<RE::BSFixedString> exclusionList{};
+    inline std::vector<RE::BSFixedString> exclusionListPartialMatch{};
     inline std::vector<RE::BSFixedString> priorityList{};
 
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};

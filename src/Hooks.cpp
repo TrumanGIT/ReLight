@@ -159,8 +159,10 @@ namespace Hooks {
 		const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
 
 		if (!nodeNameMatch.empty()) {
-		//	logger::debug("Load3D() matched node name: {}", nodeName);
-			processByNodeName(a_root, nodeNameMatch, a_root->name, a_this);
+
+			if (isExclude(a_root->name, a_root)) return niAVObject;
+
+			processByNodeName(a_root, nodeNameMatch, a_this);
 			return  niAVObject;
 		}
 

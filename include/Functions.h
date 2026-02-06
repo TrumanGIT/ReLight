@@ -301,7 +301,7 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::NiNode* root)
+inline bool isExclude(const RE::BSFixedString& nodeName, /*const char* nifPath,*/ RE::NiNode* root)
 {
 	if (nodeName == "mpscandleflame01.nif" && globals::removeFakeGlowOrbs) {
 		if (!root)
@@ -333,7 +333,7 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 
 	// Partial matches in exclusion list
 	for (const auto& exclude : globals::exclusionListPartialMatch) {
-		if (nodeName.find(exclude) != std::string::npos)
+		if (nodeName.contains(exclude))
 			return true;
 	}
 
@@ -494,17 +494,10 @@ inline bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nod
 }
 
 
-inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, const RE::BSFixedString& nodeName, RE::TESObjectREFR* a_this) {
-
-	//original name
-	 std::string nodeNameStr = nodeName.c_str();
+inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this) {
 
 	 // matched name
 	 std::string matchStr = match.c_str();
-
-	toLower(nodeNameStr); 
-
-	if (isExclude(nodeNameStr, a_root)) return;
 
 	auto ui = RE::UI::GetSingleton();
 
@@ -519,7 +512,7 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match
 
 	if (baseFormID != 0) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName, baseFormID);
+		logger::debug("node: {} with baseFormID: {}  emplaced in set", matchStr, baseFormID);
 	}
 
 	//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
@@ -538,7 +531,7 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match
 	auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
 	if (!cloneLight) {
-		logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
+		logger::warn("Failed to clone NiPointLight for node '{}')", matchStr);
 		return;
 	}
 

@@ -374,11 +374,11 @@ namespace UI {
 
         outFile << "; exclude specific nodes\n";
         for (auto& node : globals::exclusionList)
-            outFile << node << "\n";
+            outFile << node.c_str() << "\n";
 
         outFile << "\n; exclude partial nodes\n";
         for (auto& node : globals::exclusionListPartialMatch)
-            outFile << node << "\n";
+            outFile << node.c_str() << "\n";
 
         outFile << "\n; priority list (higher = first match. Usefull for candlechandelier ect to get correct lighting)\n";
         for (auto& node : globals::priorityList)
