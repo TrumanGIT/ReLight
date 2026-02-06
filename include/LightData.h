@@ -26,12 +26,9 @@ struct PointLight
 
 	static PointLight& getMasterPointLight() {
 		static PointLight pl; 
-
 		return pl;
-
 	}
 };
-
 
 // extend ni point light runflickerTime data so Inverse squared lighting sees our lights otherwise darkness
 //also handy data container extention
@@ -64,6 +61,8 @@ struct LightData : RE::BSTEventSink<RE::BGSActorCellEvent> {
 	static std::map<uint64_t, LightConfig> configIDToJsonCfg;
 
 	static std::map<std::string, LightConfig> nodeNameToJsonCfg;
+
+	static std::unordered_map<std::string, LightConfig> meshPathToJsonCfg;
 
 	static std::unordered_map<std::string, LightConfig> defaultConfigs;
 

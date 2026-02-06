@@ -11,9 +11,12 @@
 
 // Members (config to json id is for faster lookups, used in flicker logic) 
 std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
+
+std::unordered_map<std::string, LightConfig> LightData::meshPathToJsonCfg;
 std::map<std::string, LightConfig> LightData::nodeNameToJsonCfg;
 // at runflickerTime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<std::string, LightConfig> LightData::defaultConfigs; 
+
 
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref)
 {
@@ -204,93 +207,6 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	if (globals::islInstalled) setOverlayData(niPointLight, cfg, lightName);
 
 }
-
-/*void LightData::assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight) {
-	logger::info("Assigning niPointLight... total groups: {}", nodeNameToJsonCfg.size());
-	
-	if (!niPointLight) {
-		logger::error("Failed to create ni point light");
-		return;
-	}
-
-	try {
-		for (auto& pair : nodeNameToJsonCfg) {
-			const std::string& nodeName = pair.first;
-			Template& temp = pair.second;
-			const LightConfig& cfg = temp.config;
-			auto& bankedNodes = temp;
-
-			if (nodeName != temp.config.nodeName) {
-				logger::error("Template node name {} do not match map key {}", nodeName, temp.config.nodeName);
-				continue;
-			}
-
-			setNiPointLightDataFromCfg(niPointLight.get(), cfg);
-
-			//I noticed over 60 candles used from bank in bannered mare, I wonder if this is true. or if we are pulling
-			// more lights then needed. should count all candles in a cell, see if matches bank count, if not then investigate
-			const size_t maxNodes = (cfg.nodeName == "candle") ? 78 : 25;
-
-			for (size_t i = 0; i < maxNodes; ++i) {
-
-				auto clonedNiPointLight = cloneNiPointLight(niPointLight.get());
-
-				if (!clonedNiPointLight) {
-					logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", nodeName, i);
-					continue;
-				}
-
-				clonedNiPointLight->name = nodeName;
-
-				RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
-
-				logger::debug("Cloned NiPointLight for node '{}' (iteration {})", nodeName, i);
-			
-				// logger::info("adding to bank. ");
-				bankedNodes.push_back(clonedNiPointLightPtr);
-				logger::debug("Added cloned light for node '{}' (iteration {})", nodeName, i);
-			}
-		}
-
-		logger::info("Finished assignClonedNodes");
-	}
-	catch (const std::exception& e) {
-		logger::error("Exception in assignNiPointLightsToBank: {}", e.what());
-		throw; // rethrow after logging
-	}
-}
-
-void LightData::refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg) {
-
-	auto& selectedTemplateNodeBank = nodeNameToJsonCfg[lightName];
-
-	auto size = selectedTemplateNodeBank.size();
-
-	selectedTemplateNodeBank.clear();
-
-	LightData::setNiPointLightDataFromCfg(masterNiPointLight.get(), cfg);
-
-	for (std::size_t i = 0; i < size; i++) {
-
-		auto clonedNiPointLight = cloneNiPointLight(masterNiPointLight.get());
-
-		if (!clonedNiPointLight) {
-			logger::error("Failed to clone NiPointLight for node '{}' (iteration {})", lightName, i);
-			continue;
-		}
-
-		clonedNiPointLight->name = lightName;
-
-		RE::NiPointer<RE::NiPointLight> clonedNiPointLightPtr(clonedNiPointLight);
-
-		logger::debug("Cloned NiPointLight for node '{}' (iteration {})", lightName, i);
-
-		// logger::info("adding to bank. ");
-		selectedTemplateNodeBank.push_back(clonedNiPointLightPtr);
-		logger::debug("Added cloned light for node '{}' (iteration {})", lightName, i);
-	}
-}
-*/
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
@@ -400,7 +316,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 	if (!player) return RE::BSEventNotifyControl::kContinue;
 
-	logger::info(" cell event fired for player");
+	logger::debug("cell event fired for player");
 
 	auto cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(event->cellID);
 	if (!cell) {
@@ -409,10 +325,16 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 	const bool currentCellIsInterior = cell->IsInteriorCell();
 
-	if (globals::lastCellWasInterior != currentCellIsInterior) {
-		logger::info("player moved from exteiror to interior, or vice versa, reattaching lights");
+	static float fLODFadeOutMultObjects; 
 
-		RE::TES::GetSingleton()->ForEachReferenceInRange(player, 20272, [](RE::TESObjectREFR* ref) {
+	getObjectFadeMult(fLODFadeOutMultObjects); 
+
+	logger::debug("Users object fade ini setting = {}", fLODFadeOutMultObjects);
+
+	if (globals::lastCellWasInterior != currentCellIsInterior) {
+		logger::debug("player moved from exteiror to interior, or vice versa, reattaching lights");
+
+		RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
 			if (!ref) return RE::BSContainer::ForEachResult::kContinue;
 

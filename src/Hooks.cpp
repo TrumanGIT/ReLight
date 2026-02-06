@@ -156,62 +156,15 @@ namespace Hooks {
 		// grab name of NiNode (usually 1:1 with mesh names)
 	
 		// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
-		const auto match = findPriorityMatch(a_root->name);
+		const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
 
-		if (!match.empty() /* || nodeName.find("nortmphallbgc") != std::string::npos || nodeName.find("norcathallsm") != std::string::npos || nodeName.find("scene") != std::string::npos*/) {
+		if (!nodeNameMatch.empty()) {
 		//	logger::debug("Load3D() matched node name: {}", nodeName);
-
-			const std::string nodeName = match.c_str();
-
-			if (isExclude(nodeName, a_root)) return niAVObject;
-
-			auto ui = RE::UI::GetSingleton();
-
-			if (ui && ui->IsMenuOpen("InventoryMenu")) {
-				//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-				return niAVObject;
-			}
-
-			const auto baseObject = a_this->GetBaseObject(); 
-
-			const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
-
-			if (baseFormID != 0) {
-				globals::baseFormsWithAttachedLights.emplace(baseFormID);
-				logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName, baseFormID);
-			}
-				
-			//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
-			 // if (handleSceneRoot(a_nifPath, a_root, nodeName))
-			  //    return niAVObject;
-
-			if (globals::removeFakeGlowOrbs)
-				glowOrbRemover(a_root);
-
-			//TO DO:: need a way to add more then 1 light
-		   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
-				return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
-		
-	       LightConfig cfg = findConfigForNode(nodeName);
-
-		   auto cloneLight =  cloneNiPointLight(PointLight::getMasterPointLight().node.get());
-
-		   if (!cloneLight) {
-			   logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
-			   return niAVObject;
-		   }
-
-			LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
-
-			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
-			cloneLight->name = "RL" + cfg.nodeName;
-
-			LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
-
-			LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
-			
-			//logger::debug("LightName: {}, created ", match);	
+			processByNodeName(a_root, nodeNameMatch, a_this);
+			return  niAVObject;
 		}
+
+		processByFilePath(a_this, a_root); 
 
 	//	dummyHandler(a_root, nodeName);
 

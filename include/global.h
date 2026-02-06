@@ -14,10 +14,11 @@ namespace globals
     inline bool lastCellWasInterior = false;
     inline bool islInstalled = false;
 
-    inline RE::BSFixedString EMPTY_BSSTRING; 
+
 
     inline int loggingLevel = 0;
 
+    inline std::vector<std::string> meshPaths{};
     inline std::vector<std::string> whitelist{};
     inline std::vector<std::string> exclusionList{};
     inline std::vector<std::string> exclusionListPartialMatch{};
@@ -25,6 +26,8 @@ namespace globals
 
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
+
+
 
     inline RE::TESObjectLIGH* dummyLightObject = nullptr;
 

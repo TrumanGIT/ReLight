@@ -48,9 +48,11 @@ struct LightConfig {
     FOREACH_FLOAT(FLOAT2DEF);
     std::string configPath{};                     // save the path from where this config is loaded
     std::string nodeName{};                       //NiPointLightRunflickerTime->data.radius
+    std::string meshPath{};
+    std::string menuName{};
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
-    std::vector<std::string> flags{};             // NiPointLightRunflickerTime->data.flags
+    std::vector<std::string> flags{};             // not used but could be for linear lighting.
     std::vector<int> attachPath;
     uint64_t configID;
 
@@ -58,11 +60,12 @@ struct LightConfig {
     void print() {
         logger::info("Path               : {}", configPath);
         logger::info(" Node name         : {}", nodeName);
+        logger::info(" Menu name         : {}", menuName);
         FOREACH_BOOL(BOOL2PRINT);
         FOREACH_FLOAT(FLOAT2PRINT);
         logger::info(" position          : [{}, {}, {}] ", position[0], position[1], position[2]);
         logger::info(" color             : [{}, {}, {}] ", diffuseColor[0], diffuseColor[1], diffuseColor[2]);
-        logger::info("configId: {}", configID);
+        logger::info(" configId: {}", configID);
         logger::info(" flags    :");
         for (const auto& f: flags) {
             logger::info("  {}", f);

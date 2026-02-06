@@ -42,12 +42,6 @@ namespace UI {
 
         ImGuiMCP::Separator();
 
-        ImGuiMCP::Checkbox("Disable Shadow Casters", (bool*)&globals::disableShadowCasters);
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove shadow-casting from lights");
-
-        ImGuiMCP::Checkbox("Disable Torch Lights", &globals::disableTorchLights);
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Turn off all torch-type lights");
-
         ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &globals::removeFakeGlowOrbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
 
@@ -173,7 +167,20 @@ namespace UI {
                 if (!light) continue;
 
                 bool selected = (i == selectedIndex);
-                if (ImGuiMCP::Selectable(light->light->name.c_str(), &selected)) {
+
+                auto lightName = removePrefix(light->light->name.c_str(), "RL");
+
+                LightConfig cfg = findConfigForNode(lightName); 
+
+                auto menuName = cfg.menuName;
+
+                logger::info("menu name = {}, Cfg name = {}", menuName, cfg.nodeName);
+
+                if (menuName.empty()) {
+                    menuName = light->light->name.c_str(); 
+                }
+
+                if (ImGuiMCP::Selectable(menuName.c_str(), &selected)) {
                     selectedIndex = i;
                 }
             }
@@ -232,6 +239,35 @@ namespace UI {
                     }
                 }
 
+                if (ImGuiMCP::SliderFloat3("Position", &selectedLight->light->local.translate.x, -250.0f, 250.0f, "%.3f")) {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                light->light->local.translate = selectedLight->light->local.translate;
+                                if (auto* parent = light->light->parent) {
+                                    RE::NiUpdateData updateData{};
+                                    updateData.time = 0.0f;
+                                    updateData.flags = RE::NiUpdateData::Flag::kDirty;
+                                    parent->UpdateTransformAndBounds(updateData);
+                                }
+                            }
+                        }
+                        for (auto& light : rt.activeShadowLights) {
+                            if (light && light->light->name == selectedLight->light->name) {
+                                light->light->local.translate = selectedLight->light->local.translate;
+                                if (auto* parent = light->light->parent) {
+                                    RE::NiUpdateData updateData{};
+                                    updateData.time = 0.0f;
+                                    updateData.flags = RE::NiUpdateData::Flag::kDirty;
+                                    parent->UpdateTransformAndBounds(updateData);
+                                }
+                            }
+                        }
+                    }
+                }
+
 
                 if (ImGuiMCP::SliderFloat("Flicker Intensity", &dataExt.flickerIntensity,
                     0.0f, 1.0f, "%.2f"))
@@ -257,35 +293,6 @@ namespace UI {
                         for (auto& light : rt.activeShadowLights) {
                             if (light && light->light->name == selectedLight->light->name) {
                                 light->light->GetLightRuntimeData().diffuse = lightData.diffuse;
-                            }
-                        }
-                    }
-                }
-
-                if (ImGuiMCP::SliderFloat3("Position", &selectedLight->light->local.translate.x, -250.0f, 250.0f, "%.3f")) {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                light->light->local.translate = selectedLight->light->local.translate;
-                                if (auto* parent = light->light->parent) {
-                                    RE::NiUpdateData updateData{};
-                                    updateData.time = 0.0f;
-                                    updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                    parent->UpdateTransformAndBounds(updateData);
-                                }
-                            }
-                        }
-                        for (auto& light : rt.activeShadowLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                light->light->local.translate = selectedLight->light->local.translate;
-                                if (auto* parent = light->light->parent) {
-                                    RE::NiUpdateData updateData{};
-                                    updateData.time = 0.0f;
-                                    updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                    parent->UpdateTransformAndBounds(updateData);
-                                }
                             }
                         }
                     }
@@ -353,9 +360,6 @@ namespace UI {
         outFile << "; ReLight INI\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info)\n";
         outFile << "loggingLevel=" << globals::loggingLevel << "\n\n";
-
-        outFile << "; disable light references for carryable torches(default = true)\n";
-        outFile << "disableTorchLights=" << (globals::disableTorchLights ? "true" : "false") << "\n\n";
 
         outFile << "; remove fake glow orbs (default = true)\n";
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";

@@ -37,6 +37,14 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
             config.nodeName = data["nodeName"].get<std::string>();
         }
 
+        if (data.contains("MeshPath")) {
+            config.meshPath = data["meshPath"].get<std::string>();
+        }
+
+        if (data.contains("menuName")) {
+            config.menuName = data["menuName"].get<std::string>();
+        }
+
         FOREACH_BOOL(BOOL2JSON_READ)
 
         FOREACH_FLOAT(FLOAT2JSON_READ)
@@ -115,6 +123,10 @@ bool saveConfiguration(const LightConfig& config, const std::string& configPath)
 
 		data["nodeName"] = config.nodeName;
 
+        data["meshPath"] = config.meshPath;
+
+        data["menuName"] = config.menuName;
+
 #define JSON_WRITE(C, I) data[#C] = config.C;
 
         FOREACH_BOOL(JSON_WRITE);
@@ -160,9 +172,10 @@ void sortFilePathOrNodeName(const LightConfig& cfg) {
     // add to priority list if a node name
 
         // add to meshfile path if contains a "/"
- //   if (cfg.nodeName.contains("/")) {
+ //   if (!cfg.meshPath.empty()) {
 
    //     meshFilePaths.push_back(cfg.nodeName);
+
     //}
 
     RE::BSFixedString nodeNameBS(cfg.nodeName.c_str());
@@ -210,10 +223,15 @@ void parseTemplates() {
             cfg.configPath = p;
             cfg.configID = nextID++;
             cfg.startingFade = cfg.fade;
-            cfg.nodeName = nodeName;
-
+            
             sortFilePathOrNodeName(cfg);
 
+            cfg.print();
+            
+            if (!cfg.meshPath.empty()) {
+                LightData::meshPathToJsonCfg[cfg.meshPath] = cfg;
+            }
+          
             LightData::configIDToJsonCfg[cfg.configID] = cfg;
             LightData::defaultConfigs[cfg.nodeName] = cfg;
             LightData::nodeNameToJsonCfg[cfg.nodeName] = std::move(cfg);

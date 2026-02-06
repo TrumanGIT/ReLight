@@ -177,11 +177,6 @@ inline void iniParser()
 			return (v == "true" || v == "1" || v == "yes");
 			};
 
-		if (key == "disabletorchlights") {
-			globals::disableTorchLights = parseBool(vLow);
-			continue;
-		}
-
 		if (key == "removefakegloworbs") {
 			globals::removeFakeGlowOrbs = parseBool(vLow);
 			continue;
@@ -355,43 +350,141 @@ inline bool isExclude(const std::string& nodeName, /*const char* nifPath,*/ RE::
 	return false;
 }
 
-inline const RE::BSFixedString& findPriorityMatch(const RE::BSFixedString& nodeName)
+inline const RE::BSFixedString findPriorityMatch(const RE::BSFixedString& nodeName)
 {
 	for (const auto& nodeNameInPriorityList : globals::priorityList) {
-		if (nodeName.contains(nodeNameInPriorityList))
+		if (nodeName.contains(nodeNameInPriorityList)) {
+			//logger::info("priority list item{} ", nodeNameInPriorityList);
 			return nodeNameInPriorityList;
+		}
 	}
 
 	return ""; // safe, reference exists
 }
 
+inline void getObjectFadeMult(float& fLODFadeOutMultObjects) {
+
+	if (auto* setting = RE::GetINISetting("fLODFadeOutMultObjects")) {
+		if (setting->GetType() == RE::Setting::Type::kFloat) {
+			fLODFadeOutMultObjects = setting->GetFloat() * 1000;
+		}
+	}
+
+}
+
+inline void processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
+
+	if (LightData::meshPathToJsonCfg.empty()) return;
+
+	const auto baseObject = a_this->GetBaseObject();
+
+	if (!baseObject) return;
+
+	const auto bm = baseObject->As<RE::TESModel>();
+	if (!bm) return;
+
+	auto currentModel = bm->GetModel();
+
+	for (const auto& [meshPath, cfg] : LightData::meshPathToJsonCfg) {
+	
+		if (meshPath != currentModel) return; 
+
+		const auto baseFormID = baseObject->GetFormID();
+
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
+		
+			logger::debug("file path match found: {}", currentModel);
+
+			auto ui = RE::UI::GetSingleton();
+
+			if (ui && ui->IsMenuOpen("InventoryMenu")) {
+				//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
+				return;
+			}
+
+			auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
+
+			if (!cloneLight) {
+				logger::warn("Failed to clone NiPointLight for mesh '{}')", currentModel);
+				return;
+			}
+
+			LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
+
+			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
+			std::string temp = "RL" + std::string(cfg.nodeName.c_str());
+			cloneLight->name = temp.c_str();
+
+			LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+
+			LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+			return;
+
+	}
+
+	
+
+	return;
+}
+
+
+inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& nodeName, RE::TESObjectREFR* a_this) {
+
+	const std::string nodeNameStr = nodeName.c_str();
+
+	if (isExclude(nodeNameStr, a_root)) return;
+
+	auto ui = RE::UI::GetSingleton();
+
+	if (ui && ui->IsMenuOpen("InventoryMenu")) {
+		//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
+		return;
+	}
+
+	const auto baseObject = a_this->GetBaseObject();
+
+	const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
+
+	if (baseFormID != 0) {
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
+		logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName, baseFormID);
+	}
+
+	//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
+	 // if (handleSceneRoot(a_nifPath, a_root, nodeName))
+	  //    return niAVObject;
+
+	if (globals::removeFakeGlowOrbs)
+		glowOrbRemover(a_root);
+
+	//TO DO:: need a way to add more then 1 light
+   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
+		return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
+
+	LightConfig cfg = findConfigForNode(nodeNameStr);
+
+	auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
+
+	if (!cloneLight) {
+		logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
+		return;
+	}
+
+	LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
+
+	/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
+	cloneLight->name = "RL" + cfg.nodeName;
+
+	LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+
+	LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+}
+
+
 
 //TODO:: Reimplement
 
-inline bool applyCorrectNordicHallTemplate(std::string nodeName)
-{
-	static const std::unordered_set<std::string> nordicHallMeshes = {
-	"norcathallsm1way01",
-	"norcathallsm1way02",
-	"norcathallsm1way03",
-	"norcathallsm2way01",
-	"norcathallsm3way01",
-	"norcathallsm3way02",
-	"norcathallsm4way01",
-	"norcathallsm4way02",
-	"nortmphallbgcolumnsm01",
-	"nortmphallbgcolumnsm02",
-	"nortmphallbgcolumn01",
-	"nortmphallbgcolumn03"
-	};
 
-	if (!nordicHallMeshes.contains(nodeName))
-		return false;
-	//TODO:: we need a way to apply multiple lights to nordic hall meshes
-//before we iterated through each node in a template wired gave us, now we only have single json objects, we will have to think of something
-
-	return true;
-}
 // some nodes are called scene root this is to take care of them. 
 /*inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, const std::string& nodeName)
 {
