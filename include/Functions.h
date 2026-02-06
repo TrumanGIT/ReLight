@@ -422,15 +422,87 @@ inline void processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 
 	}
 
-	
-
 	return;
 }
 
+// some nodes are called dummy this is to take care of them.
+inline bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nodeName, RE::NiNode* a_root)
+{
 
-inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& nodeName, RE::TESObjectREFR* a_this) {
+	if (!nodeName.contains("dummy")) return false;
 
-	const std::string nodeNameStr = nodeName.c_str();
+	logger::debug("dummy found");
+
+	static const std::unordered_map<std::string, std::string> dummyMeshPaths = {
+	{ "Clutter\\Ruins\\RuinsFloorCandleLampMidOn.nif", "ruinsfloorcandlelampmidon" },
+	{ "Clutter\\Ruins\\RuinsFloorCandleLampMidOn02.nif", "ruinsfloorcandlelampmidon" },
+	{ "Clutter\\Ruins\\RuinsFloorCandleLampSmOn.nif", "ruinsfloorcandlelampsmon" },
+	{ "Clutter\\Ruins\\RuinsFloorCandleLampSmOn02.nif", "ruinsfloorcandlelampsmon" },
+
+	{ "Clutter\\Imperial\\ImpChandellierCandle01.nif", "chandel" },
+	{ "Clutter\\Imperial\\ImpChandellierCandle01USKP.nif", "chandel" },
+
+	{ "Clutter\\Common\\CandleLanternwithCandle01.nif", "candle" },
+
+	{ "DynDOLOD\\LOD\\Clutter\\CandleLanternHandleDown_DynDOLOD_LOD.nif", "candle" },
+	{ "DynDOLOD\\LOD\\Clutter\\CandleLanternwithCandle01_DynDOLOD_LOD.nif", "candle" },
+
+	{ "DynDOLOD\\LOD\\Clutter\\ImpChandellierCandle01_DynDOLOD_LOD.nif", "chandel" },
+
+	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampMidOn_DynDOLOD_LOD.nif", "ruinsfloorcandlelampmidon" },
+	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampMidOn02_DynDOLOD_LOD.nif", "ruinsfloorcandlelampmidon" },
+	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampSmOn_DynDOLOD_LOD.nif", "ruinsfloorcandlelampsmon" },
+	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampSmOn02_DynDOLOD_LOD.nif", "ruinsfloorcandlelampsmon" },
+	};
+
+	auto baseObject = a_this->GetBaseObject();
+
+	if (!baseObject) return true;
+
+	const auto bm = baseObject->As<RE::TESModel>();
+	if (!bm) return true;
+
+	auto currentModel = bm->GetModel();
+
+	logger::debug("dummy found, Model = {}", currentModel);
+
+	auto it = dummyMeshPaths.find(currentModel);
+	if (it != dummyMeshPaths.end()) {
+		const std::string& nodeName = it->second;
+		auto cfg = findConfigForNode(nodeName);
+
+		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
+
+		if (!cloneLight) {
+			logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
+			return true;
+		}
+
+		LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
+
+		cloneLight->name = "RL" + cfg.nodeName;
+
+		LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+
+		LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+		logger::debug("dummy match found for path {} and got light with node Name: {}", currentModel, cfg.nodeName);
+		return true;
+	}
+
+	// already returned early if not a dummy, therefor might as well skip this object as it wouldent get light anyway
+	return true;
+}
+
+
+inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, const RE::BSFixedString& nodeName, RE::TESObjectREFR* a_this) {
+
+	//original name
+	 std::string nodeNameStr = nodeName.c_str();
+
+	 // matched name
+	 std::string matchStr = match.c_str();
+
+	toLower(nodeNameStr); 
 
 	if (isExclude(nodeNameStr, a_root)) return;
 
@@ -461,7 +533,7 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& nodeN
    /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 		return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
 
-	LightConfig cfg = findConfigForNode(nodeNameStr);
+	LightConfig cfg = findConfigForNode(matchStr);
 
 	auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
@@ -472,15 +544,12 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& nodeN
 
 	LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
 
-	/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 	cloneLight->name = "RL" + cfg.nodeName;
 
 	LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
 
 	LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
 }
-
-
 
 //TODO:: Reimplement
 
@@ -528,40 +597,6 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& nodeN
 	return true;
 }*/
 
-// some nodes are called dummy this is to take care of them.
-/*inline void dummyHandler(RE::NiNode* root, const std::string& nodeName)
-{
-	if (nodeName.find("dummy") == std::string::npos)
-		return;
-
-	if (removeFakeGlowOrbs)
-		glowOrbRemover(root);
-
-	for (auto& child : root->GetChildren()) {
-		if (!child) continue;
-
-		auto childAsNode = child->AsNode();
-		if (!childAsNode) {
-			logger::info("dummy handler: child of dummy node could not be cast AsNode()");
-			continue;
-		}
-
-		std::string childName = childAsNode->name.c_str();
-		toLower(childName);
-
-		for (auto& [substr, bankType] : childBankMap) {
-			if (childName.find(substr) != std::string::npos) {
-				if (auto nodePtr = getNextNodeFromBank(bankType); nodePtr) {
-					root->AttachChild(nodePtr.get());
-				}
-				else {
-					logger::info("DummyHandler: '{}' node from bank was null", bankType);
-				}
-				return; // stop after first match
-			}
-		}
-	}
-}*/
 
 // this was made for debugging 
 inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)

@@ -160,13 +160,15 @@ namespace Hooks {
 
 		if (!nodeNameMatch.empty()) {
 		//	logger::debug("Load3D() matched node name: {}", nodeName);
-			processByNodeName(a_root, nodeNameMatch, a_this);
+			processByNodeName(a_root, nodeNameMatch, a_root->name, a_this);
 			return  niAVObject;
 		}
 
+		if (dummyHandler(a_this, a_root->name, a_root)) {
+			return niAVObject;
+		}
+		
 		processByFilePath(a_this, a_root); 
-
-	//	dummyHandler(a_root, nodeName);
 
 		return niAVObject;
 	}
