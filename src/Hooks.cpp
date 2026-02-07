@@ -56,11 +56,6 @@ namespace Hooks {
 		if (!ref || !light)
 			return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-		//if (light->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry)) {
-			//std::string edid = clib_util::editorID::get_editorID(light);
-			//logger::debug("torch with editor ID: {}  found... disabling", edid);
-			//return nullptr; 
-		// }
 
 		if (LightData::shouldDisableLight(light, ref))
 			return nullptr;

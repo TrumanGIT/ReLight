@@ -1,4 +1,4 @@
-﻿#include "nlohmann/json.hpp"
+﻿
 #include "config.hpp"
 #include "LightData.h"
 #include "global.h"
@@ -21,7 +21,7 @@ else { \
     config.C = I; \
 } \
 
-bool loadConfiguration(LightConfig & config, const json & data) {
+bool loadConfiguration(LightConfig& config, const json & data) {
     try {
         if (data.contains("meshPath")) {
             config.meshPath = data["meshPath"].get<std::string>();
@@ -33,6 +33,8 @@ bool loadConfiguration(LightConfig & config, const json & data) {
 
         FOREACH_BOOL(BOOL2JSON_READ)
             FOREACH_FLOAT(FLOAT2JSON_READ)
+
+            config.startingFade = config.fade;
 
             // clamp radius
             config.radius = std::clamp(config.radius, 0.0f, 256.f);
@@ -89,55 +91,64 @@ bool loadConfiguration(LightConfig & config, const json & data) {
     }
 }
 
+bool saveConfiguration(const LightConfig& config) {
+    try {
+        std::ifstream inFile(config.configPath);
+        if (!inFile.is_open()) {
+            logger::error("Failed to open config file for reading: {}", config.configPath);
+            return false;
+        }
 
-bool saveConfiguration(const LightConfig& config, const std::string& configPath) {
-	try {
-		json data;
+        json data;
+        inFile >> data;
+        inFile.close();
 
-		data["nodeName"] = config.nodeName;
+        // Ensure we are working with an array
+        if (!data.is_array()) {
+            data = json::array({ data });
+        }
 
-        data["meshPath"] = config.meshPath;
+        // Build the JSON object from the config
+        json newEntry;
+        newEntry["nodeName"] = config.nodeName;
+        newEntry["meshPath"] = config.meshPath;
+        newEntry["menuName"] = config.menuName;
 
-        data["menuName"] = config.menuName;
+#define JSON_WRITE(C, I) newEntry[#C] = config.C;
+        FOREACH_BOOL(JSON_WRITE)
+            FOREACH_FLOAT(JSON_WRITE)
 
-#define JSON_WRITE(C, I) data[#C] = config.C;
+            newEntry["color"] = { config.diffuseColor[0], config.diffuseColor[1], config.diffuseColor[2] };
+        newEntry["position"] = { config.position[0], config.position[1], config.position[2] };
+        newEntry["flags"] = config.flags;
+        newEntry["attachPath"] = config.attachPath;
 
-        FOREACH_BOOL(JSON_WRITE);
-        FOREACH_FLOAT(JSON_WRITE);
+        // Make sure the index is valid
+        if (config.jsonIndex >= data.size()) {
+            logger::warn("JSON index {} out of bounds, appending to end", config.jsonIndex);
+            data.push_back(newEntry);
+        }
+        else {
+            data[config.jsonIndex] = newEntry;
+        }
 
-		data["color"] = {
-            config.diffuseColor[0],
-            config.diffuseColor[1],
-            config.diffuseColor[2]
-		};
+        // Write back to file
+        std::ofstream outFile(config.configPath, std::ios::trunc);
+        if (!outFile.is_open()) {
+            logger::error("Failed to open config file for writing: {}", config.configPath);
+            return false;
+        }
 
-		data["position"] = {
-			config.position[0],
-			config.position[1],
-			config.position[2]
-		};
-
-		data["flags"] = config.flags;
-
-        data["attachPath"] = config.attachPath;
-
-		std::ofstream out(configPath, std::ios::trunc);
-		if (!out.is_open()) {
-			logger::error("Failed to open config file for writing: {}", configPath);
-			return false;
-		}
-
-		out << data.dump(4);
-
-        logger::info("Successfully saved light data to template at {}", configPath);
-
-		return true;
-	}
-	catch (const std::exception& e) {
-		logger::error("Failed to write config {}: {}", configPath, e.what());
-		return false;
-	}
+        outFile << data.dump(4);
+        logger::info("Successfully saved light data to template at {} (index {})", config.configPath, config.jsonIndex);
+        return true;
+    }
+    catch (const std::exception& e) {
+        logger::error("Failed to write config {}: {}", config.configPath, e.what());
+        return false;
+    }
 }
+
 
 // ini parser already filled the users desired, priority nodes, so these ones have no priority
 // doesnet actually sort file path or node name atm.
@@ -191,6 +202,8 @@ void parseTemplates() {
             continue;
         }
 
+        int jsonIndex = 0; 
+
         for (json json : entries){
 
         std::vector<std::string> nodeNames;
@@ -209,7 +222,9 @@ void parseTemplates() {
             loadConfiguration(cfg, json); 
             cfg.configPath = p;
             cfg.configID = nextID++;
-            cfg.startingFade = cfg.fade;
+          
+            cfg.jsonIndex = jsonIndex; 
+           
             //set each cfg name according to the current iteration of all node names read (for multiple node names for 1 config support)
             cfg.nodeName = nodeName;
             
@@ -225,6 +240,9 @@ void parseTemplates() {
             LightData::defaultConfigs[cfg.nodeName] = cfg;
             LightData::nodeNameToJsonCfg[cfg.nodeName].push_back(cfg);
         }
+
+        //used to get the right index to save back too
+        jsonIndex++;
         }
     }
 }

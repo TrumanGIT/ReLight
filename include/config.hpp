@@ -6,6 +6,7 @@
 #include <fstream>
 #include <array>
 #include "logger.hpp"
+#include "nlohmann/json.hpp"
 
 namespace fs = std::filesystem;
 
@@ -55,7 +56,7 @@ struct LightConfig {
     std::vector<std::string> flags{};             // not used but could be for linear lighting.
     std::vector<int> attachPath;
     uint64_t configID;
-
+    uint16_t jsonIndex; 
 
     void print() {
         logger::info("Path               : {}", configPath);
@@ -65,7 +66,8 @@ struct LightConfig {
         FOREACH_FLOAT(FLOAT2PRINT);
         logger::info(" position          : [{}, {}, {}] ", position[0], position[1], position[2]);
         logger::info(" color             : [{}, {}, {}] ", diffuseColor[0], diffuseColor[1], diffuseColor[2]);
-        logger::info(" configId: {}", configID);
+        logger::info(" config ID: {}", configID);
+        logger::info(" json Index: {}", jsonIndex);
         logger::info(" flags    :");
         for (const auto& f: flags) {
             logger::info("  {}", f);
@@ -131,9 +133,9 @@ inline std::vector<std::string> GetConfigPaths() {
     return paths;
 }
 
-bool loadConfiguration(LightConfig& config, const std::string& configPath);
+bool loadConfiguration(LightConfig& config, const nlohmann::json& data);
 
-bool saveConfiguration(const LightConfig& config, const std::string& configPath);
+bool saveConfiguration(const LightConfig& config);
 
 void parseTemplates();
 

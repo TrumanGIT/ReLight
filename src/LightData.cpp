@@ -190,8 +190,11 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	data.fade = cfg.fade;
 	data.radius = getNiPointLightRadius(cfg);
 
+	data.unk138 = cfg.configID;
+
 	logger::debug(" radius set to: {} ", cfg.radius);
 	logger::debug(" fade set to: {} ", cfg.fade);
+	logger::debug("config ID set to {}", cfg.configID); 
 
 	setNiPointLightPos(niPointLight, cfg);
 
@@ -200,9 +203,6 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	setNiPointLightAmbientAndDiffuse(niPointLight, cfg);
 
 	logger::debug(" diffuse color set to: r:{} g:{} b:{} ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
-
-
-	data.unk138 = cfg.configID;
 
 	if (globals::islInstalled) setOverlayData(niPointLight, cfg);
 
@@ -264,11 +264,13 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, c
 	}
 }
 
-bool LightData::foundConfigForLight(const std::string& lightName) {
+bool LightData::foundConfigForLight(const RE::NiLight* light) {
 	
-	for  (auto& [name, temp] : LightData::nodeNameToJsonCfg) {
-		if (name == lightName) {
-			return true;
+	for  (auto& [name, vectorOfConfigs] : LightData::nodeNameToJsonCfg) {
+		for (auto& cfg : vectorOfConfigs) {
+			if (light->unk138 == cfg.configID) {
+				return true;
+			}
 		}
 	}
 	return false;
@@ -276,32 +278,35 @@ bool LightData::foundConfigForLight(const std::string& lightName) {
 
 void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	auto& rt = niLight->GetLightRuntimeData();
+	auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
 
-    auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
+	cfg = dataExt; 
 
-	cfg.radius = rt.radius.x;
-
-	cfg.fade = rt.fade;
+	cfg.radius = std::clamp(rt.radius.x, 0.0f, 256.0f);   // clamp radius to 256
+	cfg.fade = std::clamp(rt.fade, 0.0f, 10.0f);        // clamp fade to 10
 
 	cfg.position[0] = niLight->local.translate.x;
 	cfg.position[1] = niLight->local.translate.y;
 	cfg.position[2] = niLight->local.translate.z;
 
-	cfg.diffuseColor[0] = int(rt.diffuse.red * 255.0f);
-	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
-	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
+	cfg.diffuseColor[0] = std::clamp(int(rt.diffuse.red * 255.0f), 0, 255);
+	cfg.diffuseColor[1] = std::clamp(int(rt.diffuse.green * 255.0f), 0, 255);
+	cfg.diffuseColor[2] = std::clamp(int(rt.diffuse.blue * 255.0f), 0, 255);
 
 	cfg.flickerIntensity = dataExt.flickerIntensity;
 	cfg.flickersPerSecond = dataExt.flickersPerSecond;
 
-	if (!globals::islInstalled) return;
 
-	if (auto* overlay = Overlay::Get(niLight)) {
-		cfg.size = overlay->size;
-		cfg.cutoffOverride = overlay->cutoffOverride;
+	if (globals::islInstalled) {
+
+		if (auto* overlay = Overlay::Get(niLight)) {
+		cfg.size = std::clamp(overlay->size, 0.0f, 10.0f);             // clamp size to 10
+		cfg.cutoffOverride = std::clamp(overlay->cutoffOverride, 0.0f, 0.99f); // clamp cutoffOverride to 0.99
+		}
+
 	}
+	cfg.print();
 }
-
 
 
 // used to reinitiate lights that were cleaned by the engine
@@ -359,6 +364,8 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 			ssNode->RemoveLight(light);
 		}
+
+		logger::debug("shaodow light list size after cleaning: {}", rt.activeLights.size());
 		RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
 			if (!ref) return RE::BSContainer::ForEachResult::kContinue;

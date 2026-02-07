@@ -107,13 +107,14 @@ namespace UI {
 
                 LightConfig cfg;
 
-                if (LightData::foundConfigForLight(lightName)) {
+                //TODO:: shouldnet use node name lookups since we use mesh paths as well now.
+                if (LightData::foundConfigForLight(niLight)) {
                     LightData::updateConfigFromLight(cfg, niLight);
                     if (!cfg.configPath.empty()) {
-                        saveConfiguration(cfg, cfg.configPath);
+                        saveConfiguration(cfg);
                     }
                     else {
-                        logger::warn("Config for '{}' has no configPath, cannot save", cfg.nodeName);
+                        logger::warn("Config for '{}' has no configPath, cannot save", lightName);
                     }
                 }
                 else {
@@ -170,17 +171,24 @@ namespace UI {
 
                 auto lightName = removePrefix(light->light->name.c_str(), "RL");
 
-                LightConfig cfg = findConfigsForNode(lightName)[0]; 
+                auto cfgs = findConfigsForNode(lightName);
 
-                auto menuName = cfg.menuName;
+                std::string menuName; 
+
+                for (auto& cfg : cfgs) {
+
+                    if (light->light->GetLightRuntimeData().unk138 == cfg.configID)
+                     menuName = cfg.menuName;
+                }
 
                 if (menuName.empty()) {
-                    menuName = light->light->name.c_str(); 
+                    menuName = light->light->name.c_str();
                 }
 
                 if (ImGuiMCP::Selectable(menuName.c_str(), &selected)) {
                     selectedIndex = i;
                 }
+              
             }
 
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
@@ -411,7 +419,6 @@ namespace UI {
 
         auto& rt = ssNode->GetRuntimeData();
 
-
         for (auto& light : rt.activeLights) {
             if (!light) continue;
             auto lightName = light->light->name.c_str();
@@ -421,24 +428,22 @@ namespace UI {
 
             auto& currentRt = light->light->GetLightRuntimeData();
 
-            auto* currentIslRt = Overlay::Get(light->light.get());
-
             auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
-            if (!currentIslRt) {
-                logger::warn("no selected ISL runtime data in skse menu");
-                return;
-            }
-
+          
             // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
             // by flicker equation (they were before Its good to check sometimes)
-            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, flicker time {} ", lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, dataExt.flickerTime);
+            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, World Position: {}, configID: {} ", 
+                lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, light->worldTranslate, dataExt.configID);
 
             for (auto& existingLight : lights) {
+
+                if (!existingLight) continue; 
                 // unk138 is a config id in this case, do tis to handle editing multiple lights to 1 mesh 
                 if (existingLight->light->unk138 == currentRt.unk138) {
                     // Light already exists in the list, skip adding
                     lightAlreadyInList = true;
+                    break;
                 }
             }
 
@@ -458,17 +463,12 @@ namespace UI {
                 continue;
 
             auto& currentRt = shadowLight->light->GetLightRuntimeData();
-            auto* currentIslRt = Overlay::Get(shadowLight->light.get());
+   
             auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
-            if (!currentIslRt) {
-                logger::warn("no selected ISL runtime data in skse menu (shadow light)");
-                continue;
-            }
-
-            logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} ",
+            logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} World Position {}, configID: {} ", 
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius,
-                dataExt.flickerIntensity, dataExt.flickersPerSecond);
+                dataExt.flickerIntensity, dataExt.flickersPerSecond, shadowLight->worldTranslate, dataExt.configID);
 
             bool shadowLightAlreadyInList = false;
             for (auto& existingLight : lights) {
@@ -482,6 +482,20 @@ namespace UI {
                 lights.push_back(shadowLight);
             }
         }
+
+        std::sort(lights.begin(), lights.end(),
+            [](const RE::NiPointer<RE::BSLight>& a,
+                const RE::NiPointer<RE::BSLight>& b)
+            {
+                if (!a || !b) return false;
+
+                const char* nameA = a->light->name.c_str();
+                const char* nameB = b->light->name.c_str();
+
+                if (!nameA || !nameB) return false;
+
+                return std::strcmp(nameA, nameB) < 0;
+            });
 
     }
 
