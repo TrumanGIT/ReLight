@@ -3,17 +3,17 @@
 #include "global.h"
 #include "logger.hpp"
 #include "ClibUtil/EditorID.hpp"
-#include "Functions.h"
 #include "config.hpp"
 #include "LightData.h"
 #include <string>
 #include <vector>
+#include  "Functions.h"
 
 // Members (config to json id is for faster lookups, used in flicker logic) 
 std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
 
 std::unordered_map<std::string, LightConfig> LightData::meshPathToJsonCfg;
-std::map<std::string, LightConfig> LightData::nodeNameToJsonCfg;
+std::unordered_map<std::string, std::vector<LightConfig>> LightData:: nodeNameToJsonCfg;
 // at runflickerTime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<std::string, LightConfig> LightData::defaultConfigs; 
 
@@ -117,7 +117,7 @@ void LightData::setRelightFlag(RE::TESObjectLIGH* ligh)
 }*/
 
 
-void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg,const std::string& lightName) {
+void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg) {
 
 
 	if (!niPointLight) {
@@ -178,7 +178,7 @@ void LightData::attachLightUsingAttachPath(
 	finalNode->AttachChild(light);
 }
 
-void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const std::string& lightName) {
+void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;
@@ -204,7 +204,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	data.unk138 = cfg.configID;
 
-	if (globals::islInstalled) setOverlayData(niPointLight, cfg, lightName);
+	if (globals::islInstalled) setOverlayData(niPointLight, cfg);
 
 }
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
@@ -264,11 +264,10 @@ void LightData::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, c
 	}
 }
 
-bool LightData::findConfigForLight(LightConfig& cfg, const std::string& lightName) {
+bool LightData::foundConfigForLight(const std::string& lightName) {
 	
 	for  (auto& [name, temp] : LightData::nodeNameToJsonCfg) {
 		if (name == lightName) {
-			cfg = temp;
 			return true;
 		}
 	}
@@ -303,6 +302,8 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	}
 }
 
+
+
 // used to reinitiate lights that were cleaned by the engine
 // only when transitioning from exteiror to interior or vice versa
 RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* event,
@@ -316,24 +317,48 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 	if (!player) return RE::BSEventNotifyControl::kContinue;
 
-	logger::debug("cell event fired for player");
+	static bool s_firstCellEvent = true;
+
+	//logger::debug("cell event fired for player");
 
 	auto cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(event->cellID);
 	if (!cell) {
 		return RE::BSEventNotifyControl::kContinue;
 	}
+	
+	static float fLODFadeOutMultObjects;
+
+	if (s_firstCellEvent) {
+		s_firstCellEvent = false;
+		globals::lastCellWasInterior = cell->IsInteriorCell();
+		return RE::BSEventNotifyControl::kContinue;
+
+		getObjectFadeMult(fLODFadeOutMultObjects);
+
+		logger::debug("Users object fade ini setting = {}", fLODFadeOutMultObjects);
+
+	}
 
 	const bool currentCellIsInterior = cell->IsInteriorCell();
-
-	static float fLODFadeOutMultObjects; 
-
-	getObjectFadeMult(fLODFadeOutMultObjects); 
-
-	logger::debug("Users object fade ini setting = {}", fLODFadeOutMultObjects);
 
 	if (globals::lastCellWasInterior != currentCellIsInterior) {
 		logger::debug("player moved from exteiror to interior, or vice versa, reattaching lights");
 
+		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+		if (!ssNode) {
+			logger::warn("ShadowSceneNode[0] is null!");
+			return RE::BSEventNotifyControl::kContinue;
+		}
+
+		auto& rt = ssNode->GetRuntimeData();
+
+		for (auto& light : rt.activeShadowLights) {
+			if (!light) {
+				continue;
+			}
+
+			ssNode->RemoveLight(light);
+		}
 		RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
 			if (!ref) return RE::BSContainer::ForEachResult::kContinue;
@@ -368,6 +393,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 	return RE::BSEventNotifyControl::kContinue;
 }
+
 
 void LightData::registerEventSink()
 {

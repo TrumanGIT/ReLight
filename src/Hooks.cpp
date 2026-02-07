@@ -12,7 +12,7 @@
 namespace Hooks {
 
 	//this is used for flicker it runs every frame and works with SKSE Menu framework menu opem
-	 void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
+	void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 		func(player, delta);
 
@@ -29,58 +29,11 @@ namespace Hooks {
 
 		auto& ssRt = ssNode->GetRuntimeData();
 
-		for (auto& light : ssRt.activeLights) {
-			if (!light) continue;
-
-			//Check if Relight light by prefix "RL"
-			const char* name = light->light->name.c_str();
-			if (!name || name[0] != 'R' || name[1] != 'L')
-				continue;
-
-			// to avoid manipulating memory, scale acts as a free float value, in this case a flicker timer. could be any float just needs to be unsued
-			auto& scale = light->light->local.scale;
-
-			auto& rt = light->light->GetLightRuntimeData(); 
+		ApplyLightFlicker(ssRt.activeLights, delta);
 			
-			// to avoid manipulating memory, I use the ni lights unkown value as a map key for fast lookups. 
-			auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
-
-			uint32_t seed = static_cast<uint32_t>(reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
-
-			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
-
-			// the 1st 2 args of get random float can change up the rng randomness if desired could make a variable
-			const auto r = getRandomFloat(-1, 1, seed);
-			scale += delta * (1 - r) * std::numbers::pi_v<float>;
-			rt.fade = dataExt.startingFade + std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
-		}
-		
-		for (auto& light : ssRt.activeShadowLights) {
-			if (!light) continue;
-
-			//Check if Relight light by prefix "RL"
-			const char* name = light->light->name.c_str();
-			if (!name || name[0] != 'R' || name[1] != 'L')
-				continue;
-
-			// to avoid manipulating memory, scale acts as a free float value, in this case a flicker timer. could be any float just needs to be unsued
-			auto& scale = light->light->local.scale;
-
-			auto& rt = light->light->GetLightRuntimeData();
-
-			// to avoid manipulating memory, I use the ni lights unkown value as a map key for fast lookups. 
-			auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
-
-			uint32_t seed = static_cast<uint32_t>(reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
-
-			//`	logger::debug("PlayerUpdate: Relight light found {}", lightName); 
-
-			// the 1st 2 args of get random float can change up the rng randomness if desired could make a variable
-			const auto r = getRandomFloat(-1, 1, seed);
-			scale += delta * (1 - r) * std::numbers::pi_v<float>;
-			rt.fade = dataExt.startingFade + std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
-		}
-	 }
+		ApplyLightFlicker(ssRt.activeShadowLights, delta);
+	 
+	}
 	
 	 void PlayerCharacter_Update::Install()
 	{
@@ -153,13 +106,14 @@ namespace Hooks {
 			return niAVObject;
 		}
 
+		if (processByFilePath(a_this, a_root)) return niAVObject;
+
 		// grab name of NiNode (usually 1:1 with mesh names)
 	
 		// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
 		const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
 
 		if (!nodeNameMatch.empty()) {
-
 			if (isExclude(a_root->name, a_root)) return niAVObject;
 
 			processByNodeName(a_root, nodeNameMatch, a_this);
@@ -169,8 +123,6 @@ namespace Hooks {
 		if (dummyHandler(a_this, a_root->name, a_root)) {
 			return niAVObject;
 		}
-		
-		processByFilePath(a_this, a_root); 
 
 		return niAVObject;
 	}

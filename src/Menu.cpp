@@ -107,7 +107,7 @@ namespace UI {
 
                 LightConfig cfg;
 
-                if (LightData::findConfigForLight(cfg, lightName)) {
+                if (LightData::foundConfigForLight(lightName)) {
                     LightData::updateConfigFromLight(cfg, niLight);
                     if (!cfg.configPath.empty()) {
                         saveConfiguration(cfg, cfg.configPath);
@@ -170,11 +170,9 @@ namespace UI {
 
                 auto lightName = removePrefix(light->light->name.c_str(), "RL");
 
-                LightConfig cfg = findConfigForNode(lightName); 
+                LightConfig cfg = findConfigsForNode(lightName)[0]; 
 
                 auto menuName = cfg.menuName;
-
-                logger::info("menu name = {}, Cfg name = {}", menuName, cfg.nodeName);
 
                 if (menuName.empty()) {
                     menuName = light->light->name.c_str(); 
@@ -200,75 +198,80 @@ namespace UI {
                 }
 
 
-           //TODO:: add 'starting radius' so it doesnt fight skse menu when ISL is enabled
                 if (!globals::islInstalled) {
                     if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
                             auto& rt = ssNode->GetRuntimeData();
                             for (auto& light : rt.activeLights) {
-                                if (light && light->light->name == selectedLight->light->name) {
-                                    light->light->GetLightRuntimeData().radius = lightData.radius;
-                                }
+                                if (!light) continue;
+                                auto& existingRt = light->light->GetLightRuntimeData();
+                                if (existingRt.unk138 != lightData.unk138) continue;
+                                existingRt.radius = lightData.radius;
                             }
                             for (auto& light : rt.activeShadowLights) {
-                                if (light && light->light->name == selectedLight->light->name) {
-                                    light->light->GetLightRuntimeData().radius = lightData.radius;
-                                }
+                                if (!light) continue;
+                                auto& existingRt = light->light->GetLightRuntimeData();
+                                if (existingRt.unk138 != lightData.unk138) continue;
+                                existingRt.radius = lightData.radius;
                             }
                         }
                     }
                 }
 
+                // Fade
                 if (ImGuiMCP::SliderFloat("Fade", &dataExt.startingFade, 0.0f, 10.0f, "%.1f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                auto& data = light->light->GetLightRuntimeData();
-                                data.fade = dataExt.startingFade;
-                            }
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            existingRt.fade = dataExt.startingFade;
                         }
                         for (auto& light : rt.activeShadowLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                auto& data = light->light->GetLightRuntimeData();
-                                data.fade = dataExt.startingFade;
-                            }
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            existingRt.fade = dataExt.startingFade;
                         }
                     }
                 }
 
+                // Position
                 if (ImGuiMCP::SliderFloat3("Position", &selectedLight->light->local.translate.x, -250.0f, 250.0f, "%.3f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                light->light->local.translate = selectedLight->light->local.translate;
-                                if (auto* parent = light->light->parent) {
-                                    RE::NiUpdateData updateData{};
-                                    updateData.time = 0.0f;
-                                    updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                    parent->UpdateTransformAndBounds(updateData);
-                                }
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            light->light->local.translate = selectedLight->light->local.translate;
+                            if (auto* parent = light->light->parent) {
+                                RE::NiUpdateData updateData{};
+                                updateData.time = 0.0f;
+                                updateData.flags = RE::NiUpdateData::Flag::kDirty;
+                                parent->UpdateTransformAndBounds(updateData);
                             }
                         }
                         for (auto& light : rt.activeShadowLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                light->light->local.translate = selectedLight->light->local.translate;
-                                if (auto* parent = light->light->parent) {
-                                    RE::NiUpdateData updateData{};
-                                    updateData.time = 0.0f;
-                                    updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                    parent->UpdateTransformAndBounds(updateData);
-                                }
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            light->light->local.translate = selectedLight->light->local.translate;
+                            if (auto* parent = light->light->parent) {
+                                RE::NiUpdateData updateData{};
+                                updateData.time = 0.0f;
+                                updateData.flags = RE::NiUpdateData::Flag::kDirty;
+                                parent->UpdateTransformAndBounds(updateData);
                             }
                         }
                     }
                 }
 
-
+                // Flicker Intensity
                 if (ImGuiMCP::SliderFloat("Flicker Intensity", &dataExt.flickerIntensity,
                     0.0f, 1.0f, "%.2f"))
                 {
@@ -280,71 +283,81 @@ namespace UI {
 
                 }
 
-                // RGB slider
+                // RGB
                 if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.0f, 1.0f, "%.3f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
                         for (auto& light : rt.activeLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                light->light->GetLightRuntimeData().diffuse = lightData.diffuse;
-                            }
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            existingRt.diffuse = lightData.diffuse;
                         }
                         for (auto& light : rt.activeShadowLights) {
-                            if (light && light->light->name == selectedLight->light->name) {
-                                light->light->GetLightRuntimeData().diffuse = lightData.diffuse;
-                            }
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            existingRt.diffuse = lightData.diffuse;
                         }
                     }
                 }
 
                 // ISL sliders
                 if (globals::islInstalled) {
+                    // Cutoff
                     if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
                             auto& rt = ssNode->GetRuntimeData();
                             for (auto& light : rt.activeLights) {
-                                if (light && light->light->name == selectedLight->light->name) {
-                                    if (auto* islRt = Overlay::Get(light->light.get())) {
-                                        islRt->cutoffOverride = selectedIslRt->cutoffOverride;
-                                    }
+                                if (!light) continue;
+                                auto& existingRt = light->light->GetLightRuntimeData();
+                                if (existingRt.unk138 != lightData.unk138) continue;
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
+                                    islRt->cutoffOverride = selectedIslRt->cutoffOverride;
                                 }
                             }
                             for (auto& light : rt.activeShadowLights) {
-                                if (light && light->light->name == selectedLight->light->name) {
-                                    if (auto* islRt = Overlay::Get(light->light.get())) {
-                                        islRt->cutoffOverride = selectedIslRt->cutoffOverride;
-                                    }
+                                if (!light) continue;
+                                auto& existingRt = light->light->GetLightRuntimeData();
+                                if (existingRt.unk138 != lightData.unk138) continue;
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
+                                    islRt->cutoffOverride = selectedIslRt->cutoffOverride;
                                 }
                             }
                         }
                     }
 
+                    // Size
                     if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.0f, 10.0f, "%.2f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
                             auto& rt = ssNode->GetRuntimeData();
                             for (auto& light : rt.activeLights) {
-                                if (light && light->light->name == selectedLight->light->name) {
-                                    if (auto* islRt = Overlay::Get(light->light.get())) {
-                                        islRt->size = selectedIslRt->size;
-                                    }
+                                if (!light) continue;
+                                auto& existingRt = light->light->GetLightRuntimeData();
+                                if (existingRt.unk138 != lightData.unk138) continue;
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
+                                    islRt->size = selectedIslRt->size;
                                 }
                             }
                             for (auto& light : rt.activeShadowLights) {
-                                if (light && light->light->name == selectedLight->light->name) {
-                                    if (auto* islRt = Overlay::Get(light->light.get())) {
-                                        islRt->size = selectedIslRt->size;
-                                    }
+                                if (!light) continue;
+                                auto& existingRt = light->light->GetLightRuntimeData();
+                                if (existingRt.unk138 != lightData.unk138) continue;
+                                if (auto* islRt = Overlay::Get(light->light.get())) {
+                                    islRt->size = selectedIslRt->size;
                                 }
                             }
                         }
-                    }   
+                    }
                 }
             }
+                
         }
-    }
+   }
+
 
     void saveSettingsToIni() {
         logger::info("Saving ReLight.ini...");
@@ -388,6 +401,7 @@ namespace UI {
         logger::info("ReLight.ini saved successfully!");
     }
 
+    //TODO:: clean and only use isl overlay if its installed
     void getAllLights() {
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
         if (!ssNode) {
@@ -418,10 +432,11 @@ namespace UI {
 
             // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
             // by flicker equation (they were before Its good to check sometimes)
-            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} ", lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond);
+            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, flicker time {} ", lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, dataExt.flickerTime);
 
             for (auto& existingLight : lights) {
-                if (existingLight->light->name == lightName) {
+                // unk138 is a config id in this case, do tis to handle editing multiple lights to 1 mesh 
+                if (existingLight->light->unk138 == currentRt.unk138) {
                     // Light already exists in the list, skip adding
                     lightAlreadyInList = true;
                 }
@@ -457,7 +472,7 @@ namespace UI {
 
             bool shadowLightAlreadyInList = false;
             for (auto& existingLight : lights) {
-                if (existingLight->light->name == lightName) {
+                if (existingLight->light->unk138 == currentRt.unk138) {
                     shadowLightAlreadyInList = true;
                     break;
                 }

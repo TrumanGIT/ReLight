@@ -60,11 +60,13 @@ struct LightData : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
 	static std::map<uint64_t, LightConfig> configIDToJsonCfg;
 
-	static std::map<std::string, LightConfig> nodeNameToJsonCfg;
+	static std::unordered_map<std::string, std::vector<LightConfig>> nodeNameToJsonCfg;
 
 	static std::unordered_map<std::string, LightConfig> meshPathToJsonCfg;
 
 	static std::unordered_map<std::string, LightConfig> defaultConfigs;
+
+
 
 	static void registerEventSink();
 //	static void refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg);
@@ -74,14 +76,14 @@ struct LightData : RE::BSTEventSink<RE::BGSActorCellEvent> {
 	// template <class T> 
 	// inline REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> ParseLightFlags(const T& obj);
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg,const std::string& lightName);
+	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg);
 	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
-	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg, const std::string& lightName);
+	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg);
 	//static void setRelightFlag(RE::TESObjectLIGH* ligh); 
 	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
 	static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
-	static bool findConfigForLight(LightConfig& cfg, const std::string& lightName);
+	static bool foundConfigForLight(const std::string& lightName);
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);
 	static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light);
 	static void printLightParams(const RE::ShadowSceneNode::LIGHT_CREATE_PARAMS& params) {
@@ -96,9 +98,48 @@ struct LightData : RE::BSTEventSink<RE::BGSActorCellEvent> {
 		logger::debug(" depthBias	 {}", params.depthBias);
 	}
 
+
 private:
 	RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;
 	// void initialize();
 };
 
- 
+inline float getRandomFloat(const float& min, const float& max, uint32_t rngState)
+{
+	return min + (max - min) * Random::rand(rngState);
+}
+
+template <class T>
+static void ApplyLightFlicker(T& lights, float delta)
+{
+	for (auto& light : lights) {
+		if (!light)
+			continue;
+
+		const char* name = light->light->name.c_str();
+		if (!name || name[0] != 'R' || name[1] != 'L')
+			continue;
+
+		// free float used as flicker timer
+		auto& scale = light->light->local.scale;
+		auto& rt = light->light->GetLightRuntimeData();
+
+		auto it = LightData::configIDToJsonCfg.find(rt.unk138);
+		if (it == LightData::configIDToJsonCfg.end())
+			continue;
+
+		const auto& dataExt = it->second;
+
+		uint32_t seed =
+			static_cast<uint32_t>(
+				reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
+
+		const float r = getRandomFloat(-1.0f, 1.0f, seed);
+
+		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
+		rt.fade =
+			dataExt.startingFade +
+			std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
+	}
+}
+

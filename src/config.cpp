@@ -21,23 +21,9 @@ else { \
     config.C = I; \
 } \
 
-bool loadConfiguration(LightConfig& config, const std::string& configPath) {
+bool loadConfiguration(LightConfig & config, const json & data) {
     try {
-        std::ifstream configFile(configPath);
-        if (!configFile.is_open()) {
-            logger::error("Failed to open config file: {}", ToUTF8(configPath));
-            return false;
-        }
-
-        std::string raw((std::istreambuf_iterator<char>(configFile)), std::istreambuf_iterator<char>());
-
-        json data = json::parse(raw, nullptr, true, true);
-
-        if (data.contains("nodeName")) {
-            config.nodeName = data["nodeName"].get<std::string>();
-        }
-
-        if (data.contains("MeshPath")) {
+        if (data.contains("meshPath")) {
             config.meshPath = data["meshPath"].get<std::string>();
         }
 
@@ -46,11 +32,10 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
         }
 
         FOREACH_BOOL(BOOL2JSON_READ)
+            FOREACH_FLOAT(FLOAT2JSON_READ)
 
-        FOREACH_FLOAT(FLOAT2JSON_READ)
-
-        // clamp radius.
-		config.radius = std::clamp(config.radius, 0.0f, 256.f);
+            // clamp radius
+            config.radius = std::clamp(config.radius, 0.0f, 256.f);
 
         if (data.contains("color") && data["color"].is_array()) {
             auto& arr = data["color"];
@@ -63,7 +48,7 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
         if (data.contains("position") && data["position"].is_array()) {
             auto& arr = data["position"];
             for (size_t i = 0; i < std::min(arr.size(), size_t(POS_SIZE)); ++i) {
-                auto val = arr[i].get<int>();
+                auto val = arr[i].get<float>();  // <- use float, not int
                 config.position[i] = val;
             }
         }
@@ -86,36 +71,24 @@ bool loadConfiguration(LightConfig& config, const std::string& configPath) {
             }
         }
 
-        if(data.contains("attachPath") && data["attachPath"].is_array()) {
+        if (data.contains("attachPath") && data["attachPath"].is_array()) {
             config.attachPath.clear();
-
             for (const auto& v : data["attachPath"]) {
-                if (!v.is_number_integer()) {
-                    logger::warn("Non-integer value in attachPath in {}", configPath);
-                    continue;
-                }
-
+                if (!v.is_number_integer()) continue;
                 int idx = v.get<int>();
-                if (idx < 0) {
-                    logger::warn("Negative index {} in attachPath in {}", idx, configPath);
-                    continue;
-                }
-
-                config.attachPath.push_back(idx);
+                if (idx >= 0)
+                    config.attachPath.push_back(idx);
             }
         }
 
         return true;
     }
     catch (const json::exception& e) {
-        logger::error("cannot read JSON file due to {}", std::string(e.what()));
-        return false;
-    }
-    catch (const std::exception& e) {
-        logger::error("cannot read JSON file due to {}", std::string(e.what()));
+        logger::error("cannot read JSON object due to {}", e.what());
         return false;
     }
 }
+
 
 bool saveConfiguration(const LightConfig& config, const std::string& configPath) {
 	try {
@@ -205,24 +178,40 @@ void parseTemplates() {
         std::string raw((std::istreambuf_iterator<char>(configFile)), std::istreambuf_iterator<char>());
         json data = json::parse(raw, nullptr, true, true);
 
-        // Determine node names
+        json entries;
+
+        if (data.is_array()) {
+            entries = data;
+        }
+        else if (data.is_object()) {
+            entries = json::array({ data });
+        }
+        else {
+            logger::error("Invalid JSON root in {}", p);
+            continue;
+        }
+
+        for (json json : entries){
+
         std::vector<std::string> nodeNames;
-        if (data.contains("nodeName")) {
-            if (data["nodeName"].is_string()) {
-                nodeNames.push_back(data["nodeName"].get<std::string>());
+
+        if (json.contains("nodeName")) {
+            if (json["nodeName"].is_string()) {
+                nodeNames.push_back(json["nodeName"].get<std::string>());
             }
-            else if (data["nodeName"].is_array()) {
-                nodeNames = data["nodeName"].get<std::vector<std::string>>();
+            else if (json["nodeName"].is_array()) { 
+                nodeNames = json["nodeName"].get<std::vector<std::string>>();
             }
         }
 
-        // Create a LightConfig for each node name
         for (const auto& nodeName : nodeNames) {
             LightConfig cfg;
-            loadConfiguration(cfg, p); 
+            loadConfiguration(cfg, json); 
             cfg.configPath = p;
             cfg.configID = nextID++;
             cfg.startingFade = cfg.fade;
+            //set each cfg name according to the current iteration of all node names read (for multiple node names for 1 config support)
+            cfg.nodeName = nodeName;
             
             sortFilePathOrNodeName(cfg);
 
@@ -234,19 +223,31 @@ void parseTemplates() {
           
             LightData::configIDToJsonCfg[cfg.configID] = cfg;
             LightData::defaultConfigs[cfg.nodeName] = cfg;
-            LightData::nodeNameToJsonCfg[cfg.nodeName] = std::move(cfg);
+            LightData::nodeNameToJsonCfg[cfg.nodeName].push_back(cfg);
+        }
         }
     }
 }
 
-LightConfig findConfigForNode(const std::string& nodeName)
+std::vector<LightConfig> findConfigsForNode(const std::string& nodeName)
 {
-    if (nodeName.empty()) return LightConfig();
+    std::vector<LightConfig> result;
+
+    if (nodeName.empty())
+        return result;
+
     for (auto& pair : LightData::nodeNameToJsonCfg) {
         const auto& name = pair.first;
-        if (nodeName.find(name) != std::string::npos)
-            return pair.second;
+
+        if (nodeName.find(name) != std::string::npos) {
+            const auto& configs = pair.second;
+            result.insert(result.end(), configs.begin(), configs.end());
+        }
     }
-    logger::warn("No template found by findConfigForNode for node {}", nodeName);
-    return LightConfig(); // no match
+
+    if (result.empty()) {
+        logger::warn("No template found by findConfigsForNode for node {}", nodeName);
+    }
+
+    return result;
 }

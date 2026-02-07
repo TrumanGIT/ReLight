@@ -364,7 +364,7 @@ inline const RE::BSFixedString findPriorityMatch(const RE::BSFixedString& nodeNa
 
 inline void getObjectFadeMult(float& fLODFadeOutMultObjects) {
 
-	if (auto* setting = RE::GetINISetting("fLODFadeOutMultObjects")) {
+	if (auto* setting = RE::GetINISetting("fLODFadeOutMultObjects:LOD")) {
 		if (setting->GetType() == RE::Setting::Type::kFloat) {
 			fLODFadeOutMultObjects = setting->GetFloat() * 1000;
 		}
@@ -372,22 +372,22 @@ inline void getObjectFadeMult(float& fLODFadeOutMultObjects) {
 
 }
 
-inline void processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
+inline bool processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 
-	if (LightData::meshPathToJsonCfg.empty()) return;
+	if (LightData::meshPathToJsonCfg.empty()) return false;
 
 	const auto baseObject = a_this->GetBaseObject();
 
-	if (!baseObject) return;
+	if (!baseObject) return true;
 
 	const auto bm = baseObject->As<RE::TESModel>();
-	if (!bm) return;
+	if (!bm) return true;
 
 	auto currentModel = bm->GetModel();
 
 	for (const auto& [meshPath, cfg] : LightData::meshPathToJsonCfg) {
 	
-		if (meshPath != currentModel) return; 
+		if (meshPath != currentModel) continue;
 
 		const auto baseFormID = baseObject->GetFormID();
 
@@ -399,17 +399,17 @@ inline void processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 
 			if (ui && ui->IsMenuOpen("InventoryMenu")) {
 				//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-				return;
+				return true;
 			}
 
 			auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
 			if (!cloneLight) {
 				logger::warn("Failed to clone NiPointLight for mesh '{}')", currentModel);
-				return;
+				continue;
 			}
 
-			LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
+			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
 
 			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 			std::string temp = "RL" + std::string(cfg.nodeName.c_str());
@@ -418,11 +418,11 @@ inline void processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 			LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
 
 			LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
-			return;
+			return true;
 
 	}
 
-	return;
+	return false;
 }
 
 // some nodes are called dummy this is to take care of them.
@@ -468,8 +468,9 @@ inline bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nod
 
 	auto it = dummyMeshPaths.find(currentModel);
 	if (it != dummyMeshPaths.end()) {
-		const std::string& nodeName = it->second;
-		auto cfg = findConfigForNode(nodeName);
+		const std::string& match = it->second;
+
+		auto cfg = findConfigsForNode(match)[0];
 
 		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
@@ -478,7 +479,7 @@ inline bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nod
 			return true;
 		}
 
-		LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
+		LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
 
 		cloneLight->name = "RL" + cfg.nodeName;
 
@@ -526,22 +527,26 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match
    /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
 		return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
 
-	LightConfig cfg = findConfigForNode(matchStr);
+	auto cfgs = findConfigsForNode(matchStr);
 
+	for (const auto& cfg : cfgs) {
 	auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
 	if (!cloneLight) {
 		logger::warn("Failed to clone NiPointLight for node '{}')", matchStr);
-		return;
+		continue;
 	}
 
-	LightData::setNiPointLightDataFromCfg(cloneLight, cfg, cfg.nodeName);
+	LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
 
 	cloneLight->name = "RL" + cfg.nodeName;
 
 	LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
 
 	LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+
+	//logger::info("attached {} light to {} ", cfg.nodeName, a_this->GetFormID());
+	}
 }
 
 //TODO:: Reimplement
@@ -629,7 +634,3 @@ inline void hasInverseSquareLighting()
 	logger::info("info isl found?: {}", globals::islInstalled);
 }
 
-inline float getRandomFloat(const float& min, const float& max, uint32_t rngState)
-{
-	return min + (max - min) * Random::rand(rngState);
-}

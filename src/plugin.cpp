@@ -26,21 +26,20 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kPostLoadGame:
     {
-      //  isPlayerInInteriorCell();
-
         break;
     }
     case SKSE::MessagingInterface::kNewGame:
     {
-      //  isPlayerInInteriorCell();
+   
         break;
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
         // create master point light. must clone it or crash idk why
         PointLight::getMasterPointLight();
-        LightData::registerEventSink();
         Hooks::Install();
+        LightData::registerEventSink();
+     
         break;
     }
     default:

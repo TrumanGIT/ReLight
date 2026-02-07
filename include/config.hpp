@@ -139,5 +139,5 @@ void parseTemplates();
 
 void sortFilePathOrNodeName(const LightConfig& cfg);
 
- LightConfig findConfigForNode(const std::string& nodeName);
+std::vector<LightConfig> findConfigsForNode(const std::string& nodeName);
 
