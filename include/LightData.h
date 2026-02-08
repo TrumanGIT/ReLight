@@ -66,8 +66,6 @@ struct LightData : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
 	static std::unordered_map<uint64_t, LightConfig> defaultConfigs;
 
-
-
 	static void registerEventSink();
 //	static void refillBankForSelectedTemplate(const std::string& lightName, const LightConfig& cfg);
 	//static void assignNiPointLightsToBank(RE::NiPointer<RE::NiPointLight> niPointLight);
@@ -134,7 +132,7 @@ static void ApplyLightFlicker(T& lights, float delta)
 			static_cast<uint32_t>(
 				reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
 
-		const float r = getRandomFloat(-1.0f, 1.0f, seed);
+		const float r = getRandomFloat(-0.1f, 0.1f, seed);
 
 		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
 		rt.fade =

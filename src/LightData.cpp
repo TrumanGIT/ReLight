@@ -306,15 +306,13 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg.print();
 }
 
-// used to reinitiate lights that were cleaned by the engine
-// only when transitioning from exteiror to interior or vice versa
 RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* event,
 	RE::BSTEventSource<RE::BGSActorCellEvent>*) {
 
 	if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		return RE::BSEventNotifyControl::kContinue;
 	}
-	
+
 	auto player = RE::PlayerCharacter::GetSingleton();
 
 	if (!player) return RE::BSEventNotifyControl::kContinue;
@@ -327,7 +325,7 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 	if (!cell) {
 		return RE::BSEventNotifyControl::kContinue;
 	}
-	
+
 	static float fLODFadeOutMultObjects;
 
 	if (s_firstCellEvent) {
@@ -354,13 +352,13 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 		auto& rt = ssNode->GetRuntimeData();
 
-		for (auto& light : rt.activeShadowLights) {
+		/*for (auto& light : rt.activeShadowLights) {
 			if (!light) {
 				continue;
 			}
 
 			ssNode->RemoveLight(light);
-		}
+		}*/
 
 		logger::debug("shaodow light list size after cleaning: {}", rt.activeLights.size());
 		RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
@@ -383,9 +381,70 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 					RE::ObjectRefHandle handle(ref);
 					SKSE::GetTaskInterface()->AddTask([handle]() {
 						if (auto ref = handle.get()) {
-							ref->Disable();
-							ref->Enable(false);
-							logger::debug("ref enabled / disabled (reinitialized)");
+							auto root = ref->Load3D(false);
+
+							if (!root) return;
+
+							auto bsFadeNode = root->AsNode();
+
+							if (!bsFadeNode) return;
+
+							//surf children for light
+							for (auto& child : bsFadeNode->GetChildren()) {
+								if (!child) continue;
+
+								// exclude non relight lights
+								const char* name = child->name.c_str();
+								if (!name || name[0] != 'R' || name[1] != 'L')
+									continue;
+
+								RE::NiPointLight* light = netimmerse_cast<RE::NiPointLight*>(child.get());
+
+								if (!light) continue;
+
+								auto it = LightData::configIDToJsonCfg.find(light->GetLightRuntimeData().unk138);
+
+								if (it == LightData::configIDToJsonCfg.end()) {
+									logger::warn("attempted to reinitialize light but its config ID wasent found");
+									continue;
+								}
+
+								const auto& config = it->second;
+
+								// shadow lights are handled differently then non shadow lights
+								if (config.shadowLight) {
+
+									auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+									if (!ssNode) {
+										logger::warn("ShadowSceneNode[0] is null!");
+										continue;
+									}
+									bool bsLightExists = false;
+
+									for (auto bsLight : ssNode->activeShadowLights) {
+
+										if (bsLight->light.get() == light) {
+											logger::info("shadow light {} with ID {} exists already for ref: {} skipping reinitialization", light->name, static_cast<void*>(light), ref->GetFormID());
+											bsLightExists = true;
+											break; 
+										}
+									}
+
+									if (!bsLightExists) {
+										logger::info("reintiializing shadow light {} with ID {} for ref {} ", light->name, static_cast<void*>(light), ref->GetFormID());
+
+										auto p = LightData::makeLightParams(config);
+										ssNode->AddLight(light, p);
+									}
+
+								}
+								else {
+									ref->Disable();
+									ref->Enable(false);
+									logger::info("non shadow light: {} with ID {} reinitialized for ref {}", light->name, static_cast<void*>(light), ref->GetFormID());
+								}
+							}
+
 						}
 					});
 				}
