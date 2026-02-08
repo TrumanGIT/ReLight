@@ -634,3 +634,9 @@ inline void hasInverseSquareLighting()
 	logger::info("info isl found?: {}", globals::islInstalled);
 }
 
+
+inline float truncateDecimals(float value, int decimals)
+{
+	float factor = std::pow(10.0f, decimals);
+	return std::floor(value * factor) / factor;
+}

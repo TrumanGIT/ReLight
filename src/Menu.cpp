@@ -73,7 +73,7 @@ namespace UI {
         }
     }
 
-   void __stdcall RenderLightEditor() {
+    void __stdcall RenderLightEditor() {
 
         static int selectedIndex = -1;
 
@@ -173,12 +173,12 @@ namespace UI {
 
                 auto cfgs = findConfigsForNode(lightName);
 
-                std::string menuName; 
+                std::string menuName;
 
                 for (auto& cfg : cfgs) {
 
                     if (light->light->GetLightRuntimeData().unk138 == cfg.configID)
-                     menuName = cfg.menuName;
+                        menuName = cfg.menuName;
                 }
 
                 if (menuName.empty()) {
@@ -188,7 +188,7 @@ namespace UI {
                 if (ImGuiMCP::Selectable(menuName.c_str(), &selected)) {
                     selectedIndex = i;
                 }
-              
+
             }
 
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
@@ -362,9 +362,9 @@ namespace UI {
                     }
                 }
             }
-                
+
         }
-   }
+    }
 
 
     void saveSettingsToIni() {
@@ -430,15 +430,15 @@ namespace UI {
 
             auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
-          
+
             // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
             // by flicker equation (they were before Its good to check sometimes)
-            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, World Position: {}, configID: {} ", 
+            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, World Position: {}, configID: {} ",
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, light->worldTranslate, dataExt.configID);
 
             for (auto& existingLight : lights) {
 
-                if (!existingLight) continue; 
+                if (!existingLight) continue;
                 // unk138 is a config id in this case, do tis to handle editing multiple lights to 1 mesh 
                 if (existingLight->light->unk138 == currentRt.unk138) {
                     // Light already exists in the list, skip adding
@@ -463,10 +463,10 @@ namespace UI {
                 continue;
 
             auto& currentRt = shadowLight->light->GetLightRuntimeData();
-   
+
             auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
-            logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} World Position {}, configID: {} ", 
+            logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} World Position {}, configID: {} ",
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius,
                 dataExt.flickerIntensity, dataExt.flickersPerSecond, shadowLight->worldTranslate, dataExt.configID);
 
@@ -499,76 +499,71 @@ namespace UI {
 
     }
 
-    void restoreLightToDefaults(RE::NiPointer<RE::NiLight> selectedLight) {
-        if (!selectedLight) {
+    void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
+        if (!light) {
             logger::warn("Selected light is null, cannot restore defaults");
             return;
         }
 
-        const std::string lightName = selectedLight->name.c_str();
-        auto defaultIt = LightData::defaultConfigs.find(removePrefix(lightName, "RL"));
-        if (defaultIt == LightData::defaultConfigs.end()) {
-            logger::warn("No default config found for '{}'", lightName);
+        const std::string lightName = light->name.c_str();
+
+        LightConfig backupCfg;
+        bool foundConfig = false;
+
+        auto itDefault = LightData::defaultConfigs.find(light->unk138);
+        if (itDefault == LightData::defaultConfigs.end()) {
+            logger::warn("no config found to restore defaults from");
             return;
         }
+        else {
+            backupCfg = itDefault->second;
+        }
 
-        const auto& defaultCfg = defaultIt->second;
+        auto& lightData = light->GetLightRuntimeData();
 
-        // Update selected light runtime data
-        auto& lightData = selectedLight->GetLightRuntimeData();
+        auto itDataExt = LightData::configIDToJsonCfg.find(lightData.unk138);
+        if (itDataExt == LightData::configIDToJsonCfg.end()) {
+            logger::warn("No JSON config entry found for light ID {}", lightData.unk138);
+            return;
+        }
+        auto& dataExt = itDataExt->second;
 
-        auto& dataExt = LightData::configIDToJsonCfg[lightData.unk138];
+        lightData.radius = LightData::getNiPointLightRadius(backupCfg);
+        lightData.fade = backupCfg.fade;
+        LightData::setNiPointLightAmbientAndDiffuse(light.get(), backupCfg);
+        LightData::setNiPointLightPos(light.get(), backupCfg);
 
-        lightData.radius = LightData::getNiPointLightRadius(defaultCfg);
-        lightData.fade = defaultCfg.fade;
-        LightData::setNiPointLightAmbientAndDiffuse(selectedLight.get(), defaultCfg);
-        LightData::setNiPointLightPos(selectedLight.get(), defaultCfg);
-
-        dataExt.startingFade = defaultCfg.startingFade; 
-        dataExt.flickerIntensity = defaultCfg.flickerIntensity;
-        dataExt.flickersPerSecond = defaultCfg.flickersPerSecond;
+        dataExt.startingFade = backupCfg.startingFade;
+        dataExt.flickerIntensity = backupCfg.flickerIntensity;
+        dataExt.flickersPerSecond = backupCfg.flickersPerSecond;
 
         // Propagate to active lights in the shader node
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-        if (ssNode) {
-            auto& rt = ssNode->GetRuntimeData();
+        if (!ssNode) return;
 
-            // non shadow lights
-            for (auto& light : rt.activeLights) {
-                if (!light || light->light->name.c_str() != lightName)
-                    continue;
+        auto& rt = ssNode->GetRuntimeData();
 
-                auto& activeData = light->light->GetLightRuntimeData();
-                activeData = lightData;
+        auto updateLightList = [&](auto& lightList) {
+            for (auto& currentLight : lightList) {
+                if (!currentLight) continue;
 
-                light->light->local.translate = selectedLight->local.translate;
+                auto& activeData = currentLight->light->GetLightRuntimeData();
 
-                if (!globals::islInstalled) continue;
-
-                if (auto* isl = Overlay::Get(light->light.get())) {
-                    isl->cutoffOverride = defaultCfg.cutoffOverride;
-                    isl->size = defaultCfg.size;
-                }
-            }
-
-            // shadow lights
-            for (auto& light : rt.activeShadowLights) {
-                if (!light || light->light->name.c_str() != lightName)
-                    continue;
-
-                auto& activeData = light->light->GetLightRuntimeData();
-                activeData = lightData;
-
-                light->light->local.translate = selectedLight->local.translate;
+                if (activeData.unk138 == lightData.unk138)
+                    activeData = lightData;
+                currentLight->light->local.translate = light->local.translate;
 
                 if (!globals::islInstalled) continue;
 
-                if (auto* isl = Overlay::Get(light->light.get())) {
-                    isl->cutoffOverride = defaultCfg.cutoffOverride;
-                    isl->size = defaultCfg.size;
+                if (auto* isl = Overlay::Get(currentLight->light.get())) {
+                    isl->cutoffOverride = backupCfg.cutoffOverride;
+                    isl->size = backupCfg.size;
                 }
             }
-        }
+            };
+
+        updateLightList(rt.activeLights);
+        updateLightList(rt.activeShadowLights);
 
         logger::info("Restored '{}' to default config", lightName);
     }

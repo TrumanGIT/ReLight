@@ -14,8 +14,8 @@ std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
 
 std::unordered_map<std::string, LightConfig> LightData::meshPathToJsonCfg;
 std::unordered_map<std::string, std::vector<LightConfig>> LightData:: nodeNameToJsonCfg;
-// at runflickerTime save a copy of each tempaltes settings so we can restore to defaults later
-std::unordered_map<std::string, LightConfig> LightData::defaultConfigs; 
+// at runtime save a copy of each tempaltes settings so we can restore to defaults later
+std::unordered_map<uint64_t, LightConfig> LightData::defaultConfigs;
 
 
 bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref)
@@ -282,32 +282,29 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 
 	cfg = dataExt; 
 
-	cfg.radius = std::clamp(rt.radius.x, 0.0f, 256.0f);   // clamp radius to 256
-	cfg.fade = std::clamp(rt.fade, 0.0f, 10.0f);        // clamp fade to 10
+	cfg.radius = truncateDecimals(rt.radius.x, 2);
+	cfg.fade = truncateDecimals(rt.fade, 2);
 
-	cfg.position[0] = niLight->local.translate.x;
-	cfg.position[1] = niLight->local.translate.y;
-	cfg.position[2] = niLight->local.translate.z;
+	cfg.position[0] = truncateDecimals(niLight->local.translate.x, 2);
+	cfg.position[1] = truncateDecimals(niLight->local.translate.y, 2);
+	cfg.position[2] = truncateDecimals(niLight->local.translate.z, 2);
 
-	cfg.diffuseColor[0] = std::clamp(int(rt.diffuse.red * 255.0f), 0, 255);
-	cfg.diffuseColor[1] = std::clamp(int(rt.diffuse.green * 255.0f), 0, 255);
-	cfg.diffuseColor[2] = std::clamp(int(rt.diffuse.blue * 255.0f), 0, 255);
+	cfg.diffuseColor[0] = int(rt.diffuse.red * 255.0f);
+	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
+	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
 
-	cfg.flickerIntensity = dataExt.flickerIntensity;
-	cfg.flickersPerSecond = dataExt.flickersPerSecond;
-
+	cfg.flickerIntensity = truncateDecimals(dataExt.flickerIntensity, 2);
+	cfg.flickersPerSecond = truncateDecimals(dataExt.flickersPerSecond, 2);
 
 	if (globals::islInstalled) {
 
 		if (auto* overlay = Overlay::Get(niLight)) {
-		cfg.size = std::clamp(overlay->size, 0.0f, 10.0f);             // clamp size to 10
-		cfg.cutoffOverride = std::clamp(overlay->cutoffOverride, 0.0f, 0.99f); // clamp cutoffOverride to 0.99
+			cfg.size = truncateDecimals(overlay->size, 2);
+			cfg.cutoffOverride = truncateDecimals(overlay->cutoffOverride, 2);
 		}
-
 	}
 	cfg.print();
 }
-
 
 // used to reinitiate lights that were cleaned by the engine
 // only when transitioning from exteiror to interior or vice versa
@@ -400,7 +397,6 @@ RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* ev
 
 	return RE::BSEventNotifyControl::kContinue;
 }
-
 
 void LightData::registerEventSink()
 {

@@ -103,12 +103,12 @@ bool saveConfiguration(const LightConfig& config) {
         inFile >> data;
         inFile.close();
 
-        // Ensure we are working with an array
+        // handle multiple json objects in 1 config
         if (!data.is_array()) {
             data = json::array({ data });
         }
 
-        // Build the JSON object from the config
+
         json newEntry;
         newEntry["nodeName"] = config.nodeName;
         newEntry["meshPath"] = config.meshPath;
@@ -123,7 +123,7 @@ bool saveConfiguration(const LightConfig& config) {
         newEntry["flags"] = config.flags;
         newEntry["attachPath"] = config.attachPath;
 
-        // Make sure the index is valid
+     // json index is the pos of json objects in a single json file.
         if (config.jsonIndex >= data.size()) {
             logger::warn("JSON index {} out of bounds, appending to end", config.jsonIndex);
             data.push_back(newEntry);
@@ -131,8 +131,7 @@ bool saveConfiguration(const LightConfig& config) {
         else {
             data[config.jsonIndex] = newEntry;
         }
-
-        // Write back to file
+       
         std::ofstream outFile(config.configPath, std::ios::trunc);
         if (!outFile.is_open()) {
             logger::error("Failed to open config file for writing: {}", config.configPath);
@@ -152,15 +151,7 @@ bool saveConfiguration(const LightConfig& config) {
 
 // ini parser already filled the users desired, priority nodes, so these ones have no priority
 // doesnet actually sort file path or node name atm.
-void sortFilePathOrNodeName(const LightConfig& cfg) {
-    // add to priority list if a node name
-
-        // add to meshfile path if contains a "/"
- //   if (!cfg.meshPath.empty()) {
-
-   //     meshFilePaths.push_back(cfg.nodeName);
-
-    //}
+void sortInPriorityList(const LightConfig& cfg) {
 
     RE::BSFixedString nodeNameBS(cfg.nodeName.c_str());
 
@@ -228,7 +219,7 @@ void parseTemplates() {
             //set each cfg name according to the current iteration of all node names read (for multiple node names for 1 config support)
             cfg.nodeName = nodeName;
             
-            sortFilePathOrNodeName(cfg);
+            sortInPriorityList(cfg);
 
             cfg.print();
             
@@ -237,7 +228,7 @@ void parseTemplates() {
             }
           
             LightData::configIDToJsonCfg[cfg.configID] = cfg;
-            LightData::defaultConfigs[cfg.nodeName] = cfg;
+            LightData::defaultConfigs[cfg.configID] = cfg;
             LightData::nodeNameToJsonCfg[cfg.nodeName].push_back(cfg);
         }
 

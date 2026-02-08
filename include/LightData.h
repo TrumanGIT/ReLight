@@ -64,7 +64,7 @@ struct LightData : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
 	static std::unordered_map<std::string, LightConfig> meshPathToJsonCfg;
 
-	static std::unordered_map<std::string, LightConfig> defaultConfigs;
+	static std::unordered_map<uint64_t, LightConfig> defaultConfigs;
 
 
 
