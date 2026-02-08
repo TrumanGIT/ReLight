@@ -391,8 +391,9 @@ inline bool processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 
 		const auto baseFormID = baseObject->GetFormID();
 
+		if (!cfg.shadowLight) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		
+		}
 			logger::debug("file path match found: {}", currentModel);
 
 			auto ui = RE::UI::GetSingleton();
@@ -459,10 +460,12 @@ inline bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nod
 
 	if (!baseObject) return true;
 
+	const auto baseFormID = baseObject->GetFormID();
+
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return true;
 
-	auto currentModel = bm->GetModel();
+	const auto currentModel = bm->GetModel();
 
 	logger::debug("dummy found, Model = {}", currentModel);
 
@@ -486,6 +489,12 @@ inline bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nod
 		LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
 
 		LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+
+		if (!cfg.shadowLight) {
+			globals::baseFormsWithAttachedLights.emplace(baseFormID);
+			logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName.c_str(), baseFormID);
+		}
+
 		logger::debug("dummy match found for path {} and got light with node Name: {}", currentModel, cfg.nodeName);
 		return true;
 	}
@@ -511,10 +520,6 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match
 
 	const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
 
-	if (baseFormID != 0) {
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		logger::debug("node: {} with baseFormID: {}  emplaced in set", matchStr, baseFormID);
-	}
 
 	//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
 	 // if (handleSceneRoot(a_nifPath, a_root, nodeName))
@@ -535,6 +540,11 @@ inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match
 	if (!cloneLight) {
 		logger::warn("Failed to clone NiPointLight for node '{}')", matchStr);
 		continue;
+	}
+
+	if (baseFormID != 0 && !cfg.shadowLight) {
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
+		logger::debug("node: {} with baseFormID: {}  emplaced in set", matchStr, baseFormID);
 	}
 
 	LightData::setNiPointLightDataFromCfg(cloneLight, cfg);

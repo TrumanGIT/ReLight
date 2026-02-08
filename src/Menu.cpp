@@ -508,7 +508,6 @@ namespace UI {
         const std::string lightName = light->name.c_str();
 
         LightConfig backupCfg;
-        bool foundConfig = false;
 
         auto itDefault = LightData::defaultConfigs.find(light->unk138);
         if (itDefault == LightData::defaultConfigs.end()) {
