@@ -108,9 +108,18 @@ bool saveConfiguration(const LightConfig& config) {
             data = json::array({ data });
         }
 
-
         json newEntry;
-        newEntry["nodeName"] = config.nodeName;
+
+        json& originalEntry = data[0];
+
+        //nodename can be a array but config only hold 1 node name
+        if (originalEntry.contains("nodeName")) {
+            newEntry["nodeName"] = originalEntry["nodeName"];
+        }
+        else {
+            newEntry["nodeName"] = config.nodeName; // fallback
+        }
+     
         newEntry["meshPath"] = config.meshPath;
         newEntry["menuName"] = config.menuName;
 
