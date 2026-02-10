@@ -282,25 +282,25 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 
 	cfg = dataExt; 
 
-	cfg.radius = truncateDecimals(rt.radius.x, 2);
-	cfg.fade = truncateDecimals(rt.fade, 2);
+	cfg.radius = rt.radius.x;
+	cfg.fade = rt.fade;
 
-	cfg.position[0] = truncateDecimals(niLight->local.translate.x, 2);
-	cfg.position[1] = truncateDecimals(niLight->local.translate.y, 2);
-	cfg.position[2] = truncateDecimals(niLight->local.translate.z, 2);
+	cfg.position[0] = niLight->local.translate.x;
+	cfg.position[1] = niLight->local.translate.y;
+	cfg.position[2] = niLight->local.translate.z;
 
 	cfg.diffuseColor[0] = int(rt.diffuse.red * 255.0f);
 	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
 	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
 
-	cfg.flickerIntensity = truncateDecimals(dataExt.flickerIntensity, 2);
-	cfg.flickersPerSecond = truncateDecimals(dataExt.flickersPerSecond, 2);
+	cfg.flickerIntensity = dataExt.flickerIntensity;
+	cfg.flickersPerSecond = dataExt.flickersPerSecond;
 
 	if (globals::islInstalled) {
 
 		if (auto* overlay = Overlay::Get(niLight)) {
-			cfg.size = truncateDecimals(overlay->size, 2);
-			cfg.cutoffOverride = truncateDecimals(overlay->cutoffOverride, 2);
+			cfg.size = overlay->size;
+			cfg.cutoffOverride = overlay->cutoffOverride;
 		}
 	}
 	cfg.print();

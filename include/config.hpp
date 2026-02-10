@@ -89,6 +89,14 @@ inline std::string ToUTF8(const fs::path& p) {
     return std::string(reinterpret_cast<const char*>(u8.c_str()));
 }
 
+inline double truncateDecimals(const float& value, const int& decimals)
+{
+    double factor = std::pow(10.0f, decimals);
+    double newValue = std::floor(value * factor) / factor;
+    logger::debug("Truncating value {} to {} decimal places", value, newValue);
+    return newValue;
+}
+
 inline std::string GetConfigDir() {
     const auto root = std::filesystem::path(REL::Module::get().filename()).parent_path();
     return (root / "Data" / "SKSE" / "Plugins" / PRODUCT_NAME / "Configs" / "").string();
