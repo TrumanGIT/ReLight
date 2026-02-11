@@ -2,12 +2,12 @@
 #include "plugin.hpp"
 #include "logger.hpp"
 #include "config.hpp"
-#include "hooks.h"
-#include "Functions.h"
+#include "Utility.h"
 #include "menu.h"
 #include "global.h"
 #include "LightData.h"
-
+#include "LightManager.h"
+#include "flicker.h"
 
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
@@ -37,8 +37,13 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     {
         // create master point light. must clone it or crash idk why
         PointLight::getMasterPointLight();
-        Hooks::Install();
-        LightData::registerEventSink();
+        SKSE::AllocTrampoline(1 << 8);
+        TESObjectLIGH_GenDynamic::Install();
+        Load3D::Install();
+        PlayerCharacter_Update::Install();
+
+        // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE
+        LightManager::registerEventSink();
      
         break;
     }

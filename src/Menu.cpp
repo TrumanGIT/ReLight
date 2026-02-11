@@ -1,6 +1,6 @@
 #include "Menu.h"
 #include "global.h"
-#include "Functions.h"
+#include "Utility.h"
 
 namespace logger = SKSE::log;
 

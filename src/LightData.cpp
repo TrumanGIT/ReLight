@@ -7,34 +7,20 @@
 #include "LightData.h"
 #include <string>
 #include <vector>
-#include  "Functions.h"
+#include  "Utility.h"
 
-// Members (config to json id is for faster lookups, used in flicker logic) 
+// (config to json id is for faster lookups then strings, used in flicker logic)
 std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
 
+// for search by mesh file path instead of node name
 std::unordered_map<std::string, LightConfig> LightData::meshPathToJsonCfg;
+
+//base lookup used when attaching lights to meshes
 std::unordered_map<std::string, std::vector<LightConfig>> LightData:: nodeNameToJsonCfg;
+
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint64_t, LightConfig> LightData::defaultConfigs;
 
-
-bool LightData::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref)
-{
-	if (!ref || !light || ref->IsDynamicForm()) {
-		return false;
-	}
-
-	if (excludeLightEditorID(light)) return false;
-
-	auto player = RE::PlayerCharacter::GetSingleton();
-
-	if (IsInSoulCairnOrApocrypha(player)) {
-		logger::debug("player is in apocrypha or soul cairn so we should not disable light");
-		return false;
-	}
-	 
-	return true;
-}
 
 // Try to exclude light by editorID.
 bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
@@ -51,22 +37,6 @@ bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
 	}
 	return false;
 }
-
-/* // were not using tesobject ligh flags anymore need to reimplement this.
-template <class T>
-REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t>
-parseLightFlags(const T& obj)
-{
-	REX::EnumSet<RE::TES_LIGHT_FLAGS, std::uint32_t> flags;
-
-	for (const auto& flagStr : obj.flags) {
-		auto it = kLightFlagMap.find(flagStr);
-		if (it != kLightFlagMap.end()) {
-			flags.set(it->second);
-		}
-	}
-	return flags;
-}*/
 
 RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
 {
@@ -103,20 +73,6 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 	niPointLight->local.translate.z = cfg.position[2];
 }
 
-
-/*not used
-void LightData::setRelightFlag(RE::TESObjectLIGH* ligh)
-{
-	if (!ligh) {
-		logger::warn("nullptr passed to set ni point light ambient and diffuse");
-		return;
-	}
-
-	auto rawPtr = reinterpret_cast<std::uint32_t*>(&ligh->data.flags);
-	*rawPtr |= (1u << 15); // set 15th bit (an unused flag to identify our lights like ISL) 
-}*/
-
-
 void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg) {
 
 
@@ -135,47 +91,6 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 		overlay->lighFormId = 0;
 		overlay->unk138 = static_cast<std::uint32_t>(cfg.configID); 
 	}
-}
-
-void LightData::attachLightUsingAttachPath(
-	const LightConfig& cfg,
-	RE::NiNode* root,
-	RE::NiPointLight* light)
-{
-	if (!root || !light) {
-		logger::warn("attachLightUsingAttachPath: null root or light");
-		return;
-	}
-
-	RE::NiAVObject* current = root;
-
-	for (int index : cfg.attachPath) {
-		auto* node = current->AsNode();
-		if (!node) {
-			logger::warn("attachLightUsingAttachPath: object is not a NiNode");
-			return;
-		}
-
-		auto& children = node->GetChildren();
-		if (index < 0 || index >= children.size() || !children[index]) {
-			logger::warn("attachLightUsingAttachPath: index {} out of bounds", index);
-			return;
-		}
-
-		current = children[index].get();
-	}
-
-	auto* finalNode = current->AsNode();
-	if (!finalNode) {
-		logger::warn("attachLightUsingAttachPath: final target is not a NiNode");
-		return;
-	}
-
-	auto finalNodeName = finalNode->name.c_str();
-
-	logger::debug("attached light to node {}", finalNodeName);
-
-	finalNode->AttachChild(light);
 }
 
 void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
@@ -235,35 +150,6 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	return p;
 }
 
-void LightData::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg) {
-
-	//logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
-
-	if (!niPointLight) {
-		logger::error("createShadowSceneNode: niPointLight is null");
-		return;
-	}
-
-	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS params = makeLightParams(cfg);
-
-	logger::debug("Light paramaters for {}", niPointLight->name);
-
-	printLightParams(params);
-
-	auto* shadowSceneNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-
-	if (!shadowSceneNode) {
-		logger::warn("no shadow scene node to grab in (createShadowSceneNode()");
-		return;
-	}
-	RE::BSLight* BsLight = shadowSceneNode->AddLight(niPointLight, params);
-
-	if (!BsLight) {
-		logger::info("no BSLight created in (createShadowSceneNode() for {}", niPointLight->name);
-		return;
-	}
-}
-
 bool LightData::foundConfigForLight(const RE::NiLight* light) {
 	
 	for  (auto& [name, vectorOfConfigs] : LightData::nodeNameToJsonCfg) {
@@ -304,163 +190,4 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 		}
 	}
 	cfg.print();
-}
-
-RE::BSEventNotifyControl LightData::ProcessEvent(const RE::BGSActorCellEvent* event,
-	RE::BSTEventSource<RE::BGSActorCellEvent>*) {
-
-	if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
-		return RE::BSEventNotifyControl::kContinue;
-	}
-
-	auto player = RE::PlayerCharacter::GetSingleton();
-
-	if (!player) return RE::BSEventNotifyControl::kContinue;
-
-	static bool s_firstCellEvent = true;
-
-	//logger::debug("cell event fired for player");
-
-	auto cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(event->cellID);
-	if (!cell) {
-		return RE::BSEventNotifyControl::kContinue;
-	}
-
-	static float fLODFadeOutMultObjects;
-
-	if (s_firstCellEvent) {
-		s_firstCellEvent = false;
-		globals::lastCellWasInterior = cell->IsInteriorCell();
-		return RE::BSEventNotifyControl::kContinue;
-
-		getObjectFadeMult(fLODFadeOutMultObjects);
-
-		logger::debug("Users object fade ini setting = {}", fLODFadeOutMultObjects);
-
-	}
-
-	const bool currentCellIsInterior = cell->IsInteriorCell();
-
-	if (globals::lastCellWasInterior != currentCellIsInterior) {
-		logger::debug("player moved from exteiror to interior, or vice versa, reattaching lights");
-
-		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-		if (!ssNode) {
-			logger::warn("ShadowSceneNode[0] is null!");
-			return RE::BSEventNotifyControl::kContinue;
-		}
-
-		auto& rt = ssNode->GetRuntimeData();
-
-		/*for (auto& light : rt.activeShadowLights) {
-			if (!light) {
-				continue;
-			}
-
-			ssNode->RemoveLight(light);
-		}*/
-
-		logger::debug("shaodow light list size after cleaning: {}", rt.activeLights.size());
-		RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
-
-			if (!ref) return RE::BSContainer::ForEachResult::kContinue;
-
-			const auto baseObject = ref->GetBaseObject();
-
-			auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
-
-			if (baseFormID == 0) return RE::BSContainer::ForEachResult::kContinue;
-
-			for (const auto& formID : globals::baseFormsWithAttachedLights) {
-
-				//logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
-
-				if (baseFormID == formID) {
-					logger::debug("baseForm ref that needs reinitializing found");
-
-					RE::ObjectRefHandle handle(ref);
-					SKSE::GetTaskInterface()->AddTask([handle]() {
-						if (auto ref = handle.get()) {
-							auto root = ref->Load3D(false);
-
-							if (!root) return;
-
-							auto bsFadeNode = root->AsNode();
-
-							if (!bsFadeNode) return;
-
-							//surf children for light
-							for (auto& child : bsFadeNode->GetChildren()) {
-								if (!child) continue;
-
-								// exclude non relight lights
-								const char* name = child->name.c_str();
-								if (!name || name[0] != 'R' || name[1] != 'L')
-									continue;
-
-								RE::NiPointLight* light = netimmerse_cast<RE::NiPointLight*>(child.get());
-
-								if (!light) continue;
-
-								auto it = LightData::configIDToJsonCfg.find(light->GetLightRuntimeData().unk138);
-
-								if (it == LightData::configIDToJsonCfg.end()) {
-									logger::warn("attempted to reinitialize light but its config ID wasent found");
-									continue;
-								}
-
-								const auto& config = it->second;
-
-								// shadow lights are handled differently then non shadow lights
-								if (config.shadowLight) {
-
-									auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-									if (!ssNode) {
-										logger::warn("ShadowSceneNode[0] is null!");
-										continue;
-									}
-									bool bsLightExists = false;
-
-									for (auto bsLight : ssNode->activeShadowLights) {
-
-										if (bsLight->light.get() == light) {
-											logger::info("shadow light {} with ID {} exists already for ref: {} skipping reinitialization", light->name, static_cast<void*>(light), ref->GetFormID());
-											bsLightExists = true;
-											break; 
-										}
-									}
-
-									if (!bsLightExists) {
-										logger::info("reintiializing shadow light {} with ID {} for ref {} ", light->name, static_cast<void*>(light), ref->GetFormID());
-
-										auto p = LightData::makeLightParams(config);
-										ssNode->AddLight(light, p);
-									}
-
-								}
-								else {
-									ref->Disable();
-									ref->Enable(false);
-									logger::info("non shadow light: {} with ID {} reinitialized for ref {}", light->name, static_cast<void*>(light), ref->GetFormID());
-								}
-							}
-
-						}
-					});
-				}
-			}
-		});
-	}
-
-	globals::lastCellWasInterior = currentCellIsInterior;
-
-	return RE::BSEventNotifyControl::kContinue;
-}
-
-void LightData::registerEventSink()
-{
-	if (auto* player = RE::PlayerCharacter::GetSingleton()) {
-		player->AsBGSActorCellEventSource()->AddEventSink(LightData::GetSingleton());
-		logger::info("BGSActorCellEvent sink registered");
-	}
 }

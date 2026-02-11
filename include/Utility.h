@@ -2,7 +2,6 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include "ClibUtil/EditorID.hpp"
 #include "LightData.h"
-#include "Hooks.h"
 #include "global.h"
 #include <fstream>
 #include <unordered_map>
@@ -267,6 +266,7 @@ inline RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight) {
 	return niPointLightClone;
 }
 
+//removes unsightly glow orbs from meshes
 inline void glowOrbRemover(RE::NiNode* node)
 {
 	if (!node)
@@ -362,6 +362,7 @@ inline const RE::BSFixedString findPriorityMatch(const RE::BSFixedString& nodeNa
 	return ""; // safe, reference exists
 }
 
+//gets users skyrim pref setting. lights reinitialized are set to this exact distance
 inline void getObjectFadeMult(float& fLODFadeOutMultObjects) {
 
 	if (auto* setting = RE::GetINISetting("fLODFadeOutMultObjects:LOD")) {
@@ -370,247 +371,6 @@ inline void getObjectFadeMult(float& fLODFadeOutMultObjects) {
 		}
 	}
 }
-
-inline bool processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
-
-	if (LightData::meshPathToJsonCfg.empty()) return false;
-
-	const auto baseObject = a_this->GetBaseObject();
-
-	if (!baseObject) return true;
-
-	const auto bm = baseObject->As<RE::TESModel>();
-	if (!bm) return true;
-
-	auto currentModel = bm->GetModel();
-
-	for (const auto& [meshPath, cfg] : LightData::meshPathToJsonCfg) {
-	
-		if (meshPath != currentModel) continue;
-
-		const auto baseFormID = baseObject->GetFormID();
-
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		
-			logger::debug("file path match found: {}", currentModel);
-
-			auto ui = RE::UI::GetSingleton();
-
-			if (ui && ui->IsMenuOpen("InventoryMenu")) {
-				//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-				return true;
-			}
-
-			auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
-
-			if (!cloneLight) {
-				logger::warn("Failed to clone NiPointLight for mesh '{}')", currentModel);
-				continue;
-			}
-
-			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-
-			/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
-			std::string temp = "RL" + std::string(cfg.nodeName.c_str());
-			cloneLight->name = temp.c_str();
-
-			LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
-
-			LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
-			return true;
-
-	}
-
-	return false;
-}
-
-// some nodes are called dummy this is to take care of them.
-inline bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nodeName, RE::NiNode* a_root)
-{
-
-	if (!nodeName.contains("dummy")) return false;
-
-	logger::debug("dummy found");
-
-	static const std::unordered_map<std::string, std::string> dummyMeshPaths = {
-	{ "Clutter\\Ruins\\RuinsFloorCandleLampMidOn.nif", "ruinsfloorcandlelampmidon" },
-	{ "Clutter\\Ruins\\RuinsFloorCandleLampMidOn02.nif", "ruinsfloorcandlelampmidon" },
-	{ "Clutter\\Ruins\\RuinsFloorCandleLampSmOn.nif", "ruinsfloorcandlelampsmon" },
-	{ "Clutter\\Ruins\\RuinsFloorCandleLampSmOn02.nif", "ruinsfloorcandlelampsmon" },
-
-	{ "Clutter\\Imperial\\ImpChandellierCandle01.nif", "chandel" },
-	{ "Clutter\\Imperial\\ImpChandellierCandle01USKP.nif", "chandel" },
-
-	{ "Clutter\\Common\\CandleLanternwithCandle01.nif", "candle" },
-
-	{ "DynDOLOD\\LOD\\Clutter\\CandleLanternHandleDown_DynDOLOD_LOD.nif", "candle" },
-	{ "DynDOLOD\\LOD\\Clutter\\CandleLanternwithCandle01_DynDOLOD_LOD.nif", "candle" },
-
-	{ "DynDOLOD\\LOD\\Clutter\\ImpChandellierCandle01_DynDOLOD_LOD.nif", "chandel" },
-
-	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampMidOn_DynDOLOD_LOD.nif", "ruinsfloorcandlelampmidon" },
-	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampMidOn02_DynDOLOD_LOD.nif", "ruinsfloorcandlelampmidon" },
-	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampSmOn_DynDOLOD_LOD.nif", "ruinsfloorcandlelampsmon" },
-	{ "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampSmOn02_DynDOLOD_LOD.nif", "ruinsfloorcandlelampsmon" },
-	};
-
-	auto baseObject = a_this->GetBaseObject();
-
-	if (!baseObject) return true;
-
-	const auto baseFormID = baseObject->GetFormID();
-
-	const auto bm = baseObject->As<RE::TESModel>();
-	if (!bm) return true;
-
-	const auto currentModel = bm->GetModel();
-
-	logger::debug("dummy found, Model = {}", currentModel);
-
-	auto it = dummyMeshPaths.find(currentModel);
-	if (it != dummyMeshPaths.end()) {
-
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName.c_str(), baseFormID);
-
-		const std::string& match = it->second;
-
-		auto cfg = findConfigsForNode(match)[0];
-
-		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
-
-		if (!cloneLight) {
-			logger::warn("Failed to clone NiPointLight for node '{}')", nodeName);
-			return true;
-		}
-
-		LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-
-		cloneLight->name = "RL" + cfg.nodeName;
-
-		LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
-
-		LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
-
-		logger::debug("dummy match found for path {} and got light with node Name: {}", currentModel, cfg.nodeName);
-		return true;
-	}
-
-	// already returned early if not a dummy, therefor might as well skip this object as it wouldent get light anyway
-	return true;
-}
-
-
-inline void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this) {
-
-	 // matched name
-	 std::string matchStr = match.c_str();
-
-//	 auto existingLightName = "RL" + matchStr;
-
-	 //logger::debug("existinglight name  = {}", existingLightName); 
-
-	 //only attach if the mes doesent have a ni light already.
-	 // (a_root->GetObjectByName(existingLightName)) {
-		 //logger::debug("light already exists skipping attachement for {}", matchStr);
-		// return;
-	 //}
-
-	auto ui = RE::UI::GetSingleton();
-
-	if (ui && ui->IsMenuOpen("InventoryMenu")) {
-		//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-		return;
-	}
-
-	const auto baseObject = a_this->GetBaseObject();
-
-	const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
-
-	if (baseFormID != 0) {
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		logger::debug("node: {} with baseFormID: {}  emplaced in set", matchStr, baseFormID);
-	}
-
-	//TODO:: Reimplement, no nifpath in args of hook but can still prolly pull mod path
-	 // if (handleSceneRoot(a_nifPath, a_root, nodeName))
-	  //    return niAVObject;
-
-	if (globals::removeFakeGlowOrbs)
-		glowOrbRemover(a_root);
-
-	//TO DO:: need a way to add more then 1 light
-   /* if (applyCorrectNordicHallTemplate(nodeName, a_root))
-		return func(a_this, a_args, a_nifPath, a_root, a_typeOut);*/
-
-	auto cfgs = findConfigsForNode(matchStr);
-
-	for (const auto& cfg : cfgs) {
-	auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
-
-	if (!cloneLight) {
-		logger::warn("Failed to clone NiPointLight for node '{}')", matchStr);
-		continue;
-	}
-
-	LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-
-	cloneLight->name = "RL" + cfg.nodeName;
-
-	LightData::attachLightUsingAttachPath(cfg, a_root, cloneLight);
-
-	LightData::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
-
-	//logger::info("attached {} light to {} ", cfg.nodeName, a_this->GetFormID());
-	}
-}
-
-//TODO:: Reimplement
-
-
-// some nodes are called scene root this is to take care of them. 
-/*inline bool handleSceneRoot(const char* nifPath, RE::NiPointer<RE::NiNode>& a_root, const std::string& nodeName)
-{
-	// Skip if nodeName does not contain "scene"
-	if (nodeName.find("scene") == std::string::npos)
-		return false;
-
-	if (!nifPath)
-		return true;
-
-	std::string path = nifPath;
-	toLower(path);
-
-	logger::debug("scene root node detected, checking path: {}", path);
-
-	// Determine bankType based on path
-	std::string bankType;
-	if (path.find("candlehornfloor") != std::string::npos || path.find("mwcandle01") != std::string::npos) {
-		bankType = "candlehornfloor01";
-	}
-	else if (path.find("candle") != std::string::npos) {
-		logger::info("handleSceneRootByPath: matched candlehorntable/wall or mwcandle01 in path");
-		bankType = "candle";
-	}
-	else {
-		return true; // not a relevant mesh
-	}
-
-	// Get the next node from the bank
-	if (auto nodePtr = getNextNodeFromBank(bankType); nodePtr) {
-		if (removeFakeGlowOrbs)
-			glowOrbRemover(a_root.get());
-
-		a_root->AttachChild(nodePtr.get());
-		logger::info("Attached '{}' node to '{}'", bankType, a_root->name.c_str());
-	}
-	else {
-		logger::warn("handleSceneRootByPath: Attach target or nodePtr was null for '{}'", bankType);
-	}
-
-	return true;
-}*/
-
 
 // this was made for debugging 
 inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
