@@ -34,13 +34,39 @@ namespace UI {
 
         ImGuiMCP::Text("Testing Menu");
         ImGuiMCP::PopStyleColor();
-        ImGuiMCP::SameLine();
 
-        ImGuiMCP::InputInt("Global Max Light Distance", &globals::maxLightDistance);
+        if (ImGuiMCP::Checkbox("Enable Lights being disabled based on distance (not very usefull)", &globals::maxLightDistanceEnabled)) {
+            ImGuiMCP::SetTooltip("disable all lights not within certain distance, does not reenable them currently)");
+        }
 
         if (ImGuiMCP::IsItemHovered()) {
             ImGuiMCP::SetTooltip("Sets max distance for lights (does not re-enable them)");
         }
+
+        if (globals::maxLightDistanceEnabled) {
+            ImGuiMCP::InputInt("Global Max Light Distance", &globals::maxLightDistance);
+        }
+
+    
+
+        if (ImGuiMCP::Checkbox("disable lights with radius that does not enter camera (and renables them)", &globals::disableLightsNotInCameraEnabled)) {
+           
+        }
+
+        if (ImGuiMCP::IsItemHovered()) {
+            ImGuiMCP::SetTooltip("was told vanilla does this already but im not sure it does when enabling light editor the log dump says otherwise)");
+        }
+
+
+        if (ImGuiMCP::Checkbox("enableHookToRemoveLightsFromBSTriShapes (Read tool tip)", &globals::enableHookToRemoveLightsFromBSTriShapes)) {
+        }
+
+        if (ImGuiMCP::IsItemHovered()) {
+            ImGuiMCP::SetTooltip("the formula is not compelte it needs work. trying other leads will come back to this");
+        }
+
+      
+
     }
 
     void __stdcall RenderSettings() {

@@ -7,9 +7,9 @@
 #include "global.h"
 #include "LightData.h"
 #include "LightManager.h"
-#include "flicker.h"
+#include "everyFrame.h"
 #include "disableLights.h"
-#include "shaderData.h"
+#include "BSLightingShaderHook.h"
 
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {

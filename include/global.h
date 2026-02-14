@@ -15,6 +15,11 @@ namespace globals
     inline bool islInstalled = false;
 
     inline int maxLightDistance = 1000; 
+    inline bool maxLightDistanceEnabled = false;
+
+    inline bool disableLightsNotInCameraEnabled = false; 
+
+    inline bool enableHookToRemoveLightsFromBSTriShapes = false;
 
     inline int loggingLevel = 0;
 

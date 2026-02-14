@@ -16,7 +16,6 @@ struct PlayerCharacter_Update {
 };
 
 
-
 // used in flicker calcs
 inline float getRandomFloat(const float& min, const float& max, uint32_t rngState)
 {
