@@ -14,7 +14,7 @@ struct TESObjectLIGH_GenDynamic {
     static void Install();
 };
 
-// not very usefull problem is not # of lights in a cell but on a bs tri shape
+// not very usefull problem is not # of lights in a cell but # of lights on a bs tri shape
 template <class T>
 inline void disableLightsPastMaxDistance(T& lights, RE::NiPoint3& playerPos, RE::ShadowSceneNode* ssNode) {
     for (auto& light : lights) {
@@ -29,8 +29,8 @@ inline void disableLightsPastMaxDistance(T& lights, RE::NiPoint3& playerPos, RE:
 }
 
 // I use this to calculate the overlap of a light with the camera and disable lights outside the camera
-// it works but did not seem to help. I was told that the engine already does this but when you press the menu button 
-// to load light templates it displays a debug log of all active lights and without this lights still seem to be active so idk if enigne does this or not already
+// it works but did not seem to help. I was told that the engine already does this but when you press the enable light editor button in our menu 
+// to load light templates it displays a debug log of all active lights and lights still seem to be active so idk if the engine does or not
 inline void NiCamera_unk_CalculateFrustumOverlap(RE::NiCamera* camera, float* coord, float* result1, float* result2, float epsilon)
 {
     // 140C65760
@@ -42,10 +42,9 @@ inline void NiCamera_unk_CalculateFrustumOverlap(RE::NiCamera* camera, float* co
 // I was told vvanilla does this I need to find it if it does already, a log dump is done every time you enabe light editor 
 // it logs all active lights and there data. according to this all lights are still active meaning vanilla does not but it needs to be investigated further
 template <class T>
-inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE::NiCamera* camera) {
+inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE::NiCamera* camera, RE::PlayerCharacter* player) {
 
     static std::vector<RE::NiPointer<RE::BSLight>> removedLights;
-    
 
     //REenable disabled lights that were out of camera view
     for (auto it = removedLights.begin(); it != removedLights.end(); ) {
@@ -72,7 +71,13 @@ inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE:
             }
         }
         if (visible) {
-            logger::info("  Light restored! {}", nilight->name.c_str());
+
+            auto playerPos = player->GetPosition(); 
+
+            float distanceFromPlayer = playerPos.GetDistance(nilight->world.translate);
+
+
+            logger::info("  Light {} at coord {} restored , player Pos{} distance from player {}", nilight->name.c_str(), nilight->world.translate, playerPos, distanceFromPlayer);
             ssNode->AddLight(light.get());
             it = removedLights.erase(it);
         }

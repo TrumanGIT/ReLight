@@ -34,9 +34,9 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 	}
 
 	if (globals::disableLightsNotInCameraEnabled) {
-		disableLightsNotInCamera(ssRt.activeLights, ssNode, worldCamera);
+		disableLightsNotInCamera(ssRt.activeLights, ssNode, worldCamera, player);
 
-		disableLightsNotInCamera(ssRt.activeShadowLights, ssNode, worldCamera);
+		disableLightsNotInCamera(ssRt.activeShadowLights, ssNode, worldCamera, player);
 	}
 
 

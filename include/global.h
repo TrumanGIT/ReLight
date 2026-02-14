@@ -21,6 +21,8 @@ namespace globals
 
     inline bool enableHookToRemoveLightsFromBSTriShapes = false;
 
+    inline int lightOverlapMinOnTriShapeMult = 0.8;
+
     inline int loggingLevel = 0;
 
     inline std::vector<std::string> meshPaths{};

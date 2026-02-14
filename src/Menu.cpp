@@ -62,6 +62,12 @@ namespace UI {
         if (ImGuiMCP::Checkbox("enableHookToRemoveLightsFromBSTriShapes (Read tool tip)", &globals::enableHookToRemoveLightsFromBSTriShapes)) {
         }
 
+        if (globals::enableHookToRemoveLightsFromBSTriShapes) {
+            ImGuiMCP::SliderInt("min Light Overlap On TriShape mult", &globals::lightOverlapMinOnTriShapeMult, 0, 150);
+            if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip(" 80 = light must cover 80% of the light");
+        
+        }
+
         if (ImGuiMCP::IsItemHovered()) {
             ImGuiMCP::SetTooltip("the formula is not compelte it needs work. trying other leads will come back to this");
         }

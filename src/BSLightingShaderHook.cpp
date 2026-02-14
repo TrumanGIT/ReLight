@@ -36,7 +36,7 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
                     float dist = nilight->world.translate.GetDistance(geomPos);
 
                     // compare here. 
-                    if (dist > (lightRadius + geomRadius)) {
+                    if (dist > (lightRadius + geomRadius) * globals::lightOverlapMinOnTriShapeMult) {
                         lightList.erase(lightList.begin() + i);
                     }
                 }
