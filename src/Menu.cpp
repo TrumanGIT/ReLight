@@ -1,6 +1,7 @@
 #include "Menu.h"
 #include "global.h"
 #include "Utility.h"
+#include "lightManager.h"
 
 namespace logger = SKSE::log;
 
@@ -65,7 +66,18 @@ namespace UI {
             ImGuiMCP::SetTooltip("the formula is not compelte it needs work. trying other leads will come back to this");
         }
 
-      
+        if (ImGuiMCP::Button("Reinitialize Lights")) {
+
+            auto player = RE::PlayerCharacter::GetSingleton(); 
+
+            if (!player) return; 
+
+            LightManager::reinitializeLightsWithinRange(player);  // your function
+        }
+
+        if (ImGuiMCP::IsItemHovered()) {
+            ImGuiMCP::SetTooltip("reset all lights within range of your skyrim pref. ini object lod setting");
+        }
 
     }
 
@@ -510,9 +522,9 @@ namespace UI {
 
             auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
-            logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{} World Position {}, configID: {} ",
+            logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{},BSLight World Pos: {}, NiLight World Position {}, configID: {} ",
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius,
-                dataExt.flickerIntensity, dataExt.flickersPerSecond, shadowLight->worldTranslate, dataExt.configID);
+                dataExt.flickerIntensity, dataExt.flickersPerSecond, shadowLight->worldTranslate, shadowLight->light->world.translate, dataExt.configID);
 
             bool shadowLightAlreadyInList = false;
             for (auto& existingLight : lights) {

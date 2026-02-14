@@ -38,7 +38,7 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
    static bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nodeName, RE::NiNode* a_root);
 
-   static bool shouldInitializeLightRightAway(RE::TESObjectREFR* ref);
+  static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;
