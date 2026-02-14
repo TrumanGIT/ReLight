@@ -14,7 +14,7 @@ namespace globals
     inline bool lastCellWasInterior = false;
     inline bool islInstalled = false;
 
-
+    inline int maxLightDistance = 1000; 
 
     inline int loggingLevel = 0;
 

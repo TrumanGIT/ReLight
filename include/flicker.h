@@ -3,6 +3,7 @@
 #include "logger.hpp"
 #include "random.h"
 #include "LightData.h"
+#include "disableLights.h"
 
 // hook into player update so we can update light flicker data every fram
 struct PlayerCharacter_Update {
@@ -55,4 +56,12 @@ static void ApplyLightFlicker(T& lights, float delta)
 			dataExt.startingFade +
 			std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
 	}
+}
+
+
+inline RE::SceneGraph* GetWorldSceneGraph()
+{
+	// 143258B48
+	static REL::VariantID uid(528087, 415032, 0);
+	return *((RE::SceneGraph**)uid.address());
 }

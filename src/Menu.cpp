@@ -22,6 +22,25 @@ namespace UI {
         SKSEMenuFramework::AddSectionItem("Settings", UI::RenderSettings);
 
         SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
+
+        SKSEMenuFramework::AddSectionItem("Testing", UI::RenderTestingMenu);
+    }
+
+    void __stdcall RenderTestingMenu() {
+        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+
+        FontAwesome::PushSolid();
+        auto iconUtf8 = FontAwesome::UnicodeToUtf8(0xf0eb);
+
+        ImGuiMCP::Text("Testing Menu");
+        ImGuiMCP::PopStyleColor();
+        ImGuiMCP::SameLine();
+
+        ImGuiMCP::InputInt("Global Max Light Distance", &globals::maxLightDistance);
+
+        if (ImGuiMCP::IsItemHovered()) {
+            ImGuiMCP::SetTooltip("Sets max distance for lights (does not re-enable them)");
+        }
     }
 
     void __stdcall RenderSettings() {
@@ -430,16 +449,15 @@ namespace UI {
 
             auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
-
             // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
             // by flicker equation (they were before Its good to check sometimes)
-            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, World Position: {}, configID: {} ",
-                lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, light->worldTranslate, dataExt.configID);
+            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {} ",
+                lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, light->worldTranslate, light->light->world.translate, dataExt.configID);
 
             for (auto& existingLight : lights) {
 
                 if (!existingLight) continue;
-                // unk138 is a config id in this case, do tis to handle editing multiple lights to 1 mesh 
+                // unk138 is a config id in this case, do this to handle editing multiple lights to 1 mesh 
                 if (existingLight->light->unk138 == currentRt.unk138) {
                     // Light already exists in the list, skip adding
                     lightAlreadyInList = true;
@@ -559,7 +577,7 @@ namespace UI {
                     isl->size = backupCfg.size;
                 }
             }
-            };
+        };
 
         updateLightList(rt.activeLights);
         updateLightList(rt.activeShadowLights);

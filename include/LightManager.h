@@ -3,14 +3,7 @@
 #include "logger.hpp"
 #include "LightData.h"
 
-//PO3's used to disable all lights tot start wiht a clean base
-struct TESObjectLIGH_GenDynamic {
-    static RE::NiPointLight* thunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
-        bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
 
-    static inline REL::Relocation<decltype(thunk)> func;
-    static void Install();
-};
 
 // correct timing to attach lights because world position data is loaded, earlier = lights show up at cell origin 0,0,0
 struct Load3D {
@@ -37,8 +30,6 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
     static void registerEventSink();
 
-    static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref);
-
     static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light);
 
    static bool processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root);
@@ -47,9 +38,10 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
    static bool dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nodeName, RE::NiNode* a_root);
 
-      
+   static bool shouldInitializeLightRightAway(RE::TESObjectREFR* ref);
 
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;
 
 };
+

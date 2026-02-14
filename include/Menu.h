@@ -6,6 +6,7 @@ namespace UI {
     void Register();
     void __stdcall RenderSettings();
     void __stdcall RenderLightEditor();
+    void __stdcall RenderTestingMenu();
     void saveSettingsToIni();
     void getAllLights();
     void restoreLightToDefaults(RE::NiPointer<RE::NiLight> selectedLight);
