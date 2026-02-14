@@ -1,7 +1,16 @@
 #pragma once
 
 #include "global.h"
+#include <unordered_set>
 
+
+struct NiPointerHasher
+{
+    std::size_t operator()(const RE::NiPointer<RE::BSLight>& ptr) const noexcept
+    {
+        return std::hash<RE::BSLight*>{}(ptr.get());
+    }
+};
 
 //PO3's hook used to disable all lights tot start wiht a clean base
 struct TESObjectLIGH_GenDynamic {
@@ -44,7 +53,10 @@ inline void NiCamera_unk_CalculateFrustumOverlap(RE::NiCamera* camera, float* co
 template <class T>
 inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE::NiCamera* camera, RE::PlayerCharacter* player) {
 
-    static std::vector<RE::NiPointer<RE::BSLight>> removedLights;
+    static std::unordered_set<
+        RE::NiPointer<RE::BSLight>,
+        NiPointerHasher
+    > removedLights;
 
     //REenable disabled lights that were out of camera view
     for (auto it = removedLights.begin(); it != removedLights.end(); ) {
@@ -62,7 +74,7 @@ inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE:
             radius
         };
         float minOut[3]{}, maxOut[3]{};
-        NiCamera_unk_CalculateFrustumOverlap(camera, coord, minOut, maxOut, 0.0001f);
+        NiCamera_unk_CalculateFrustumOverlap(camera, coord, minOut, maxOut, globals::frustumOverlapTolerance);
         bool visible = true;
         for (int i = 0; i < 3; i++) {
             if (maxOut[i] <= minOut[i]) {
@@ -76,6 +88,7 @@ inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE:
 
             float distanceFromPlayer = playerPos.GetDistance(nilight->world.translate);
 
+            if (distanceFromPlayer >= globals::fLODFadeOutMultObjects) return;
 
             logger::info("  Light {} at coord {} restored , player Pos{} distance from player {}", nilight->name.c_str(), nilight->world.translate, playerPos, distanceFromPlayer);
             ssNode->AddLight(light.get());
@@ -108,7 +121,7 @@ inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE:
         }
         if (!visible) {
             logger::info("  Light removed! {}", nilight->name.c_str());
-            removedLights.push_back(light);
+            removedLights.insert(light);
             ssNode->RemoveLight(light);
         }
     }

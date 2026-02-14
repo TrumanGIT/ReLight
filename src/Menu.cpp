@@ -58,6 +58,15 @@ namespace UI {
             ImGuiMCP::SetTooltip("was told vanilla does this already but im not sure it does when enabling light editor the log dump says otherwise)");
         }
 
+        if (globals::disableLightsNotInCameraEnabled) {
+            ImGuiMCP::SliderFloat("frustumTolerance", &globals::frustumOverlapTolerance, 0, 3);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("how strict to disable lights outside the camera. higher = more strict");
+            }
+        
+        }
+
 
         if (ImGuiMCP::Checkbox("enableHookToRemoveLightsFromBSTriShapes (Read tool tip)", &globals::enableHookToRemoveLightsFromBSTriShapes)) {
         }

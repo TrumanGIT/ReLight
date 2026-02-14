@@ -23,6 +23,10 @@ namespace globals
 
     inline int lightOverlapMinOnTriShapeMult = 0.8;
 
+    inline int fLODFadeOutMultObjects = 9000;
+
+    inline float frustumOverlapTolerance = 0.0001;
+
     inline int loggingLevel = 0;
 
     inline std::vector<std::string> meshPaths{};

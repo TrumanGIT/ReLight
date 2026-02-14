@@ -325,7 +325,8 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		return RE::BSEventNotifyControl::kContinue;
 	}
 
-	static float fLODFadeOutMultObjects;
+	//TODO Change to use global
+	static int fLODFadeOutMultObjects;
 
 	if (s_firstCellEvent) {
 		s_firstCellEvent = false;
@@ -352,7 +353,7 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		auto& rt = ssNode->GetRuntimeData();
 
 
-		logger::debug("shaodow light list size after cleaning: {}", rt.activeLights.size());
+		//logger::debug("shaodow light list size after cleaning: {}", rt.activeLights.size());
 		RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
 			if (!ref) return RE::BSContainer::ForEachResult::kContinue;
@@ -472,7 +473,8 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 	}
 	auto& rt = ssNode->GetRuntimeData();
 
-	static float fLODFadeOutMultObjects;
+	//TODO Change to use global
+	static int fLODFadeOutMultObjects;
 
 	getObjectFadeMult(fLODFadeOutMultObjects);
 	
