@@ -12,6 +12,11 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return func(a_this, a_backgroundLoading);
 	}
 
+	// ref already has a light placed, introduced to skip over refs that got a merged light
+	if (globals::refsWithAttachedLights.count(a_this) > 0) {
+		return func(a_this, a_backgroundLoading);
+	}
+
 	//logger::info("load3D called");
 	auto niAVObject = func(a_this, a_backgroundLoading);
 	if (!niAVObject) {
@@ -120,7 +125,9 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		logger::warn("no shadow scene node to grab in (createShadowSceneNode()");
 		return;
 	}
+
 	RE::BSLight* BsLight = shadowSceneNode->AddLight(niPointLight, params);
+
 
 	if (!BsLight) {
 		logger::info("no BSLight created in (createShadowSceneNode() for {}", niPointLight->name);
@@ -274,6 +281,8 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
 
+	auto refPos  = a_this->GetPosition(); 
+
 	if (baseFormID != 0) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		logger::debug("node: {} with baseFormID: {}  emplaced in set", matchStr, baseFormID);
@@ -296,7 +305,12 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		cloneLight->name = "RL" + cfg.nodeName;
 
-		LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+		if (globals::enableLightMerging) {
+			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root);
+		}
+		else {
+			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+		}
 
 		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
 
@@ -460,8 +474,6 @@ void LightManager::registerEventSink()
 	}
 }
 
-
-
 // TOODO:: put this in the event sink above
 void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
@@ -571,3 +583,142 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 	});
 
 }
+
+
+void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
+	RE::NiPointLight* childLight, const LightConfig&cfg, RE::NiNode* a_root)
+{
+	if (!a_this || !childLight) return;
+
+	std::vector<RE::TESObjectREFR*> pendingMerge;
+	int potentialMergeCount = 0;
+	RE::FormID a_thisBaseID = a_this->GetBaseObject() ? a_this->GetBaseObject()->GetFormID() : 0;
+
+	// Find nearby refs with the same base object that haven't been merged yet
+	RE::TES::GetSingleton()->ForEachReferenceInRange(a_this, globals::lightMergeDistance, [&](RE::TESObjectREFR* ref) {
+		if (ref == a_this) return RE::BSContainer::ForEachResult::kContinue;
+		if (globals::refsWithAttachedLights.count(ref) == 0) {
+			auto baseObj = ref->GetBaseObject();
+			if (baseObj && baseObj->GetFormID() == a_thisBaseID) {
+				pendingMerge.push_back(ref);
+				potentialMergeCount++;
+			}
+		}
+		return RE::BSContainer::ForEachResult::kContinue;
+		});
+
+	switch (potentialMergeCount) {
+	case 0:
+		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
+		break;
+
+	case 1: {
+		// Attach the light using your existing function (keeps hierarchy)
+		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
+
+		auto otherRef = pendingMerge[0];
+
+		// Get world positions of the references
+		RE::NiPoint3 refAWorldPos = a_this->GetPosition();
+		RE::NiPoint3 refBWorldPos = otherRef->GetPosition();
+
+		// Compute midpoint in world space (X/Y only)
+		RE::NiPoint3 worldMid{};
+		worldMid.x = (refAWorldPos.x + refBWorldPos.x) * 0.5f;
+		worldMid.y = (refAWorldPos.y + refBWorldPos.y) * 0.5f;
+		// Preserve original Z as offset
+		worldMid.z = refAWorldPos.z;
+
+		// Save original local Z for the child
+		float originalLocalZ = childLight->local.translate.z;
+
+		// Convert world midpoint to local space of parent
+		RE::NiTransform parentWorldTransform = a_root->world;
+		RE::NiTransform invTransform = parentWorldTransform.Invert();
+		RE::NiPoint3 localMid = invTransform * worldMid;
+
+		// Add original Z offset
+		localMid.z += originalLocalZ;
+
+		// Logging before change
+		logger::debug(
+			"BEFORE Light {} merge for ref{} at {} and ref {} at {}. "
+			"Desired world XY = ({}, {}), original Z = {}. "
+			"Local translate = {}",
+			childLight->name.c_str(),
+			a_this->GetFormID(), refAWorldPos,
+			otherRef->GetFormID(), refBWorldPos,
+			worldMid.x, worldMid.y, originalLocalZ,
+			childLight->local.translate
+		);
+
+		// Apply local position
+		childLight->local.translate = localMid;
+
+		// Optionally double fade
+		childLight->fade *= 2.0f;
+
+		// Force parent update to reflect changes in world space
+		if (auto* parent = childLight->parent) {
+			RE::NiUpdateData updateData{};
+			updateData.time = 0.0f;
+			updateData.flags = RE::NiUpdateData::Flag::kDirty;
+			parent->UpdateTransformAndBounds(updateData);
+		}
+
+		// Track references with attached lights
+		globals::refsWithAttachedLights.insert(a_this);
+		globals::refsWithAttachedLights.insert(otherRef);
+
+		// Logging after change
+		logger::debug(
+			"AFTER  Light {} merge for ref{} at {} and ref {} at {}. "
+			"Local translate set = {}, world position approx = {}",
+			childLight->name.c_str(),
+			a_this->GetFormID(), refAWorldPos,
+			otherRef->GetFormID(), refBWorldPos,
+			childLight->local.translate,
+			a_root->world.translate + childLight->local.translate // approximate
+		);
+
+		break;
+	}
+
+	case 2: {
+		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
+
+		std::vector<RE::NiPoint3> positions = {
+			a_this->GetPosition(),
+			pendingMerge[0]->GetPosition(),
+			pendingMerge[1]->GetPosition()
+		};
+
+		 // place the light in between the 3 refs
+		auto computeLocalMidpoint = [](const RE::NiPoint3& parentWorldPos, const std::vector<RE::NiPoint3>& worldPositions) -> RE::NiPoint3 {
+			if (worldPositions.empty())
+				return {};
+			RE::NiPoint3 sum(0, 0, 0);
+			for (const auto& pos : worldPositions)
+				sum += pos;
+			RE::NiPoint3 avg = sum / static_cast<float>(worldPositions.size());
+			return avg - parentWorldPos;
+			};
+
+		childLight->local.translate = computeLocalMidpoint(childLight->parent->world.translate, positions);
+
+		childLight->fade *= 3.0f;
+		// bslight.unk060++;
+
+		globals::refsWithAttachedLights.insert(a_this);
+		for (auto& ref : pendingMerge) {
+			if (ref)
+				globals::refsWithAttachedLights.insert(ref);
+		}
+
+		break;
+	}
+	}
+}
+
+
+

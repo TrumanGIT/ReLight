@@ -21,6 +21,9 @@ namespace globals
 
     inline bool enableHookToRemoveLightsFromBSTriShapes = false;
 
+    inline bool enableLightMerging = false;
+    inline float lightMergeDistance = 85; 
+
     inline int lightOverlapMinOnTriShapeMult = 0.8;
 
     inline int fLODFadeOutMultObjects = 9000;
@@ -37,7 +40,7 @@ namespace globals
 
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
-
+    inline std::unordered_set<RE::TESObjectREFR*> refsWithAttachedLights{};
 
 
     inline RE::TESObjectLIGH* dummyLightObject = nullptr;
