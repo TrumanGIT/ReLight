@@ -206,6 +206,12 @@ namespace UI {
         }
     }
 
+    inline void makeDisplayName(std::string& name) {
+        name = removePrefix(name, "RL");
+        if (name.empty()) return;
+        name[0] = std::toupper(name[0]);
+    }
+
     void __stdcall RenderLightEditor() {
 
         static int selectedIndex = -1;
@@ -334,6 +340,9 @@ namespace UI {
 
         if (ImGuiMCP::CollapsingHeader("Loaded Light Templates")) {
 
+            // Count duplicates first
+            std::unordered_map<std::string, int> nameCounts;
+            std::unordered_map<std::string, int> nameIndex;
             for (int i = 0; i < lights.size(); i++) {
 
                 auto& light = lights[i];
@@ -348,7 +357,6 @@ namespace UI {
                 std::string menuName;
 
                 for (auto& cfg : cfgs) {
-
                     if (light->light->GetLightRuntimeData().unk138 == cfg.configID)
                         menuName = cfg.menuName;
                 }
@@ -357,10 +365,46 @@ namespace UI {
                     menuName = light->light->name.c_str();
                 }
 
+				makeDisplayName(menuName);
+
+				nameCounts[menuName]++;
+            }
+
+			// Then render with duplicates count in name
+            for (int i = 0; i < lights.size(); i++) {
+
+                auto& light = lights[i];
+                if (!light) continue;
+
+                bool selected = (i == selectedIndex);
+
+                auto lightName = removePrefix(light->light->name.c_str(), "RL");
+
+                auto cfgs = findConfigsForNode(lightName);
+
+                std::string menuName;
+
+                for (auto& cfg : cfgs) {
+                    if (light->light->GetLightRuntimeData().unk138 == cfg.configID)
+                        menuName = cfg.menuName;
+                }
+
+                if (menuName.empty()) {
+                    menuName = light->light->name.c_str();
+                }
+
+                makeDisplayName(menuName);
+
+                if (nameCounts[menuName] > 1) {
+                    const int index = ++nameIndex[menuName];
+                    menuName += " " + std::to_string(index);
+                }
+
+				ImGuiMCP::PushID(i);
                 if (ImGuiMCP::Selectable(menuName.c_str(), &selected)) {
                     selectedIndex = i;
                 }
-
+				ImGuiMCP::PopID();
             }
 
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
