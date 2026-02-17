@@ -18,7 +18,7 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
 
            if (lightList.size() > 7) {
                int beforeCount = lightList.size();
-               logger::info("BEFORE cleanup: {} lights", beforeCount);
+               logger::debug("BEFORE cleanup: {} lights", beforeCount);
 
 
                // get the position and the model radius for comparing
@@ -44,7 +44,7 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
 
                // If still over 7, keep only closest 7
                if (lightList.size() > 7) {
-                   logger::info("Still {} lights after overlap check, limiting to 7 closest", lightList.size());
+                   logger::debug("Still {} lights after overlap check, limiting to 7 closest", lightList.size());
 
                    std::vector<std::pair<float, RE::BSLight*>> lightDistances;
                    for (auto light : lightList) {
@@ -61,7 +61,7 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
                    }
                }
 
-               logger::info("AFTER cleanup: {} lights", lightList.size());
+               logger::debug("AFTER cleanup: {} lights", lightList.size());
            }
 
            func(This, Pass, RenderFlags);

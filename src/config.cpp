@@ -2,6 +2,8 @@
 #include "config.hpp"
 #include "LightData.h"
 #include "global.h"
+#include "LightManager.h"
+#include "utility.h"
 
 using json = nlohmann::json;
 
@@ -234,6 +236,8 @@ void parseTemplates() {
 				//set each cfg name according to the current iteration of all node names read (for multiple node names for 1 config support)
 				cfg.nodeName = nodeName;
 
+				toLower(cfg.nodeName);
+
 				sortInPriorityList(cfg);
 
 				cfg.print();
@@ -253,25 +257,32 @@ void parseTemplates() {
 	}
 }
 
-std::vector<LightConfig> findConfigsForNode(const std::string& nodeName)
+std::vector<LightConfig> findConfigsForNode(std::string& nodeName)
 {
 	std::vector<LightConfig> result;
+
+	//careful mutablitiy here idk if matters just marking it. 
+	toLower(nodeName); 
 
 	if (nodeName.empty())
 		return result;
 
-	for (auto& pair : LightData::nodeNameToJsonCfg) {
-		const auto& name = pair.first;
 
-		if (nodeName.find(name) != std::string::npos) {
-			const auto& configs = pair.second;
-			result.insert(result.end(), configs.begin(), configs.end());
-		}
+	// Phase 2: exact lookup
+	auto it = LightData::nodeNameToJsonCfg.find(nodeName);
+	if (it != LightData::nodeNameToJsonCfg.end()) {
+		// THIS returns *all* configs for that node
+		result = it->second;
+		return result;
 	}
 
-	if (result.empty()) {
-		logger::warn("No template found by findConfigsForNode for node {}", nodeName);
-	}
+	logger::warn(
+		" found node'{}' but no config exists",
+		
+		nodeName
+	);
 
 	return result;
 }
+
+

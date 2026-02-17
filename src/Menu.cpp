@@ -6,35 +6,6 @@
 
 namespace logger = SKSE::log;
 
-inline void LogBSLightUnknowns(RE::BSLight* light)
-{
-    if (!light) {
-        logger::debug("BSLight: null");
-        return;
-    }
-
-    logger::debug(
-        "BSLight UNKs | "
-        "unk038: 0x{:016X}, "
-        "unk040: 0x{:08X}, "
-        "unk060: 0x{:02X}, "
-        "unk064: 0x{:08X}, "
-        "unk0D0: 0x{:02X} | "
-        "World Pos: ({:.2f}, {:.2f}, {:.2f}) frustrumculled? {}",
-
-        light->unk038,
-        light->unk040,
-        light->unk060,
-        light->unk064,
-        light->unk0D0,
-        light->worldTranslate.x,
-        light->worldTranslate.y,
-        light->worldTranslate.z,
-        light->frustrumCull
-    );
-}
-
-
 //TODO:: Make default button also update parent transforms
 
 
@@ -137,7 +108,6 @@ namespace UI {
             ImGuiMCP::InputInt("Global Max Light Distance", &globals::maxLightDistance);
         }
 
-    
 
         if (ImGuiMCP::Checkbox("disable lights with radius that does not enter camera (and renables them)", &globals::disableLightsNotInCameraEnabled)) {
            
@@ -179,11 +149,11 @@ namespace UI {
         }
 
 
-        if (globals::maxLightDistanceEnabled) {
-            ImGuiMCP::SliderFloat("minimum distance of refs to be merged", &globals::lightMergeDistance, 0, 150);
+        if (globals::enableLightMerging) {
+            ImGuiMCP::SliderFloat("minimum distance of refs to be merged", &globals::lightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Sets max distance for lights (does not re-enable them)");
+                ImGuiMCP::SetTooltip("Sets minimum distance refs must be apart for them to merge into 1 light.");
             }
         }
 
@@ -226,8 +196,17 @@ namespace UI {
 
         ImGuiMCP::Separator();
 
-        ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3);
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Logging Level (0: critical, 1: warnings/errors, 2: info)");
+        if (ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3)) {
+            spdlog::level::level_enum lvl;
+            switch (globals::loggingLevel) {
+            case 0: lvl = spdlog::level::critical; break;
+            case 1: lvl = spdlog::level::err;      break;
+            case 2: lvl = spdlog::level::info;     break;
+            case 3: lvl = spdlog::level::debug;    break;
+            default: lvl = spdlog::level::info;    break;
+            }
+            spdlog::set_level(lvl);  // <- THIS actually updates the logger
+        }
 
         ImGuiMCP::Separator();
 
@@ -469,7 +448,7 @@ namespace UI {
 
 
                 if (!globals::islInstalled) {
-                    if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 256.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 500.0f, "%.2f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
                             auto& rt = ssNode->GetRuntimeData();
@@ -519,37 +498,6 @@ namespace UI {
                             auto& existingRt = light->light->GetLightRuntimeData();
                             if (existingRt.unk138 != lightData.unk138) continue;
                             light->light->local.translate = selectedLight->light->local.translate;
-                            if (auto* parent = light->light->parent) {
-                                RE::NiUpdateData updateData{};
-                                updateData.time = 0.0f;
-                                updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                parent->UpdateTransformAndBounds(updateData);
-                            }
-                        }
-                        for (auto& light : rt.activeShadowLights) {
-                            if (!light) continue;
-                            auto& existingRt = light->light->GetLightRuntimeData();
-                            if (existingRt.unk138 != lightData.unk138) continue;
-                            light->light->local.translate = selectedLight->light->local.translate;
-                            if (auto* parent = light->light->parent) {
-                                RE::NiUpdateData updateData{};
-                                updateData.time = 0.0f;
-                                updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                parent->UpdateTransformAndBounds(updateData);
-                            }
-                        }
-                    }
-                }
-
-                if (ImGuiMCP::SliderFloat3("Position WORLD", &selectedLight->light->world.translate.x, -250.0f, 250.0f, "%.3f")) {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (!light) continue;
-                            auto& existingRt = light->light->GetLightRuntimeData();
-                            if (existingRt.unk138 != lightData.unk138) continue;
-                            light->light->local.translate = selectedLight->light->world.translate;
                             if (auto* parent = light->light->parent) {
                                 RE::NiUpdateData updateData{};
                                 updateData.time = 0.0f;
@@ -728,8 +676,6 @@ namespace UI {
             logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {} ",
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, light->worldTranslate, light->light->world.translate, dataExt.configID);
 
-            LogBSLightUnknowns(light.get());
-
             for (auto& existingLight : lights) {
 
                 if (!existingLight) continue;
@@ -763,8 +709,6 @@ namespace UI {
             logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{},BSLight World Pos: {}, NiLight World Position {}, configID: {} ",
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius,
                 dataExt.flickerIntensity, dataExt.flickersPerSecond, shadowLight->worldTranslate, shadowLight->light->world.translate, dataExt.configID);
-
-            LogBSLightUnknowns(shadowLight.get());
 
             bool shadowLightAlreadyInList = false;
             for (auto& existingLight : lights) {

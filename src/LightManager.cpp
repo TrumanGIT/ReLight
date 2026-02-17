@@ -237,7 +237,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName.c_str(), baseFormID);
 
-		const std::string& match = it->second;
+		 std::string match = it->second;
 
 		auto cfg = findConfigsForNode(match)[0];
 
@@ -281,7 +281,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
 
-	auto refPos  = a_this->GetPosition(); 
+	//auto refPos  = a_this->GetPosition(); 
 
 	if (baseFormID != 0) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
@@ -356,6 +356,9 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 	const bool currentCellIsInterior = cell->IsInteriorCell();
 
 	if (globals::lastCellWasInterior != currentCellIsInterior) {
+
+		// clear this lights list that has merged lights placed into it so tehey can get lights attached again.
+		globals::refsWithAttachedLights.clear(); 
 		logger::debug("player moved from exteiror to interior, or vice versa, reattaching lights");
 
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -478,6 +481,10 @@ void LightManager::registerEventSink()
 void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 	logger::debug("reinitializing lights within range");
+
+	// clear this lights list that has merged lights placed into it so tehey can get lights attached again.
+	globals::refsWithAttachedLights.clear();
+
 	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 	if (!ssNode) {
 		logger::warn("ShadowSceneNode[0] is null cant reinitialize lights");
@@ -581,10 +588,11 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 			}
 		}
 	});
-
 }
 
+//TODO:: there is no default for this swtich statemenu deffault should just be case 0.
 
+//used to merge a light with same ref base object within a set distance to help prevent flickering. 
 void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 	RE::NiPointLight* childLight, const LightConfig&cfg, RE::NiNode* a_root)
 {
@@ -612,13 +620,14 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
 		break;
 
+		//1 merge found so place light in between 2 refs. 
 	case 1: {
-		// Attach the light using your existing function (keeps hierarchy)
+		
 		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
 
 		auto otherRef = pendingMerge[0];
 
-		// Get world positions of the references
+		// Get world positions of the references we want the lgiht to go in between
 		RE::NiPoint3 refAWorldPos = a_this->GetPosition();
 		RE::NiPoint3 refBWorldPos = otherRef->GetPosition();
 
@@ -683,7 +692,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 
 		break;
 	}
-
+		  // find the middle of 3 refs and place light in the middle
 	case 2: {
 		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
 
@@ -693,30 +702,70 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 			pendingMerge[1]->GetPosition()
 		};
 
-		 // place the light in between the 3 refs
-		auto computeLocalMidpoint = [](const RE::NiPoint3& parentWorldPos, const std::vector<RE::NiPoint3>& worldPositions) -> RE::NiPoint3 {
-			if (worldPositions.empty())
-				return {};
-			RE::NiPoint3 sum(0, 0, 0);
-			for (const auto& pos : worldPositions)
-				sum += pos;
-			RE::NiPoint3 avg = sum / static_cast<float>(worldPositions.size());
-			return avg - parentWorldPos;
-			};
+		// only use x and y so Z can stay the sae
+		RE::NiPoint3 worldMid{};
+		float originalZ = positions[0].z; 
+		worldMid.z = originalZ;
 
-		childLight->local.translate = computeLocalMidpoint(childLight->parent->world.translate, positions);
+		float sumX = 0.0f, sumY = 0.0f;
+		for (const auto& pos : positions) {
+			sumX += pos.x;
+			sumY += pos.y;
+		}
+		worldMid.x = sumX / static_cast<float>(positions.size());
+		worldMid.y = sumY / static_cast<float>(positions.size());
 
+		// save original z position
+		float originalLocalZ = childLight->local.translate.z;
+
+		// Convert world midpoint to parent's local space
+		RE::NiTransform parentWorldTransform = a_root->world;
+		RE::NiTransform invTransform = parentWorldTransform.Invert();
+		RE::NiPoint3 localMid = invTransform * worldMid;
+
+		// add the z offset 
+		localMid.z += originalLocalZ;
+
+		// Logging before
+		logger::debug(
+			"BEFORE Light {} merge for 3 refs. World XY midpoint = ({}, {}), original Z = {}, local translate = {}",
+			childLight->name.c_str(),
+			worldMid.x, worldMid.y, originalLocalZ,
+			childLight->local.translate
+		);
+
+		 //we have to use local position its annoying bc its relative to ref a's world position
+		childLight->local.translate = localMid;
+
+		//  increase brightness to simulate larger light
 		childLight->fade *= 3.0f;
-		// bslight.unk060++;
 
+		// gotta update works sometimes without idk why
+		if (auto* parent = childLight->parent) {
+			RE::NiUpdateData updateData{};
+			updateData.time = 0.0f;
+			updateData.flags = RE::NiUpdateData::Flag::kDirty;
+			parent->UpdateTransformAndBounds(updateData);
+		}
+
+		// keep track of merged lights so we dont attach to them later. we reset the set later in event sink
 		globals::refsWithAttachedLights.insert(a_this);
 		for (auto& ref : pendingMerge) {
 			if (ref)
 				globals::refsWithAttachedLights.insert(ref);
 		}
 
+		// Logging after
+		logger::debug(
+			"AFTER  Light {} merge for 3 refs. Local translate set = {}, world position approx = {}",
+			childLight->name.c_str(),
+			childLight->local.translate,
+			a_root->world.translate + childLight->local.translate // approximate
+		);
+
 		break;
 	}
+
 	}
 }
 

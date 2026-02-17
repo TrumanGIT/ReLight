@@ -147,7 +147,7 @@ bool saveConfiguration(const LightConfig& config);
 
 void parseTemplates();
 
-void sortFilePathOrNodeName(const LightConfig& cfg);
+//void sortFilePathOrNodeName(const LightConfig& cfg);
 
-std::vector<LightConfig> findConfigsForNode(const std::string& nodeName);
+std::vector<LightConfig> findConfigsForNode(std::string& nodeName);
 
