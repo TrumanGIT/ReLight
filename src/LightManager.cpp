@@ -356,112 +356,9 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 	const bool currentCellIsInterior = cell->IsInteriorCell();
 
 	if (globals::lastCellWasInterior != currentCellIsInterior) {
-
-		// clear this lights list that has merged lights placed into it so tehey can get lights attached again.
-		globals::refsWithAttachedLights.clear(); 
-		logger::debug("player moved from exteiror to interior, or vice versa, reattaching lights");
-
-		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-		if (!ssNode) {
-			logger::warn("ShadowSceneNode[0] is null!");
-			return RE::BSEventNotifyControl::kContinue;
-		}
-
-		auto& rt = ssNode->GetRuntimeData();
-
-
-		//logger::debug("shaodow light list size after cleaning: {}", rt.activeLights.size());
-		RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
-
-			if (!ref) return RE::BSContainer::ForEachResult::kContinue;
-
-			const auto baseObject = ref->GetBaseObject();
-
-			auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
-
-			if (baseFormID == 0) return RE::BSContainer::ForEachResult::kContinue;
-
-			for (const auto& formID : globals::baseFormsWithAttachedLights) {
-
-				//logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
-
-				if (baseFormID == formID) {
-					logger::debug("baseForm ref that needs reinitializing found");
-
-					RE::ObjectRefHandle handle(ref);
-					SKSE::GetTaskInterface()->AddTask([handle]() {
-						if (auto ref = handle.get()) {
-							auto root = ref->Load3D(false);
-
-							if (!root) return;
-
-							auto bsFadeNode = root->AsNode();
-
-							if (!bsFadeNode) return;
-
-							//surf children for light
-							for (auto& child : bsFadeNode->GetChildren()) {
-								if (!child) continue;
-
-								// exclude non relight lights
-								const char* name = child->name.c_str();
-								if (!name || name[0] != 'R' || name[1] != 'L')
-									continue;
-
-								RE::NiPointLight* light = netimmerse_cast<RE::NiPointLight*>(child.get());
-
-								if (!light) continue;
-
-								auto it = LightData::configIDToJsonCfg.find(light->GetLightRuntimeData().unk138);
-
-								if (it == LightData::configIDToJsonCfg.end()) {
-									logger::warn("attempted to reinitialize light but its config ID wasent found");
-									continue;
-								}
-
-								const auto& config = it->second;
-
-								// shadow lights are handled differently then non shadow lights
-								if (config.shadowLight) {
-
-									auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-									if (!ssNode) {
-										logger::warn("ShadowSceneNode[0] is null!");
-										continue;
-									}
-									bool bsLightExists = false;
-
-									for (auto bsLight : ssNode->activeShadowLights) {
-
-										bsLight->worldTranslate;
-
-										if (bsLight->light.get() == light) {
-											logger::info("shadow light {} with ID {} exists already for ref: {} skipping reinitialization", light->name, static_cast<void*>(light), ref->GetFormID());
-											bsLightExists = true;
-											break;
-										}
-									}
-
-									if (!bsLightExists) {
-										logger::info("reintiializing shadow light {} for ref {} ", light->name, ref->GetFormID());
-
-										auto p = LightData::makeLightParams(config);
-										ssNode->AddLight(light, p);
-									}
-
-								}
-								else {
-									ref->Disable();
-									ref->Enable(false);
-									logger::info("non shadow light: {} reinitialized for ref {}", light->name, ref->GetFormID());
-								}
-							}
-
-						}
-					});
-				}
-			}
-		});
+		
+		LightManager::reinitializeLightsWithinRange(player); 
+	 
 	}
 
 	globals::lastCellWasInterior = currentCellIsInterior;
@@ -590,11 +487,10 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 	});
 }
 
-//TODO:: there is no default for this swtich statemenu deffault should just be case 0.
 
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 
 void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
-	RE::NiPointLight* childLight, const LightConfig&cfg, RE::NiNode* a_root)
+	RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root)
 {
 	if (!a_this || !childLight) return;
 
@@ -616,13 +512,10 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 		});
 
 	switch (potentialMergeCount) {
-	case 0:
-		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
-		break;
 
 		//1 merge found so place light in between 2 refs. 
 	case 1: {
-		
+
 		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
 
 		auto otherRef = pendingMerge[0];
@@ -704,7 +597,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 
 		// only use x and y so Z can stay the sae
 		RE::NiPoint3 worldMid{};
-		float originalZ = positions[0].z; 
+		float originalZ = positions[0].z;
 		worldMid.z = originalZ;
 
 		float sumX = 0.0f, sumY = 0.0f;
@@ -734,7 +627,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 			childLight->local.translate
 		);
 
-		 //we have to use local position its annoying bc its relative to ref a's world position
+		//we have to use local position its annoying bc its relative to ref a's world position
 		childLight->local.translate = localMid;
 
 		//  increase brightness to simulate larger light
@@ -764,10 +657,10 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 		);
 
 		break;
+	} default: {
+		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
+		break;
 	}
-
-	}
+  }
 }
-
-
 
