@@ -155,6 +155,8 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		const auto baseFormID = baseObject->GetFormID();
 
+	  auto refFormID = a_this->GetFormID(); 
+
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
 		logger::debug("file path match found: {}", currentModel);
@@ -173,15 +175,15 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 			continue;
 		}
 
-		LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+		LightData::setNiPointLightDataFromCfg(refFormID,cloneLight, cfg);
 
 		/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 		std::string temp = "RL" + std::string(cfg.nodeName.c_str());
 		cloneLight->name = temp.c_str();
 
-		LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+		LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
 
-		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refFormID);
 		return true;
 
 	}
@@ -236,6 +238,8 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	auto it = dummyMeshPaths.find(currentModel);
 	if (it != dummyMeshPaths.end()) {
 
+		auto refFormID = a_this->GetFormID();
+
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		
 		 std::string match = it->second;
@@ -249,13 +253,13 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 			return true;
 		}
 
-		LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+		LightData::setNiPointLightDataFromCfg(refFormID, cloneLight, cfg);
 
 		cloneLight->name = "RL" + cfg.nodeName;
 
-		LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+		LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
 
-		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refFormID);
 
 		logger::debug("dummy node {} with model {} found for ref {} and got light from config: {}", nodeName.c_str(), currentModel, a_this->GetFormID(), cfg.nodeName );
 		return true;
@@ -307,13 +311,13 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		cloneLight->name = "RL" + cfg.nodeName;
 
 		if (globals::enableLightMerging) {
-			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root);
+			LightManager::attachOrMergeLight(a_this, refFormID, cloneLight, cfg, a_root);
 		}
 		else {
-			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight);
+			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
 		}
 
-		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
+		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refFormID);
 
 		//logger::info("attached {} light to {} ", cfg.nodeName, a_this->GetFormID());
 	}
@@ -490,7 +494,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 
-void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
+void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, RE::FormID& refFormID,
 	RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root)
 {
 	if (!a_this || !childLight) return;
@@ -517,7 +521,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 		//1 merge found so place light in between 2 refs. 
 	case 1: {
 
-		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
+		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight, refFormID);
 
 		auto otherRef = pendingMerge[0];
 
@@ -588,7 +592,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 	}
 		  // find the middle of 3 refs and place light in the middle
 	case 2: {
-		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
+		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight, refFormID);
 
 		std::vector<RE::NiPoint3> positions = {
 			a_this->GetPosition(),
@@ -659,7 +663,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this,
 
 		break;
 	} default: {
-		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight);
+		LightManager::attachLightUsingAttachPath(cfg, a_root, childLight, refFormID);
 		break;
 	}
   }

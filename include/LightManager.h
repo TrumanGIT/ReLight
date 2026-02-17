@@ -40,7 +40,7 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 
-  static void attachOrMergeLight(RE::TESObjectREFR* a_this,
+  static void attachOrMergeLight(RE::TESObjectREFR* a_this, RE::FormID& refFormID,
       RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root);
 
 private:
