@@ -93,7 +93,7 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 	}
 }
 
-void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
+void LightData::setNiPointLightDataFromCfg(RE::FormID& formID,  RE::NiLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;

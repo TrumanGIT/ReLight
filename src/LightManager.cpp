@@ -8,7 +8,7 @@
 RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 {
 	if (!a_this || a_backgroundLoading == false) {
-		logger::warn("Load3D called with null a_this or bg loading = true (light were trying to reinitialize) skipping light attachment");
+	//	logger::debug("Load3D called with null a_this or bg loading = true (light were trying to reinitialize) skipping light attachment");
 		return func(a_this, a_backgroundLoading);
 	}
 
@@ -64,7 +64,7 @@ void Load3D::Install()
 void LightManager::attachLightUsingAttachPath(
 	const LightConfig& cfg,
 	RE::NiNode* root,
-	RE::NiPointLight* light)
+	RE::NiPointLight* light, RE::FormID& refFormID)
 {
 	if (!root || !light) {
 		logger::warn("attachLightUsingAttachPath: null root or light");
@@ -97,14 +97,14 @@ void LightManager::attachLightUsingAttachPath(
 
 	auto finalNodeName = finalNode->name.c_str();
 
-	logger::debug("attached light to node {}", finalNodeName);
+	logger::debug("attached light to node {} on ref {}", finalNodeName, refFormID);
 
 	finalNode->AttachChild(light);
 }
 
 // ATTACH NI POINT LIGHT TO SHADOW SCENE NODE TO GET BS LIGHT IN RETURN. BS LIGHT IS THE LIGHT YOU VISUALLY SEE RENDERED IN GAME
 //BS LIGHT READS ITS NI POINT LIGHT DATA EVERY FRAME
-void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg) {
+void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::FormID& refFormID) {
 
 	//logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
 
@@ -115,7 +115,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS params = LightData::makeLightParams(cfg);
 
-	logger::debug("Light paramaters for {}", niPointLight->name);
+	logger::debug("Light paramaters for light {} created for ref {} ", niPointLight->name, refFormID);
 
 	LightData::printLightParams(params);
 
@@ -135,6 +135,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	}
 }
 
+//TODO:: doesent handle multi lights in a single config
  bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 
 	if (LightData::meshPathToJsonCfg.empty()) return false;
@@ -188,6 +189,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	return false;
 }
 
+ //TODO:: doesent handle multi lights in a single config
 // some nodes are called dummy this is to take care of them.
  bool LightManager::dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nodeName, RE::NiNode* a_root)
 {
@@ -235,8 +237,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	if (it != dummyMeshPaths.end()) {
 
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		logger::debug("node: {} with baseFormID: {}  emplaced in set", nodeName.c_str(), baseFormID);
-
+		
 		 std::string match = it->second;
 
 		auto cfg = findConfigsForNode(match)[0];
@@ -256,7 +257,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg);
 
-		logger::debug("dummy match found for path {} and got light with node Name: {}", currentModel, cfg.nodeName);
+		logger::debug("dummy node {} with model {} found for ref {} and got light from config: {}", nodeName.c_str(), currentModel, a_this->GetFormID(), cfg.nodeName );
 		return true;
 	}
 
@@ -270,6 +271,8 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	// matched name
 	std::string matchStr = match.c_str();
 
+	auto refFormID = a_this->GetFormID(); 
+
 	auto ui = RE::UI::GetSingleton();
 
 	if (ui && ui->IsMenuOpen("InventoryMenu")) {
@@ -281,11 +284,9 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
 
-	//auto refPos  = a_this->GetPosition(); 
-
 	if (baseFormID != 0) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		logger::debug("node: {} with baseFormID: {}  emplaced in set", matchStr, baseFormID);
+		logger::debug(" processing ref {} with node name: {} with baseFormID: {} emplaced in set",refFormID, matchStr, baseFormID);
 	}
 
 	if (globals::removeFakeGlowOrbs)
@@ -301,7 +302,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 			continue;
 		}
 
-		LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+		LightData::setNiPointLightDataFromCfg( refFormID, cloneLight, cfg);
 
 		cloneLight->name = "RL" + cfg.nodeName;
 

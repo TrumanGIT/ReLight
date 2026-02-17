@@ -26,11 +26,11 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
         return &singleton;
     }
 
-    static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg);
+    static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::FormID& refFormID);
 
     static void registerEventSink();
 
-    static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light);
+    static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light, RE::FormID& refFormID);
 
    static bool processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root);
 
