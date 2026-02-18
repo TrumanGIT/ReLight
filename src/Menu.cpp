@@ -1,75 +1,19 @@
 #include "Menu.h"
+#include "ticker.h"
 #include "global.h"
 #include "Utility.h"
 #include "lightManager.h"
-#include <chrono>
 
 namespace logger = SKSE::log;
 
-//TODO:: Make default button also update parent transforms
+// TODO:: Make default button also update parent transforms
 
 
 namespace UI {
 
-    // Based on Log Watcher state machine.
-    enum class buttonState {
-        Idle,
-        Working,
-        Success,
-        Fail
-    };
-
-	struct buttonTransition {
-        buttonState state{ buttonState::Idle };
-        std::chrono::steady_clock::time_point until{};
-
-        void set(const buttonState& s, const float& seconds = 2.0f) {
-            state = s;
-            if (s == buttonState::Success || s == buttonState::Fail) {
-                until = std::chrono::steady_clock::now() + std::chrono::milliseconds((int)(seconds * 1000.0f));
-            }
-        }
-
-        void tick() {
-            if ((state == buttonState::Success || state == buttonState::Fail) && std::chrono::steady_clock::now() >= until) {
-                state = buttonState::Idle;
-            }
-        }
-    };
-
-	void renderDone(buttonTransition& t, const float& x, const float& y) {
-
-		t.tick();
-
-		if (t.state == buttonState::Idle) return;
-
-        ImGuiMCP::ImVec2 oldPos;
-        ImGuiMCP::GetCursorPos(&oldPos);
-        ImGuiMCP::SetCursorPos({ x, y });
-
-		FontAwesome::PushSolid();
-		if (t.state == buttonState::Working) {
-			// We can show some pregress here if we want.
-		}
-		else if (t.state == buttonState::Success) {
-			ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 0.2f, 1.0f, 0.2f, 1.0f }); // green
-			auto s = FontAwesome::UnicodeToUtf8(0xf00c);
-			ImGuiMCP::Text("%s", s.c_str());
-			ImGuiMCP::PopStyleColor();
-		}
-		else { // Fail
-			ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.2f, 0.2f, 1.0f }); // red
-			auto s = FontAwesome::UnicodeToUtf8(0xf00d);
-			ImGuiMCP::Text("%s", s.c_str());
-			ImGuiMCP::PopStyleColor();
-		}
-		FontAwesome::Pop();
-
-		ImGuiMCP::SetCursorPos(oldPos);
-	}
-
-    static buttonTransition saveButton{};
-    static buttonTransition defaultButton{};
+	static RefreshTicker lightRefreshTicker(std::chrono::milliseconds(500));
+    static buttonTicker saveButton{};
+    static buttonTicker defaultButton{};
     static vector<RE::NiPointer<RE::BSLight>> lights = {};
     static bool lightsLoaded = false;
     static bool enableLightEditor = false;
@@ -237,6 +181,118 @@ namespace UI {
         name[0] = std::toupper(name[0]);
     }
 
+    inline int getLightKey(const RE::NiPointer<RE::BSLight>& l) {
+        if (!l || !l->light) return -1;
+        return l->light->GetLightRuntimeData().unk138;  // runtime configID key
+    }
+
+    inline void refreshLight(
+        const RE::NiPointer<RE::BSLight>& activeLight,
+        std::vector<RE::NiPointer<RE::BSLight>>& refreshedLights,
+        std::unordered_map<int, int>& keyToIndex,
+        std::unordered_set<int>& seen) {
+
+        if (!activeLight || !activeLight->light) return;
+
+        const char* name = activeLight->light->name.c_str();
+        if (!name || name[0] != 'R' || name[1] != 'L')
+            return;
+
+        int key = activeLight->light->GetLightRuntimeData().unk138;
+        if (key < 0) return;
+
+        seen.insert(key);
+
+        // For debuggong
+        auto& rt = activeLight->light->GetLightRuntimeData();
+
+        auto it = LightData::configIDToJsonCfg.find(key);
+        if (it != LightData::configIDToJsonCfg.end()) {
+            auto& dataExt = it->second;
+            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {}, key: {} ",
+                name, rt.fade, dataExt.startingFade, rt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, activeLight->worldTranslate, activeLight->light->world.translate, dataExt.configID, key);
+        }
+        else {
+            logger::debug("light :{} (key={}) has no json cfg entry", name, key);
+        }
+
+        // Refresh light pointer in list or add if new
+        auto itIdx = keyToIndex.find(key);
+        if (itIdx == keyToIndex.end()) {
+            refreshedLights.push_back(activeLight);
+            keyToIndex[key] = (int)refreshedLights.size() - 1;
+        }
+        else {
+            refreshedLights[itIdx->second] = activeLight;
+        }
+    }
+
+    void refreshAllLights(int& selectedIndex) {
+
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null!");
+            return;
+        }
+
+        auto& rt = ssNode->GetRuntimeData();
+
+        int selectedKey = -1;
+        if (selectedIndex >= 0 && selectedIndex < (int)lights.size()) {
+            selectedKey = getLightKey(lights[selectedIndex]);
+        }
+
+        // Build light indices map
+        std::unordered_map<int, int> keyToIndex;
+        keyToIndex.reserve(lights.size());
+        for (int i = 0; i < (int)lights.size(); ++i) {
+            int key = getLightKey(lights[i]);
+            if (key >= 0) keyToIndex[key] = i;
+        }
+
+        // For tracking seen keys
+        std::unordered_set<int> seen;
+        seen.reserve(256);
+
+        for (auto& activeLight : rt.activeLights) {
+            refreshLight(activeLight, lights, keyToIndex, seen);
+        }
+        for (auto& activeShadowLight : rt.activeShadowLights) {
+            refreshLight(activeShadowLight, lights, keyToIndex, seen);
+        }
+
+        // Removes non-active lights from the list
+        lights.erase(std::remove_if(lights.begin(), lights.end(),
+            [&](const RE::NiPointer<RE::BSLight>& l) {
+                int key = getLightKey(l);
+                return key < 0 || (seen.find(key) == seen.end());
+            }),
+            lights.end());
+
+        std::sort(lights.begin(), lights.end(),
+            [](const RE::NiPointer<RE::BSLight>& a, const RE::NiPointer<RE::BSLight>& b)
+            {
+                if (!a || !b || !a->light || !b->light) return false;
+
+                const char* nameA = a->light->name.c_str();
+                const char* nameB = b->light->name.c_str();
+                if (!nameA || !nameB) return false;
+
+                return std::strcmp(nameA, nameB) < 0;
+            });
+
+        // Update selectded index after sorting
+        selectedIndex = -1;
+        if (selectedKey >= 0) {
+            for (int i = 0; i < (int)lights.size(); ++i) {
+                if (getLightKey(lights[i]) == selectedKey) {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+        }
+    }
+
     void __stdcall RenderLightEditor() {
 
         static int selectedIndex = -1;
@@ -348,19 +404,19 @@ namespace UI {
         ImGuiMCP::Separator();
 
         if (ImGuiMCP::Checkbox("Enable Editor", &enableLightEditor)) {
-
             if (enableLightEditor) {
-                getAllLights();
-
-            }
-            else if (!enableLightEditor) {
-                lights.clear();
+                lightRefreshTicker.reset();
+                refreshAllLights(selectedIndex);
             }
         }
 
         if (!enableLightEditor) {
             ImGuiMCP::Text("Light Editor is disabled. Enable it to edit light properties.");
             return;
+        }
+
+        if (lightRefreshTicker.shouldTick()) {
+            refreshAllLights(selectedIndex);
         }
 
         if (ImGuiMCP::CollapsingHeader("Loaded Light Templates")) {
