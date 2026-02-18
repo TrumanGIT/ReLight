@@ -21,7 +21,7 @@ B(affectWater, true) \
 B(neverFades, true) \
 
 #define FOREACH_FLOAT(F) \
-F(fade, 0.f) \
+F(brightness, 0.f) \
 F(radius, 0.f) \
 F(fov, 90.f) \
 F(falloff, 1.f) \

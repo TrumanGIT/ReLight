@@ -2,64 +2,6 @@
 #include "Utility.h"
 #include "config.hpp"
 
-
-// ATTACH LIGHTS DURING LOAD3D() HOOK, ANY EARLIER AND LIGHTS SPAWN AT CELL ORIGIN BC WORLD POSITION DATA ISENT LAODED?
-
-RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
-{
-	if (!a_this || a_backgroundLoading == false) {
-	//	logger::debug("Load3D called with null a_this or bg loading = true (light were trying to reinitialize) skipping light attachment");
-		return func(a_this, a_backgroundLoading);
-	}
-
-	// ref already has a light placed, introduced to skip over refs that got a merged light
-	if (globals::refsWithAttachedLights.count(a_this) > 0) {
-		return func(a_this, a_backgroundLoading);
-	}
-
-	//logger::info("load3D called");
-	auto niAVObject = func(a_this, a_backgroundLoading);
-	if (!niAVObject) {
-		logger::warn("no ni node casted from niav object from load3d hook");
-		return niAVObject;
-	}
-
-	//helps filter out a few things we dont want to touch (fog, mist)
-	auto a_root = niAVObject->AsNode();
-	if (!a_root) {
-		logger::warn("no ni node casted from niav object in load3d");
-		return niAVObject;
-	}
-
-	if (LightManager::processByFilePath(a_this, a_root)) return niAVObject;
-
-	// grab name of NiNode (usually 1:1 with mesh names)
-
-	// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
-	const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
-
-	if (!nodeNameMatch.empty()) {
-		if (isExclude(a_root->name, a_root)) return niAVObject;
-
-		LightManager::processByNodeName(a_root, nodeNameMatch, a_this);
-		return  niAVObject;
-	}
-
-	if (LightManager::dummyHandler(a_this, a_root->name, a_root)) {
-		return niAVObject;
-	}
-
-	return niAVObject;
-}
-
-void Load3D::Install()
-{
-	func = REL::Relocation<std::uintptr_t>(RE::TESObjectREFR::VTABLE[0])
-		.write_vfunc(idx, thunk);
-	logger::info("Hooked TESObjectREFR::Load3D");
-}
-
-
 //ATTACH LIGHTS AT CORRECT MESH INDEX, USEFULL FOR TORCHES WHERE LIGHT MUST BE INSERTED TO SPECIFIC SPOT
 void LightManager::attachLightUsingAttachPath(
 	const LightConfig& cfg,
@@ -354,7 +296,7 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 
 		getObjectFadeMult(fLODFadeOutMultObjects);
 
-		logger::debug("Users object fade ini setting = {}", fLODFadeOutMultObjects);
+		logger::debug("Users object brightness ini setting = {}", fLODFadeOutMultObjects);
 
 	}
 
@@ -529,7 +471,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, RE::FormID& ref
 		RE::NiPoint3 refAWorldPos = a_this->GetPosition();
 		RE::NiPoint3 refBWorldPos = otherRef->GetPosition();
 
-		// Compute midpoint in world space (X/Y only)
+		// find mid point of 2 refs to palce light in between (x y) only
 		RE::NiPoint3 worldMid{};
 		worldMid.x = (refAWorldPos.x + refBWorldPos.x) * 0.5f;
 		worldMid.y = (refAWorldPos.y + refBWorldPos.y) * 0.5f;
@@ -547,7 +489,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, RE::FormID& ref
 		// Add original Z offset
 		localMid.z += originalLocalZ;
 
-		// Logging before change
+		// debug log before change.
 		logger::debug(
 			"BEFORE Light {} merge for ref{} at {} and ref {} at {}. "
 			"Desired world XY = ({}, {}), original Z = {}. "
@@ -562,10 +504,10 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, RE::FormID& ref
 		// Apply local position
 		childLight->local.translate = localMid;
 
-		// Optionally double fade
+		// increase light brightness to simulate larger light
 		childLight->fade *= 2.0f;
 
-		// Force parent update to reflect changes in world space
+		// sometimes have to update the parent for the change to work.
 		if (auto* parent = childLight->parent) {
 			RE::NiUpdateData updateData{};
 			updateData.time = 0.0f;
@@ -573,7 +515,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, RE::FormID& ref
 			parent->UpdateTransformAndBounds(updateData);
 		}
 
-		// Track references with attached lights
+		// Track references with attached lights so we dont double attach lights to them.
 		globals::refsWithAttachedLights.insert(a_this);
 		globals::refsWithAttachedLights.insert(otherRef);
 

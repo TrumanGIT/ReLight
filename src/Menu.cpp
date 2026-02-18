@@ -446,7 +446,6 @@ namespace UI {
                     return;
                 }
 
-
                 if (!globals::islInstalled) {
                     if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 500.0f, "%.2f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -468,8 +467,8 @@ namespace UI {
                     }
                 }
 
-                // Fade
-                if (ImGuiMCP::SliderFloat("Fade", &dataExt.startingFade, 0.0f, 10.0f, "%.1f")) {
+                // brightness
+                if (ImGuiMCP::SliderFloat("Brightness", &dataExt.startingFade, 0.0f, 10.0f, "%.1f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                     if (ssNode) {
                         auto& rt = ssNode->GetRuntimeData();
@@ -532,26 +531,6 @@ namespace UI {
 
                 }
 
-                // RGB
-                if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.0f, 1.0f, "%.3f")) {
-                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                    if (ssNode) {
-                        auto& rt = ssNode->GetRuntimeData();
-                        for (auto& light : rt.activeLights) {
-                            if (!light) continue;
-                            auto& existingRt = light->light->GetLightRuntimeData();
-                            if (existingRt.unk138 != lightData.unk138) continue;
-                            existingRt.diffuse = lightData.diffuse;
-                        }
-                        for (auto& light : rt.activeShadowLights) {
-                            if (!light) continue;
-                            auto& existingRt = light->light->GetLightRuntimeData();
-                            if (existingRt.unk138 != lightData.unk138) continue;
-                            existingRt.diffuse = lightData.diffuse;
-                        }
-                    }
-                }
-
                 // ISL sliders
                 if (globals::islInstalled) {
                     // Cutoff
@@ -601,9 +580,28 @@ namespace UI {
                             }
                         }
                     }
+
+                // RGB
+                if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.0f, 1.0f, "%.3f")) {
+                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                    if (ssNode) {
+                        auto& rt = ssNode->GetRuntimeData();
+                        for (auto& light : rt.activeLights) {
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            existingRt.diffuse = lightData.diffuse;
+                        }
+                        for (auto& light : rt.activeShadowLights) {
+                            if (!light) continue;
+                            auto& existingRt = light->light->GetLightRuntimeData();
+                            if (existingRt.unk138 != lightData.unk138) continue;
+                            existingRt.diffuse = lightData.diffuse;
+                        }
+                    }
+                }
                 }
             }
-
         }
     }
 
@@ -673,7 +671,7 @@ namespace UI {
 
             // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
             // by flicker equation (they were before Its good to check sometimes)
-            logger::debug("light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {} ",
+            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {} ",
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, light->worldTranslate, light->light->world.translate, dataExt.configID);
 
             for (auto& existingLight : lights) {
@@ -706,7 +704,7 @@ namespace UI {
 
             auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
 
-            logger::debug("shadow light :{}  fade:{}  starting fade:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{},BSLight World Pos: {}, NiLight World Position {}, configID: {} ",
+            logger::debug("shadow light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{},BSLight World Pos: {}, NiLight World Position {}, configID: {} ",
                 lightName, currentRt.fade, dataExt.startingFade, currentRt.radius,
                 dataExt.flickerIntensity, dataExt.flickersPerSecond, shadowLight->worldTranslate, shadowLight->light->world.translate, dataExt.configID);
 
@@ -768,7 +766,7 @@ namespace UI {
         auto& dataExt = itDataExt->second;
 
         lightData.radius = LightData::getNiPointLightRadius(backupCfg);
-        lightData.fade = backupCfg.fade;
+        lightData.fade = backupCfg.brightness;
         LightData::setNiPointLightAmbientAndDiffuse(light.get(), backupCfg);
         LightData::setNiPointLightPos(light.get(), backupCfg);
 

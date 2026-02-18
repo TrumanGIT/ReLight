@@ -36,7 +36,7 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 		FOREACH_BOOL(BOOL2JSON_READ)
 		FOREACH_FLOAT(FLOAT2JSON_READ)
 
-		config.startingFade = config.fade;
+		config.startingFade = config.brightness;
 
 		// clamp radius
 		config.radius = std::clamp(config.radius, 0.0f, 256.f);
@@ -267,18 +267,15 @@ std::vector<LightConfig> findConfigsForNode(std::string& nodeName)
 	if (nodeName.empty())
 		return result;
 
-
 	// Phase 2: exact lookup
 	auto it = LightData::nodeNameToJsonCfg.find(nodeName);
 	if (it != LightData::nodeNameToJsonCfg.end()) {
-		// THIS returns *all* configs for that node
 		result = it->second;
 		return result;
 	}
 
 	logger::warn(
 		" found node'{}' but no config exists",
-		
 		nodeName
 	);
 

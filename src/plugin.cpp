@@ -10,6 +10,7 @@
 #include "everyFrame.h"
 #include "disableLights.h"
 #include "BSLightingShaderHook.h"
+#include "LightAttachmentHooks.h"
 
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
@@ -42,6 +43,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         SKSE::AllocTrampoline(1 << 8);
         TESObjectLIGH_GenDynamic::Install();
         Load3D::Install();
+        AddonNodes::Install(); 
         PlayerCharacter_Update::Install();
         BSLightingShader_SetupGeometry::Install();
 

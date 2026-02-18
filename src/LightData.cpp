@@ -86,7 +86,7 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 		overlay->size = cfg.size; // isl
 		overlay->cutoffOverride = cfg.cutoffOverride; // isl 
-		overlay->fade = cfg.fade;
+		overlay->fade = cfg.brightness;
 		overlay->radius = cfg.radius;
 		overlay->lighFormId = 0;
 		overlay->unk138 = static_cast<std::uint32_t>(cfg.configID); 
@@ -102,13 +102,13 @@ void LightData::setNiPointLightDataFromCfg(RE::FormID& formID,  RE::NiLight* niP
 
 	logger::debug(" Setting Light Data for {} from Configs", cfg.nodeName);
 
-	data.fade = cfg.fade;
+	data.fade = cfg.brightness;
 	data.radius = getNiPointLightRadius(cfg);
 
 	data.unk138 = cfg.configID;
 
 	logger::debug(" radius set to: {} ", cfg.radius);
-	logger::debug(" fade set to: {} ", cfg.fade);
+	logger::debug(" brightness set to: {} ", cfg.brightness);
 	logger::debug("config ID set to {}", cfg.configID); 
 
 	setNiPointLightPos(niPointLight, cfg);
@@ -169,7 +169,7 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg = dataExt; 
 
 	cfg.radius = rt.radius.x;
-	cfg.fade = rt.fade;
+	cfg.brightness = rt.fade;
 
 	cfg.position[0] = niLight->local.translate.x;
 	cfg.position[1] = niLight->local.translate.y;

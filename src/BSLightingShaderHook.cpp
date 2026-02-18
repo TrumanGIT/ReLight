@@ -15,11 +15,13 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
        auto lightingShader = geometry->lightingShaderProp_cast();
        if (lightingShader && lightingShader->lightData) {
            auto& lightList = lightingShader->lightData->lights;
+           auto didSomething = false;
 
            if (lightList.size() > 7) {
+                didSomething = true; 
+
                int beforeCount = lightList.size();
                logger::debug("BEFORE cleanup: {} lights", beforeCount);
-
 
                // get the position and the model radius for comparing
                auto& geomPos = geometry->world.translate;
@@ -61,7 +63,8 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
                    }
                }
 
-               logger::debug("AFTER cleanup: {} lights", lightList.size());
+               if (didSomething)  logger::debug("AFTER cleanup: {} lights", lightList.size());
+            
            }
 
            func(This, Pass, RenderFlags);

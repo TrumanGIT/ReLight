@@ -23,9 +23,9 @@ namespace globals
 
     inline bool enableLightMerging = false;
 
-    inline float lightMergeDistance = 175; 
+    inline float lightMergeDistance = 162; 
 
-    inline int lightOverlapMinOnTriShapeMult = 5;
+    inline int lightOverlapMinOnTriShapeMult = 7;
 
     inline int fLODFadeOutMultObjects = 9000;
 

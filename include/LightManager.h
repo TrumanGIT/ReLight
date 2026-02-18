@@ -4,20 +4,6 @@
 #include "LightData.h"
 
 
-
-// correct timing to attach lights because world position data is loaded, earlier = lights show up at cell origin 0,0,0
-struct Load3D {
-
-    static RE::NiAVObject* thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading);
-
-    static inline REL::Relocation<decltype(thunk)> func;
-
-    static constexpr std::size_t idx{ 0x6A };
-
-    static void Install();
-};
-
-
 struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
     	static LightManager* GetSingleton()
