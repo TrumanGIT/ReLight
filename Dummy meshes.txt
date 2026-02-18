@@ -1,0 +1,58 @@
+----------[ Patching ]------------------------------------------------------------------------------
+meshes\clutter\common\candlelanternwithcandle01.nif
+meshes\clutter\imperial\impchandelliercandle01.nif
+meshes\clutter\imperial\impchandelliercandle01uskp.nif
+meshes\clutter\ruins\ruinscanopicjar01.nif
+meshes\clutter\ruins\ruinscanopicjar02.nif
+meshes\clutter\ruins\ruinsfloorcandlelampmidon.nif
+meshes\clutter\ruins\ruinsfloorcandlelampmidon02.nif
+meshes\clutter\ruins\ruinsfloorcandlelampsmon.nif
+meshes\clutter\ruins\ruinsfloorcandlelampsmon02.nif
+meshes\clutter\ruins\ruinsspidersac05.nif
+meshes\clutter\ruins\ruins_largechest.nif
+meshes\clutter\ruins\ruins_smallchest.nif
+meshes\clutter\ruins\sarcophaguslidvert\sarcophagus_topvert01.nif
+meshes\dungeons\imperial\door\impwooddoordouble01.nif
+meshes\dungeons\imperial\portcullis\portgatepole01.nif
+meshes\dungeons\imperial\portcullis\portgatepole02.nif
+meshes\dungeons\imperial\portcullis\portgatepole03.nif
+meshes\dungeons\imperial\portcullis\portgatepole04.nif
+meshes\dungeons\imperial\portcullis\portgatepole05.nif
+meshes\dungeons\imperial\portcullis\portgatepole06.nif
+meshes\dungeons\imperial\portcullis\portgatepoledwemer01.nif
+meshes\dungeons\imperial\portcullis\portgatepolefalmer.nif
+meshes\dungeons\imperial\portculliskit\portimpgate01.nif
+meshes\dungeons\imperial\portcullisslow\portgatepoledwemerslow01.nif
+meshes\dungeons\imperial\portcullisslow\portgatepoleslow01.nif
+meshes\dungeons\imperial\portcullisslow\portgatepoleslow02.nif
+meshes\dungeons\imperial\portcullisslow\portgatepoleslow03.nif
+meshes\dungeons\imperial\portcullisslow\portgatepoleslow04.nif
+meshes\dungeons\imperial\portcullisslow\portgatepoleslow05.nif
+meshes\dungeons\imperial\portcullisslow\portgatepoleslow06.nif
+meshes\dungeons\imperial\portcullissmall01\impportcullissmall01.nif
+meshes\dungeons\nordic\doors\animated\mediumdoor\ruinsmediumdoor01.nif
+meshes\dungeons\nordic\doors\animated\mediumdoor\ruinsmediumdoorload01.nif
+meshes\dungeons\nordic\doors\animated\smdoor01\nordoorsm01.nif
+meshes\dungeons\nordic\doors\animated\smdoor02\nordoorsm02.nif
+meshes\dungeons\nordic\doors\animated\smdoor02\nordoorsm02flipped.nif
+meshes\dungeons\nordic\doors\animated\wooddoor\ruinswooddoor01.nif
+meshes\DynDOLOD\lod\clutter\candlelanternhandledown_dyndolod_lod.nif
+meshes\DynDOLOD\lod\clutter\candlelanternwithcandle01_dyndolod_lod.nif
+meshes\DynDOLOD\lod\clutter\impchandelliercandle01_dyndolod_lod.nif
+meshes\DynDOLOD\lod\clutter\ruinsfloorcandlelampmidon02_dyndolod_lod.nif
+meshes\DynDOLOD\lod\clutter\ruinsfloorcandlelampmidon_dyndolod_lod.nif
+meshes\DynDOLOD\lod\clutter\ruinsfloorcandlelampsmon02_dyndolod_lod.nif
+meshes\DynDOLOD\lod\clutter\ruinsfloorcandlelampsmon_dyndolod_lod.nif
+meshes\furniture\prisonercarriage\prisonercarriage01static.nif
+meshes\furniture\prisonercarriage\prisonercarriagefurniture01.nif
+meshes\uskp\clutter\chandellier\impchandelliercandle01uskp.nif
+----------[ Summary ]-------------------------------------------------------------------------------
+Files scanned: 12449
+ modified: 47
+ skipped: 12402
+ errors: 0
+Log saved to: D:\Projects\Nidify\x64\Release\nidify_log.txt
+----------[ Exit ]----------------------------------------------------------------------------------
+Nidify Light Mesh Auto Patcher completed.
+See the log file for details.
+----------------------------------------------------------------------------------------------------
