@@ -57,7 +57,7 @@ static void ApplyLightFlicker(T& lights, float delta)
 	}
 }
 
-
+// used to get the world camera. 
 inline RE::SceneGraph* GetWorldSceneGraph()
 {
 	// 143258B48

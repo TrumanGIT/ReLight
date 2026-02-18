@@ -543,6 +543,7 @@ namespace UI {
                     }
                 }
 
+                if (selectedLight->light->name != "RLtorch") {
                 // Position
                 if (ImGuiMCP::SliderFloat3("Position", &selectedLight->light->local.translate.x, -250.0f, 250.0f, "%.3f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -574,19 +575,21 @@ namespace UI {
                         }
                     }
                 }
+             }
 
-                // Flicker Intensity
-                if (ImGuiMCP::SliderFloat("Flicker Intensity", &dataExt.flickerIntensity,
-                    0.0f, 1.0f, "%.2f"))
-                {
+                if (selectedLight->light->name != "RLtorch") {
+                    // Flicker Intensity
+                    if (ImGuiMCP::SliderFloat("Flicker Intensity", &dataExt.flickerIntensity,
+                        0.0f, 1.0f, "%.2f"))
+                    {
+                    }
+
+                    if (ImGuiMCP::SliderFloat("Flickers / Second", &dataExt.flickersPerSecond,
+                        0.1f, 5.0f, "%.2f"))
+                    {
+
+                    }
                 }
-
-                if (ImGuiMCP::SliderFloat("Flickers / Second", &dataExt.flickersPerSecond,
-                    0.1f, 5.0f, "%.2f"))
-                {
-
-                }
-
                 // ISL sliders
                 if (globals::islInstalled) {
                     // Cutoff
@@ -636,7 +639,7 @@ namespace UI {
                             }
                         }
                     }
-
+                }
                 // RGB
                 if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.0f, 1.0f, "%.3f")) {
                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -656,7 +659,7 @@ namespace UI {
                         }
                     }
                 }
-                }
+              
             }
         }
     }

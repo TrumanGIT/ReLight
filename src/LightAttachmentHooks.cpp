@@ -94,22 +94,10 @@ void AddonNodes::thunk(
 					}	
 
 					auto parent = light->parent->AsNode();
-
 					if (!parent) {
-						logger::warn("couldent cast torch as node will not apply light to torches");
+						logger::warn("couldn’t cast torch as node will not apply light to torches");
 						return;
 					}
-
-                    //hide the original torch lights (2 of them)
-                  // lightEntry
-
-					auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
-
-					if (!cloneLight) {
-						continue;
-					}
-
-					RE::FormID fakeRefFormID = 0x0;
 
 					std::string torchName = "torch";
 
@@ -119,16 +107,13 @@ void AddonNodes::thunk(
 
 					auto& cfg = cfgs[0];
 
+					light->name = "RL" + torchName;
+					light->unk138 = cfg.configID;
 
-					LightData::setNiPointLightDataFromCfg(fakeRefFormID, cloneLight, cfg);
+					RE::FormID formID = 0x0;
+					LightData::setNiPointLightDataFromCfg(formID, light, cfg);
 
-					cloneLight->name = "RL" + cfg.nodeName;
-
-					LightManager::attachLightUsingAttachPath(cfg, parent, cloneLight, fakeRefFormID);
-				
-					LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, fakeRefFormID);
-
-                 
+					logger::info("Applied torch config to {}", light->name);
                 }
             });
         }
