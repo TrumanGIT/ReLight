@@ -102,6 +102,11 @@ namespace UI {
         }
 
 
+        if (ImGuiMCP::Button("Debug log all lights")) {
+            debugLogAllLights(); 
+        }
+
+
         if (ImGuiMCP::Button("Reinitialize Lights")) {
 
             auto player = RE::PlayerCharacter::GetSingleton(); 
@@ -209,8 +214,8 @@ namespace UI {
         auto it = LightData::configIDToJsonCfg.find(key);
         if (it != LightData::configIDToJsonCfg.end()) {
             auto& dataExt = it->second;
-            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {}, key: {} ",
-                name, rt.fade, dataExt.startingFade, rt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, activeLight->worldTranslate, activeLight->light->world.translate, dataExt.configID, key);
+           // logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {}, key: {} ",
+               // name, rt.fade, dataExt.startingFade, rt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, activeLight->worldTranslate, activeLight->light->world.translate, dataExt.configID, key);
         }
         else {
             logger::debug("light :{} (key={}) has no json cfg entry", name, key);
@@ -719,19 +724,15 @@ namespace UI {
 
         for (auto& light : rt.activeLights) {
             if (!light) continue;
-            auto lightName = light->light->name.c_str();
 
-            if (!lightName || lightName[0] != 'R' || lightName[1] != 'L')
+            std::string lightName = light->light->name.c_str();
+
+            if (lightName[0] != 'R' || lightName[1] != 'L')
                 continue;
 
-            auto& currentRt = light->light->GetLightRuntimeData();
+           const auto& currentRt = light->light->GetLightRuntimeData();
 
-            auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
-
-            // I use the enable light editor button this func is attached to as a debugger to check if light values get messed up
-            // by flicker equation (they were before Its good to check sometimes)
-            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {} ",
-                lightName, currentRt.fade, dataExt.startingFade, currentRt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, light->worldTranslate, light->light->world.translate, dataExt.configID);
+           const  auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
 
             for (auto& existingLight : lights) {
 
@@ -754,18 +755,15 @@ namespace UI {
 
         for (auto& shadowLight : rt.activeShadowLights) {
             if (!shadowLight) continue;
-            auto lightName = shadowLight->light->name.c_str();
 
-            if (!lightName || lightName[0] != 'R' || lightName[1] != 'L')
+            std::string lightName = shadowLight->light->name.c_str();
+
+            if (lightName[0] != 'R' || lightName[1] != 'L')
                 continue;
 
-            auto& currentRt = shadowLight->light->GetLightRuntimeData();
+            const auto& currentRt = shadowLight->light->GetLightRuntimeData();
 
-            auto& dataExt = LightData::configIDToJsonCfg[currentRt.unk138];
-
-            logger::debug("shadow light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{},BSLight World Pos: {}, NiLight World Position {}, configID: {} ",
-                lightName, currentRt.fade, dataExt.startingFade, currentRt.radius,
-                dataExt.flickerIntensity, dataExt.flickersPerSecond, shadowLight->worldTranslate, shadowLight->light->world.translate, dataExt.configID);
+            const auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
 
             bool shadowLightAlreadyInList = false;
             for (auto& existingLight : lights) {
@@ -780,6 +778,7 @@ namespace UI {
             }
         }
 
+        // sort alphabetically
         std::sort(lights.begin(), lights.end(),
             [](const RE::NiPointer<RE::BSLight>& a,
                 const RE::NiPointer<RE::BSLight>& b)
@@ -793,7 +792,6 @@ namespace UI {
 
                 return std::strcmp(nameA, nameB) < 0;
             });
-
     }
 
     void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
@@ -815,23 +813,31 @@ namespace UI {
             backupCfg = itDefault->second;
         }
 
-        auto& lightData = light->GetLightRuntimeData();
+         auto& lightData = light->GetLightRuntimeData();
 
-        auto itDataExt = LightData::configIDToJsonCfg.find(lightData.unk138);
-        if (itDataExt == LightData::configIDToJsonCfg.end()) {
+        auto itCfg = LightData::configIDToJsonCfg.find(lightData.unk138);
+        if (itCfg == LightData::configIDToJsonCfg.end()) {
             logger::warn("No JSON config entry found for light ID {}", lightData.unk138);
             return;
         }
-        auto& dataExt = itDataExt->second;
+        auto& cfg = itCfg->second;
 
         lightData.radius = LightData::getNiPointLightRadius(backupCfg);
         lightData.fade = backupCfg.brightness;
         LightData::setNiPointLightAmbientAndDiffuse(light.get(), backupCfg);
         LightData::setNiPointLightPos(light.get(), backupCfg);
 
-        dataExt.startingFade = backupCfg.startingFade;
-        dataExt.flickerIntensity = backupCfg.flickerIntensity;
-        dataExt.flickersPerSecond = backupCfg.flickersPerSecond;
+        //update the parent or sometimes it doesent work.
+        if (auto* parent = light->parent) {
+            RE::NiUpdateData updateData{};
+            updateData.time = 0.0f;
+            updateData.flags = RE::NiUpdateData::Flag::kDirty;
+            parent->UpdateTransformAndBounds(updateData);
+        }
+
+        cfg.startingFade = backupCfg.startingFade;
+        cfg.flickerIntensity = backupCfg.flickerIntensity;
+        cfg.flickersPerSecond = backupCfg.flickersPerSecond;
 
         // Propagate to active lights in the shader node
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -845,19 +851,19 @@ namespace UI {
 
                 auto& activeData = currentLight->light->GetLightRuntimeData();
 
-                if (activeData.unk138 == lightData.unk138)
+                if (activeData.unk138 == lightData.unk138) {
                     activeData = lightData;
-                currentLight->light->local.translate = light->local.translate;
+                    currentLight->light->local.translate = light->local.translate;
 
-                if (!globals::islInstalled) continue;
-
-                if (auto* isl = Overlay::Get(currentLight->light.get())) {
-                    isl->cutoffOverride = backupCfg.cutoffOverride;
-                    isl->size = backupCfg.size;
+                    if (globals::islInstalled) {
+                        if (auto* isl = Overlay::Get(currentLight->light.get())) {
+                            isl->cutoffOverride = backupCfg.cutoffOverride;
+                            isl->size = backupCfg.size;
+                        }
+                    }
                 }
             }
-        };
-
+         };
         updateLightList(rt.activeLights);
         updateLightList(rt.activeShadowLights);
 

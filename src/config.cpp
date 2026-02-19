@@ -39,7 +39,7 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 		config.startingFade = config.brightness;
 
 		// clamp radius
-		config.radius = std::clamp(config.radius, 0.0f, 256.f);
+		config.radius = std::clamp(config.radius, 0.0f, 500.f);
 
 		if (data.contains("color") && data["color"].is_array()) {
 			auto& arr = data["color"];

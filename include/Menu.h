@@ -1,5 +1,7 @@
 #pragma once
 #include "SKSEMenuFramework.h"
+#include "logger.hpp"
+#include "LightData.h"
 
 namespace UI {
 
@@ -12,4 +14,47 @@ namespace UI {
     void restoreLightToDefaults(RE::NiPointer<RE::NiLight> selectedLight);
     inline MENU_WINDOW reLightMenuWindow;
 
-};
+    inline void debugLogAllLights() {
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null!");
+            return;
+        }
+
+        auto& rt = ssNode->GetRuntimeData();
+
+        for (auto& light : rt.activeLights) {
+            if (!light) continue;
+
+            std::string lightName = light->light->name.c_str();
+
+            if (lightName[0] != 'R' || lightName[1] != 'L')
+                continue;
+
+            const auto& lightRt = light->light->GetLightRuntimeData();
+
+            const auto& cfg = LightData::configIDToJsonCfg[lightRt.unk138];
+
+            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, NiLight World Pos{} configID: {} ",
+                lightName, lightRt.fade, cfg.startingFade, lightRt.radius, cfg.flickerIntensity, cfg.flickersPerSecond, light->light->world.translate, cfg.configID);
+        }
+
+        for (auto& light : rt.activeShadowLights) {
+            if (!light) continue;
+
+            std::string lightName = light->light->name.c_str();
+
+            if (lightName[0] != 'R' || lightName[1] != 'L')
+                continue;
+
+            const auto& lightRt = light->light->GetLightRuntimeData();
+
+            const auto& cfg = LightData::configIDToJsonCfg[lightRt.unk138];
+
+            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, NiLight World Pos{} configID: {} ",
+                lightName, lightRt.fade, cfg.startingFade, lightRt.radius, cfg.flickerIntensity, cfg.flickersPerSecond, light->light->world.translate, cfg.configID);
+        }
+
+
+    }
+}
