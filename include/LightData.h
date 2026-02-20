@@ -34,7 +34,7 @@ struct PointLight
 //also handy data container extention
 struct Overlay
 {
-	std::uint32_t flags;       // this is needeed for linear lighting, must apply the flag
+	std::uint32_t flags;       // this is needeed for linear lighting (LL), must apply the flag probly a bit mask. (LL support has yet to be added) 
 	float         cutoffOverride;//ISL need for isl from config
 	RE::FormID    lighFormId; // ISL dont need
 	RE::NiColor   diffuse;
@@ -56,7 +56,7 @@ struct LightData {
 
 	static std::unordered_map<std::string, std::vector<LightConfig>> nodeNameToJsonCfg;
 
-	static std::unordered_map<std::string, LightConfig> meshPathToJsonCfg;
+	static std::unordered_map<std::string, std::vector<LightConfig>> meshPathToJsonCfg;
 
 	static std::unordered_map<uint64_t, LightConfig> defaultConfigs;
 

@@ -31,7 +31,10 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-	if (LightManager::processByFilePath(a_this, a_root)) return niAVObject;
+
+	if (LightManager::processByFilePath(a_this, a_root)) {
+		return niAVObject;
+	 }
 
 	// grab name of NiNode (usually 1:1 with mesh names)
 
@@ -60,7 +63,7 @@ void Load3D::Install()
 }
 
 //yoinked this from PO3 Light Placer used only for torch light, could be used for weapons / armor
-// im unable to remove the ni light from the torch for some rac
+// im unable to remove the ni light from the torch so i just set its data instead meaning we cant change flicker data as its vanilla
 void AddonNodes::thunk(
     RE::NiAVObject* a_clonedNode,
     RE::NiAVObject* a_node,

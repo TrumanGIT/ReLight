@@ -25,10 +25,6 @@ else { \
 
 bool loadConfiguration(LightConfig& config, const json& data) {
 	try {
-		if (data.contains("meshPath")) {
-			config.meshPath = data["meshPath"].get<std::string>();
-		}
-
 		if (data.contains("menuName")) {
 			config.menuName = data["menuName"].get<std::string>();
 		}
@@ -122,7 +118,13 @@ bool saveConfiguration(const LightConfig& config) {
 			newEntry["nodeName"] = config.nodeName; // fallback
 		}
 
-		newEntry["meshPath"] = config.meshPath;
+		if (originalEntry.contains("meshPath")) {
+			newEntry["meshPath"] = originalEntry["meshPath"];
+		}
+		else {
+			newEntry["meshPath"] = config.meshPath; // fallback
+		}
+
 		newEntry["menuName"] = config.menuName;
 
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
@@ -225,6 +227,7 @@ void parseTemplates() {
 				}
 			}
 
+			// create a config for each node name listed so 1 json config can work for multuple nodes.
 			for (const auto& nodeName : nodeNames) {
 				LightConfig cfg;
 				loadConfiguration(cfg, json);
@@ -242,13 +245,41 @@ void parseTemplates() {
 
 				cfg.print();
 
-				if (!cfg.meshPath.empty()) {
-					LightData::meshPathToJsonCfg[cfg.meshPath] = cfg;
-				}
-
 				LightData::configIDToJsonCfg[cfg.configID] = cfg;
 				LightData::defaultConfigs[cfg.configID] = cfg;
 				LightData::nodeNameToJsonCfg[cfg.nodeName].push_back(cfg);
+			}
+
+			// create a config for each mesh file path
+			std::vector<std::string> meshFilePaths;
+
+			if (json.contains("meshPath")) {
+				if (json["meshPath"].is_string()) {
+					meshFilePaths.push_back(json["meshPath"].get<std::string>());
+				}
+				else if (json["meshPath"].is_array()) {
+					meshFilePaths = json["meshPath"].get<std::vector<std::string>>();
+				}
+			}
+
+			for (const auto& meshPath : meshFilePaths) {
+				LightConfig cfg;
+				loadConfiguration(cfg, json);
+				cfg.configPath = p;
+				cfg.configID = nextID++;
+
+				cfg.jsonIndex = jsonIndex;
+
+				//set each cfg name according to the current iteration of all meshpaths read (for multiple mesh paths for 1 config support)
+				cfg.meshPath = meshPath;
+
+				toLower(cfg.meshPath);
+
+				cfg.print();
+
+				LightData::configIDToJsonCfg[cfg.configID] = cfg;
+				LightData::defaultConfigs[cfg.configID] = cfg;
+				LightData::meshPathToJsonCfg[cfg.meshPath].push_back(cfg);
 			}
 
 			//used to get the right index to save back too
@@ -261,13 +292,12 @@ std::vector<LightConfig> findConfigsForNode(std::string& nodeName)
 {
 	std::vector<LightConfig> result;
 
-	//careful mutablitiy here idk if matters just marking it. 
+	//careful mutablitiy here idk if matters that much just marking it. 
 	toLower(nodeName); 
 
 	if (nodeName.empty())
 		return result;
 
-	// Phase 2: exact lookup
 	auto it = LightData::nodeNameToJsonCfg.find(nodeName);
 	if (it != LightData::nodeNameToJsonCfg.end()) {
 		result = it->second;

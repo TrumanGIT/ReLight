@@ -91,13 +91,13 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	auto currentModel = bm->GetModel();
 
-	for (const auto& [meshPath, cfg] : LightData::meshPathToJsonCfg) {
+	for (const auto& [meshPath, cfgs] : LightData::meshPathToJsonCfg) {
 
 		if (meshPath != currentModel) continue;
 
-		const auto baseFormID = baseObject->GetFormID();
-
 	  auto refFormID = a_this->GetFormID(); 
+
+	  const auto baseFormID = baseObject->GetFormID();
 
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
@@ -117,15 +117,25 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 			continue;
 		}
 
+		for (const auto& cfg : cfgs) {
+
 		LightData::setNiPointLightDataFromCfg(refFormID,cloneLight, cfg);
 
 		/// TODO:: if not in priority list in ini file, this causes name to be RL only need to fix that
 		std::string temp = "RL" + std::string(cfg.nodeName.c_str());
 		cloneLight->name = temp.c_str();
 
-		LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
+		if (globals::enableLightMerging) {
+			LightManager::attachOrMergeLight(a_this, refFormID, cloneLight, cfg, a_root);
+		}
+		else {
+			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
+		}
 
 		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refFormID);
+
+		}
+
 		return true;
 
 	}
@@ -133,7 +143,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	return false;
 }
 
- //TODO:: doesent handle multi lights in a single config
+ //TODO:: doesent handle multi lights in a single config (idk if it needs to really) 
 // some nodes are called dummy this is to take care of them.
  bool LightManager::dummyHandler(RE::TESObjectREFR* a_this, const RE::BSFixedString& nodeName, RE::NiNode* a_root)
 {
@@ -142,6 +152,9 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	logger::debug("dummy found");
 
+
+	//TODO:: this only works if the node name in the json config is labled exactly as matched below. 
+	// should probly cover cases where the user changed the node name from chandel to something else 
 	static const std::unordered_map<std::string, std::string> dummyMeshPaths = {
 	{ "Clutter\\Ruins\\RuinsFloorCandleLampMidOn.nif", "ruinsfloorcandlelampmidon" },
 	{ "Clutter\\Ruins\\RuinsFloorCandleLampMidOn02.nif", "ruinsfloorcandlelampmidon" },
@@ -199,7 +212,12 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		cloneLight->name = "RL" + cfg.nodeName;
 
-		LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
+		if (globals::enableLightMerging) {
+			LightManager::attachOrMergeLight(a_this, refFormID, cloneLight, cfg, a_root);
+		}
+		else {
+			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
+		}
 
 		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refFormID);
 

@@ -3,6 +3,7 @@
 #include "global.h"
 #include "Utility.h"
 #include "lightManager.h"
+#include <format>
 
 namespace logger = SKSE::log;
 
@@ -209,13 +210,11 @@ namespace UI {
         seen.insert(key);
 
         // For debuggong
-        auto& rt = activeLight->light->GetLightRuntimeData();
+        //auto& rt = activeLight->light->GetLightRuntimeData();
 
         auto it = LightData::configIDToJsonCfg.find(key);
         if (it != LightData::configIDToJsonCfg.end()) {
             auto& dataExt = it->second;
-           // logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, BSLight World Pos: {}, NiLight World Pos{} configID: {}, key: {} ",
-               // name, rt.fade, dataExt.startingFade, rt.radius, dataExt.flickerIntensity, dataExt.flickersPerSecond, activeLight->worldTranslate, activeLight->light->world.translate, dataExt.configID, key);
         }
         else {
             logger::debug("light :{} (key={}) has no json cfg entry", name, key);
@@ -373,8 +372,6 @@ namespace UI {
                     logger::warn("No config found for light '{}'", lightName);
 					ok = false;
                 }
-
-                //                LightData::refillBankForSelectedTemplate(lightName, cfg);
             }
             else {
                 logger::warn("Save clicked but no light selected");
@@ -448,7 +445,7 @@ namespace UI {
                 }
 
                 if (menuName.empty()) {
-                    menuName = light->light->name.c_str();
+                    menuName = std::string(light->light->name.c_str());
                 }
 
 				makeDisplayName(menuName);
@@ -476,14 +473,15 @@ namespace UI {
                 }
 
                 if (menuName.empty()) {
-                    menuName = light->light->name.c_str();
+                    menuName = lightName;
                 }
 
                 makeDisplayName(menuName);
 
+                // if 2 lights in the menu has same menu name they cannot be selected , this appends a index to make them unique and their node name after
                 if (nameCounts[menuName] > 1) {
                     const int index = ++nameIndex[menuName];
-                    menuName += " " + std::to_string(index);
+                    menuName = std::format("{} {} ({})", menuName, index, lightName);
                 }
 
 				ImGuiMCP::PushID(i);
