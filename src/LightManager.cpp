@@ -7,7 +7,7 @@
 void LightManager::attachLightUsingAttachPath(
 	const LightConfig& cfg,
 	RE::NiNode* root,
-	RE::NiPointLight* light, RE::FormID& refFormID)
+	RE::NiPointLight* light, RE::FormID refFormID)
 {
 	if (!root || !light) {
 		logger::warn("attachLightUsingAttachPath: null root or light");
@@ -47,7 +47,7 @@ void LightManager::attachLightUsingAttachPath(
 
 // ATTACH NI POINT LIGHT TO SHADOW SCENE NODE TO GET BS LIGHT IN RETURN. BS LIGHT IS THE LIGHT YOU VISUALLY SEE RENDERED IN GAME
 //BS LIGHT READS ITS NI POINT LIGHT DATA EVERY FRAME
-void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::FormID& refFormID) {
+void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::FormID refFormID) {
 
 	//logger::info("attempting to create NiPointLight BSlight and attach to ShadowSceneNode");
 
@@ -84,19 +84,18 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	if (LightData::meshPathToJsonCfg.empty()) return false;
 
 	const auto baseObject = a_this->GetBaseObject();
-
 	if (!baseObject) return true;
 
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return true;
 
-	auto currentModel = bm->GetModel();
+	const auto currentModel = bm->GetModel();
 
 	for (auto& [meshPath, cfgs] : LightData::meshPathToJsonCfg) {
 
 		if (meshPath != currentModel) continue;
 
-	  auto refFormID = a_this->GetFormID(); 
+	const auto refFormID = a_this->GetFormID(); 
 
 	  auto shadowLightFound = false;
 
@@ -122,25 +121,25 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		for (auto& cfg : cfgs) {
 
-		LightData::setNiPointLightDataFromCfg(refFormID,cloneLight, cfg);
+		LightData::setNiPointLightDataFromCfg(refFormID, cloneLight, cfg);
 
 		std::string temp = "RL" + cfg.nodeName;
 		cloneLight->name = temp.c_str();
 
-		//if light merge on use global light merge distance
-		if (globals::enableLightMerging) {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, refFormID, cloneLight, cfg, a_root, globals::lightMergeDistance, true, shadowLightFound);
-		}
-		// we still have to merge lights for refs stacked on top of each other (embers xd ect)
-		else {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, refFormID, cloneLight, cfg, a_root, 50, false, shadowLightFound);
+		if (!cfg.shadowLight) {
+			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::lightMergeDistance, shadowLightFound);
 		}
 
-		if (shadowLightFound) {
+		else {
+			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::shadowLightMergeDistance, shadowLightFound);
+		}
+
+		//if one ref was a shadow light, the merged light should be aswell
+		if (shadowLightFound && !cfg.shadowLight) {
 			cfg.shadowLight = true;
 		}
 
-		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refFormID);
+		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this->GetFormID());
 
 		}
 
@@ -210,8 +209,6 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		 //cant do multi lights currently, just would have to iterate if wanted to.
 		 auto cfg = findConfigsForNode(match)[0];
 
-		if (cfg.shadowLight) shadowRadiiMult *= 2.0;
-
 		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
 		if (!cloneLight) {
@@ -223,19 +220,20 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		cloneLight->name = "RL" + cfg.nodeName;
 
-		//if light merge on use global light merge distance
-		if (globals::enableLightMerging) {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, refFormID, cloneLight, cfg, a_root, globals::lightMergeDistance, true, shadowLightFound);
+		if (!cfg.shadowLight) {
+			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::lightMergeDistance, shadowLightFound);
 		}
-		// we still have to merge lights for refs stacked on top of each other (embers xd ect) just smaller radius
+
 		else {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, refFormID, cloneLight, cfg, a_root, 42 * shadowRadiiMult, false, shadowLightFound);
+			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::shadowLightMergeDistance, shadowLightFound);
 		}
 
 		// if one is a shadow light then the merged light should be a shadow light
-		if (shadowLightFound) {
+	//one of the merged lights was a shadow light.
+		if (shadowLightFound && !cfg.shadowLight) {
 			cfg.shadowLight = true;
 		}
+
 
 		LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refFormID);
 
@@ -250,7 +248,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
  void LightManager::processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this) {
 
-	// matched name
+	// matched name with a configs nodename
 	std::string matchStr = match.c_str();
 
 	auto refFormID = a_this->GetFormID(); 
@@ -290,18 +288,18 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		cloneLight->name = "RL" + cfg.nodeName;
 
 		auto shadowLightFound = false;
-		auto shadowRadiiMult = 1.0;
-		if (cfg.shadowLight) shadowRadiiMult *= 2.0;
-		//if light merge on use global light merge distance
-		if (globals::enableLightMerging) {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, refFormID, cloneLight, cfg, a_root, globals::lightMergeDistance, true, shadowLightFound);
+
+		/// we merge lights because 2 fxfirewithembers are usually stacked on top of each other, without this double shadow lights (not good)
+		if (!cfg.shadowLight) {
+			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::lightMergeDistance, shadowLightFound);
 		}
-		// we still have to merge lights for refs stacked on top of each other (embers xd ect)
+	
 		else {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, refFormID, cloneLight, cfg, a_root, 42 * shadowRadiiMult, false, shadowLightFound);
+			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::shadowLightMergeDistance, shadowLightFound);
 		}
 
-		if (shadowLightFound) {
+		//one of the merged lights was a shadow light.
+		if (shadowLightFound && !cfg.shadowLight) {
 			cfg.shadowLight = true;
 		}
 
@@ -381,13 +379,8 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 		return;
 	}
 	auto& rt = ssNode->GetRuntimeData();
-
-	//TODO Change to use global
-	static int fLODFadeOutMultObjects;
-
-	getObjectFadeMult(fLODFadeOutMultObjects);
 	
-	RE::TES::GetSingleton()->ForEachReferenceInRange(player, fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
+	RE::TES::GetSingleton()->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
 		if (!ref) return RE::BSContainer::ForEachResult::kContinue;
 
@@ -459,13 +452,14 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 								}
 
 								if (!bsLightExists) {
-									logger::info("reintiializing shadow light {} for ref {} ", light->name, ref->GetFormID());
+									logger::info("reintializing shadow light {} for ref {} ", light->name, ref->GetFormID());
 
 									auto p = LightData::makeLightParams(config);
 									ssNode->AddLight(light, p);
 								}
 
 							}
+							//regular lights can just disable and renable to reinitialize (light dissapears with the mesh)
 							else {
 								ref->Disable();
 								ref->Enable(false);
@@ -481,33 +475,28 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 
-void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, const std::string& nodeName, RE::FormID& refFormID,
-	RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* refA_root, const float radius, const bool multiplyRadius, bool& shadowLightFound)
+void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string& nodeName,
+	RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* refA_root, const float radius, bool shadowLightFound)
 {
-	if (!a_this || !childLight) return;
+	if (!refA || !childLight) return;
 
 	std::vector<RE::TESObjectREFR*> pendingMerge;
 	int potentialMergeCount = 0;
-    shadowLightFound = false;
-
-	if (cfg.shadowLight) {
-		shadowLightFound; 
-	}
-
-	RE::FormID a_thisBaseID = a_this->GetBaseObject() ? a_this->GetBaseObject()->GetFormID() : 0;
 
 	// Find nearby refs with the same base object that haven't been merged yet
-	RE::TES::GetSingleton()->ForEachReferenceInRange(a_this, radius, [&](RE::TESObjectREFR* ref) {
-		if (ref == a_this) return RE::BSContainer::ForEachResult::kContinue;
-		if (globals::refsWithAttachedLights.count(ref) == 0) {
+	RE::TES::GetSingleton()->ForEachReferenceInRange(refA, radius, [&](RE::TESObjectREFR* refB) {
+		if (refB == refA) return RE::BSContainer::ForEachResult::kContinue;
+
+		//skip refs that already have lights.
+		if (globals::refsWithAttachedLights.count(refB) == 0) {
 			
 			// could prolly pass thhis in from earlier
-			auto baseObj = ref->GetBaseObject();
+			auto baseObj = refB->GetBaseObject();
 
-			RE::FormID refFormID = ref->GetFormID();
+		    const RE::FormID refBFormID = refB->GetFormID();
 
 			//call false so it skips our hook
-			auto niAVObject = ref->Load3D(false);
+			auto niAVObject = refB->Load3D(false);
 
 			if (!niAVObject) {
 				logger::warn("no ni node casted from niav object from lwhen merging hook");
@@ -527,18 +516,19 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, const std::stri
 
 			if (!nodeNameMatch.empty()) {
 
-				//problem excludes like no candle varients could pass as this
-				if (!isExclude(refB_root->name, refB_root, refFormID)) {
+				// if refA's matched nodename and ref Bs matched node name are the same, then merge (its a loose match system that works for now)
+				if (nodeName == nodeNameMatch && !isExclude(refB_root->name, refB_root, refBFormID)) {
 
 				auto cfgs =	findConfigsForNode(nodeNameMatch);
 
 				//if one merged light is a shadow light, merged light should be a shadow.
+				//doesent work for multi lights currently
 				if (cfgs[0].shadowLight) {
 					shadowLightFound = true;
 				}
 
-					pendingMerge.push_back(ref);
-					logger::debug("evaled  {} againt {}  node names for match to merge stacked meshes ",nodeNameMatch , nodeName);
+					pendingMerge.push_back(refB);
+					logger::debug("refA {} and refB {} with matched nodeName {} selected to merge ", refA->GetFormID(), refBFormID, nodeName);
 					potentialMergeCount++;
 				}
 			}
@@ -551,18 +541,21 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, const std::stri
 		//1 merge found so place light in between 2 refs. 
 	case 1: {
 
-		LightManager::attachLightUsingAttachPath(cfg, refA_root, childLight, refFormID);
+		LightManager::attachLightUsingAttachPath(cfg, refA_root, childLight, refA->GetFormID());
 
-		auto otherRef = pendingMerge[0];
+		auto refB = pendingMerge[0];
 
 		// Get world positions of the references we want the lgiht to go in between
-		RE::NiPoint3 refAWorldPos = a_this->GetPosition();
-		RE::NiPoint3 refBWorldPos = otherRef->GetPosition();
+		const RE::NiPoint3 refAWorldPos = refA->GetPosition();
+		const RE::NiPoint3 refBWorldPos = refB->GetPosition();
+
+		const float distance = refAWorldPos.GetDistance(refBWorldPos);
 
 		// find mid point of 2 refs to palce light in between (x y) only
 		RE::NiPoint3 worldMid{};
 		worldMid.x = (refAWorldPos.x + refBWorldPos.x) * 0.5f;
 		worldMid.y = (refAWorldPos.y + refBWorldPos.y) * 0.5f;
+
 		// Preserve original Z as offset
 		worldMid.z = refAWorldPos.z;
 
@@ -579,23 +572,26 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, const std::stri
 
 		// debug log before change.
 		logger::debug(
-			"BEFORE Light {} merge for ref{} at {} and ref {} at {}. "
-			"Desired world XY = ({}, {}), original Z = {}. "
-			"Local translate = {}",
+			"BEFORE Light '{}' merge\n"
+			"  refA {:08X} worldPos {}\n"
+			"  refB {:08X} worldPos {}\n"
+			"distance between 2 refs {}"
+			"  originalLocalZ {}\n"
+			"  local.translate {}",
 			childLight->name.c_str(),
-			a_this->GetFormID(), refAWorldPos,
-			otherRef->GetFormID(), refBWorldPos,
-			worldMid.x, worldMid.y, originalLocalZ,
+			refA->GetFormID(), refAWorldPos,
+			refB->GetFormID(), refBWorldPos, distance,
+			originalLocalZ,
 			childLight->local.translate
 		);
 
 		// Apply local position
 		childLight->local.translate = localMid;
 
-
 		// only multiply if not a small radius merge (2 meshes stacked on top of each oher)
-		if (multiplyRadius) {
+		if (distance > 25) {
 			// increase light brightness to simulate larger light
+			logger::debug("distance is greater then 10, increasing brightness");
 			childLight->fade *= 2.0f;
 		}	
 
@@ -608,28 +604,30 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, const std::stri
 		}
 
 		// Track references with attached lights so we dont double attach lights to them.
-		globals::refsWithAttachedLights.insert(a_this);
-		globals::refsWithAttachedLights.insert(otherRef);
+		globals::refsWithAttachedLights.insert(refA);
+		globals::refsWithAttachedLights.insert(refB);
 
 		// Logging after change
 		logger::debug(
-			"AFTER  Light {} merge for ref{} at {} and ref {} at {}. "
-			"Local translate set = {}, world position approx = {}",
+			"[LightMerge:AFTER] '{}'\n"
+			"  refA {:08X} worldPos {}\n"
+			"  refB {:08X} worldPos {}\n"
+			"  local.translate {}",
 			childLight->name.c_str(),
-			a_this->GetFormID(), refAWorldPos,
-			otherRef->GetFormID(), refBWorldPos,
-			childLight->local.translate,
-			refA_root->world.translate + childLight->local.translate // approximate
+			refA->GetFormID(), refAWorldPos,
+			refB->GetFormID(), refBWorldPos,
+			childLight->local.translate
 		);
 
 		break;
 	}
 		  // find the middle of 3 refs and place light in the middle
 	case 2: {
-		LightManager::attachLightUsingAttachPath(cfg, refA_root, childLight, refFormID);
+
+		LightManager::attachLightUsingAttachPath(cfg, refA_root, childLight, refA->GetFormID());
 
 		std::vector<RE::NiPoint3> positions = {
-			a_this->GetPosition(),
+			refA->GetPosition(),
 			pendingMerge[0]->GetPosition(),
 			pendingMerge[1]->GetPosition()
 		};
@@ -658,21 +656,27 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, const std::stri
 		// add the z offset 
 		localMid.z += originalLocalZ;
 
-		// Logging before
 		logger::debug(
-			"BEFORE Light {} merge for 3 refs. World XY midpoint = ({}, {}), original Z = {}, local translate = {}",
+			"[LightMerge:BEFORE] '{}'\n"
+			"  refA {:08X} pos {}\n"
+			"  refB {:08X} pos {}\n"
+			"  refC {:08X} pos {}\n"
+			"originalLocalZ {}\n"
+			"  local.translate {}",
 			childLight->name.c_str(),
-			worldMid.x, worldMid.y, originalLocalZ,
+			refA->GetFormID(), positions[0],
+			pendingMerge[0]->GetFormID(), positions[1],
+			pendingMerge[1]->GetFormID(), positions[2],
+			originalLocalZ,
 			childLight->local.translate
 		);
 
 		//we have to use local position its annoying bc its relative to ref a's world position
 		childLight->local.translate = localMid;
 
-		if (multiplyRadius) {
-			// increase light brightness to simulate larger light
-			childLight->fade *= 2.0f;
-		}
+		   // always increase radius for 3
+			childLight->fade *= 3.0f;
+		
 		// gotta update works sometimes without idk why
 		if (auto* parent = childLight->parent) {
 			RE::NiUpdateData updateData{};
@@ -682,23 +686,30 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* a_this, const std::stri
 		}
 
 		// keep track of merged lights so we dont attach to them later. we reset the set later in event sink
-		globals::refsWithAttachedLights.insert(a_this);
+		globals::refsWithAttachedLights.insert(refA);
+
 		for (auto& ref : pendingMerge) {
 			if (ref)
 				globals::refsWithAttachedLights.insert(ref);
 		}
 
-		// Logging after
 		logger::debug(
-			"AFTER  Light {} merge for 3 refs. Local translate set = {}, world position approx = {}",
+			"[LightMerge:AFTER] '{}'\n"
+			"  refA {:08X}\n"
+			"  refB {:08X}\n"
+			"  refC {:08X}\n"
+			"  local.translate {}\n",
 			childLight->name.c_str(),
-			childLight->local.translate,
-			refA_root->world.translate + childLight->local.translate // approximate
+			refA->GetFormID(),
+			pendingMerge[0]->GetFormID(),
+			pendingMerge[1]->GetFormID(),
+			childLight->local.translate
 		);
 
 		break;
+
 	} default: {
-		LightManager::attachLightUsingAttachPath(cfg, refA_root, childLight, refFormID);
+		LightManager::attachLightUsingAttachPath(cfg, refA_root, childLight, refA->GetFormID());
 		break;
 	}
   }

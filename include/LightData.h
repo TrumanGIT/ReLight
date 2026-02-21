@@ -63,7 +63,7 @@ struct LightData {
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
 
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightDataFromCfg(RE::FormID& formID, RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setNiPointLightDataFromCfg(const RE::FormID formID, RE::NiLight* niPointLight, const LightConfig& cfg);
 	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
 	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg);

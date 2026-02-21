@@ -35,8 +35,24 @@ namespace UI {
 
             const auto& cfg = LightData::configIDToJsonCfg[lightRt.unk138];
 
-            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, NiLight World Pos{} configID: {} ",
-                lightName, lightRt.fade, cfg.startingFade, lightRt.radius, cfg.flickerIntensity, cfg.flickersPerSecond, light->light->world.translate, cfg.configID);
+            logger::debug(
+                "[Light] '{}'\n"
+                "  brightness        {}\n"
+                "  startingBrightness{}\n"
+                "  radius            {}\n"
+                "  flickerIntensity  {}\n"
+                "  flickersPerSecond {}\n"
+                "  worldPos          {}\n"
+                "  configID          {}",
+                lightName,
+                lightRt.fade,
+                cfg.startingFade,
+                lightRt.radius,
+                cfg.flickerIntensity,
+                cfg.flickersPerSecond,
+                light->light->world.translate,
+                cfg.configID
+            );
         }
 
         for (auto& light : rt.activeShadowLights) {
@@ -51,10 +67,24 @@ namespace UI {
 
             const auto& cfg = LightData::configIDToJsonCfg[lightRt.unk138];
 
-            logger::debug("light :{}  brightness:{}  starting brightness:{}, radius: {}, flickerIntensity: {}, FlickerPerSecond{}, NiLight World Pos{} configID: {} ",
-                lightName, lightRt.fade, cfg.startingFade, lightRt.radius, cfg.flickerIntensity, cfg.flickersPerSecond, light->light->world.translate, cfg.configID);
+            logger::debug(
+                "[Shadow Light] '{}'\n"
+                "  brightness        {}\n"
+                "  startingBrightness{}\n"
+                "  radius            {}\n"
+                "  flickerIntensity  {}\n"
+                "  flickersPerSecond {}\n"
+                "  worldPos          {}\n"
+                "  configID          {}",
+                lightName,
+                lightRt.fade,
+                cfg.startingFade,
+                lightRt.radius,
+                cfg.flickerIntensity,
+                cfg.flickersPerSecond,
+                light->light->world.translate,
+                cfg.configID
+            );
         }
-
-
     }
 }

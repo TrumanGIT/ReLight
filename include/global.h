@@ -21,15 +21,17 @@ namespace globals
 
     inline bool enableHookToRemoveLightsFromBSTriShapes = false;
 
-    inline bool enableLightMerging = false;
+    //inline bool enableLightMerging = false;
 
-    inline float lightMergeDistance = 162; 
+    inline float lightMergeDistance = 120; 
+
+    inline float shadowLightMergeDistance = 162;
 
     inline int lightOverlapMinOnTriShapeMult = 7;
 
     inline int fLODFadeOutMultObjects = 9000;
 
-    inline float frustumOverlapTolerance = 0.0001;
+    inline float frustumOverlapTolerance = 0.000001;
 
     inline int loggingLevel = 0;
 

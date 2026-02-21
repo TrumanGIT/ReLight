@@ -7,9 +7,6 @@
 
 namespace logger = SKSE::log;
 
-// TODO:: Make default button also update parent transforms
-
-
 namespace UI {
 
 	static RefreshTicker lightRefreshTicker(std::chrono::milliseconds(500));
@@ -63,14 +60,13 @@ namespace UI {
         }
 
         if (globals::disableLightsNotInCameraEnabled) {
-            ImGuiMCP::SliderFloat("frustumTolerance", &globals::frustumOverlapTolerance, 0, 3);
+            ImGuiMCP::SliderFloat("frustumTolerance", &globals::frustumOverlapTolerance, 0.000000, 3.000000);
 
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("how strict to disable lights outside the camera. higher = more strict");
             }
         
         }
-
 
         if (ImGuiMCP::Checkbox("enableHookToRemoveLightsFromBSTriShapes (Read tool tip)", &globals::enableHookToRemoveLightsFromBSTriShapes)) {
         }
@@ -86,22 +82,25 @@ namespace UI {
         }
 
 
-        if (ImGuiMCP::Checkbox("Enable Light merging)", &globals::enableLightMerging)) {
 
-        }
         if (ImGuiMCP::IsItemHovered()) {
             ImGuiMCP::SetTooltip("merge Lights of same type within defined distance. Max 3");
         }
 
 
-        if (globals::enableLightMerging) {
-            ImGuiMCP::SliderFloat("minimum distance of refs to be merged", &globals::lightMergeDistance, 0, 300);
+
+           ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Sets minimum distance refs must be apart for them to merge into 1 light.");
             }
-        }
 
+            ImGuiMCP::SliderFloat("Distance of refs to merge shadow light", &globals::shadowLightMergeDistance, 0, 300);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Sets distance of refs to shadow light merge. (to prevent dupicate lights of stacked meshes");
+            }
+     
 
         if (ImGuiMCP::Button("Debug log all lights")) {
             debugLogAllLights(); 
@@ -114,7 +113,7 @@ namespace UI {
 
             if (!player) return; 
 
-            LightManager::reinitializeLightsWithinRange(player);  // your function
+            LightManager::reinitializeLightsWithinRange(player);
         }
 
         if (ImGuiMCP::IsItemHovered()) {

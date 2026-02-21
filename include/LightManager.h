@@ -12,11 +12,11 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
         return &singleton;
     }
 
-    static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::FormID& refFormID);
+    static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::FormID refFormID);
 
     static void registerEventSink();
 
-    static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light, RE::FormID& refFormID);
+    static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light, RE::FormID refFormID);
 
    static bool processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root);
 
@@ -26,8 +26,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 
-  static void attachOrMergeLight(RE::TESObjectREFR* a_this, const std::string& ,RE::FormID& refFormID,
-      RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root, const float radius, const bool multiplyRadius, bool& shadowLightFound);
+  static void attachOrMergeLight(RE::TESObjectREFR* a_this, const std::string& nodeName,
+      RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root, const float radius, bool shadowLightFound);
 
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;
