@@ -27,7 +27,7 @@ namespace globals
 
     inline float shadowLightMergeDistance = 162;
 
-    inline int lightOverlapMinOnTriShapeMult = 7;
+    inline int lightOverlapMinOnTriShapeMult = 5;
 
     inline int fLODFadeOutMultObjects = 9000;
 

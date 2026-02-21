@@ -45,7 +45,7 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
                }
 
                // If still over 7, keep only closest 7
-              /* if (lightList.size() > 7) {
+               if (lightList.size() > 7) {
                    logger::debug("Still {} lights after overlap check, limiting to 7 closest", lightList.size());
 
                    std::vector<std::pair<float, RE::BSLight*>> lightDistances;
@@ -61,7 +61,7 @@ void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass*
                    for (int i = 0; i < 7; i++) {
                        lightList.push_back(lightDistances[i].second);
                    }
-               }*/
+               }
 
                if (didSomething)  logger::debug("AFTER cleanup: {} lights", lightList.size());
            }
