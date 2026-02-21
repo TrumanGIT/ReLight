@@ -9,8 +9,9 @@
 #include <vector>
 #include  "Utility.h"
 
+
 // (config to json id is for faster lookups then strings, used in flicker logic)
-std::map<uint64_t, LightConfig> LightData::configIDToJsonCfg;
+std::map<uint32_t, LightConfig> LightData::configIDToJsonCfg;
 
 // for search by mesh file path instead of node name
 std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJsonCfg;
@@ -19,7 +20,7 @@ std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJ
 std::unordered_map<std::string, std::vector<LightConfig>> LightData:: nodeNameToJsonCfg;
 
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
-std::unordered_map<uint64_t, LightConfig> LightData::defaultConfigs;
+std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
 // Try to exclude light by editorID.
 bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {

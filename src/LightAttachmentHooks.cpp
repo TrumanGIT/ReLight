@@ -17,6 +17,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return func(a_this, a_backgroundLoading);
 	}
 
+	RE::FormID refFormID = a_this->GetFormID(); 
+
 	//logger::info("load3D called");
 	auto niAVObject = func(a_this, a_backgroundLoading);
 	if (!niAVObject) {
@@ -42,7 +44,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
 
 	if (!nodeNameMatch.empty()) {
-		if (isExclude(a_root->name, a_root)) return niAVObject;
+		if (isExclude(a_root->name, a_root, refFormID)) return niAVObject;
 
 		LightManager::processByNodeName(a_root, nodeNameMatch, a_this);
 		return  niAVObject;
@@ -63,7 +65,9 @@ void Load3D::Install()
 }
 
 //yoinked this from PO3 Light Placer used only for torch light, could be used for weapons / armor
-// im unable to remove the ni light from the torch so i just set its data instead meaning we cant change flicker data as its vanilla
+// im unable figure out how 1st person / 3rd person lights work. according to logging, in vanilla both are attachd at the 1st 
+//attachlight node in the node tree of a torch. I think the game constantly update the first persons lights position as the player moves.
+//would love to have full torch light control someday of torches but reusing vanilla light here is good enough for now.
 void AddonNodes::thunk(
     RE::NiAVObject* a_clonedNode,
     RE::NiAVObject* a_node,
@@ -92,7 +96,7 @@ void AddonNodes::thunk(
                         continue;
 
 					if (light->parent->name != "AttachLight") {
-						logger::warn("users torch node tree does not contain object w name AttachLight, cant attach light");
+						//logger::warn("users torch node tree does not contain object w name AttachLight, cant attach light");
 						continue; 
 					}	
 

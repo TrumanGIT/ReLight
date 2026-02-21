@@ -33,13 +33,10 @@ inline void disableLightsPastMaxDistance(T& lights, RE::NiPoint3& playerPos, RE:
         if (lightPos.GetDistance(playerPos) >= globals::maxLightDistance) {
             ssNode->RemoveLight(light);
         }
-
     }
 }
 
-// I use this to calculate the overlap of a light with the camera and disable lights outside the camera
-// it works but did not seem to help. I was told that the engine already does this but when you press the enable light editor button in our menu 
-// to load light templates it displays a debug log of all active lights and lights still seem to be active so idk if the engine does or not
+// Took in from mehs intellighent mod
 inline void NiCamera_unk_CalculateFrustumOverlap(RE::NiCamera* camera, float* coord, float* result1, float* result2, float epsilon)
 {
     // 140C65760
@@ -48,8 +45,8 @@ inline void NiCamera_unk_CalculateFrustumOverlap(RE::NiCamera* camera, float* co
     func(camera, coord, result1, result2, epsilon);
 }
 
-// I was told vvanilla does this I need to find it if it does already, a log dump is done every time you enabe light editor 
-// it logs all active lights and there data. according to this all lights are still active meaning vanilla does not but it needs to be investigated further
+// rurns our engine already does this, (frustrum culling member on ni light) only thing better would be
+//to disable lights behind walls out of player sight but idk how expensive ray casting is. (mabye viable for shadow casters?)
 template <class T>
 inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE::NiCamera* camera, RE::PlayerCharacter* player) {
 

@@ -52,13 +52,13 @@ struct Overlay
 
 struct LightData {
 
-	static std::map<uint64_t, LightConfig> configIDToJsonCfg;
+	static std::map<uint32_t, LightConfig> configIDToJsonCfg;
 
 	static std::unordered_map<std::string, std::vector<LightConfig>> nodeNameToJsonCfg;
 
 	static std::unordered_map<std::string, std::vector<LightConfig>> meshPathToJsonCfg;
 
-	static std::unordered_map<uint64_t, LightConfig> defaultConfigs;
+	static std::unordered_map<uint32_t, LightConfig> defaultConfigs;
 
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
 

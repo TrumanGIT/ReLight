@@ -49,7 +49,7 @@ inline std::string removePrefix(const std::string& str, const std::string& prefi
 	return str;
 }
 
-
+//mutable
 inline void toLower(std::string& str) {
 	for (auto& c : str) {
 		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
@@ -111,14 +111,14 @@ inline void iniParser()
 	}
 
 	std::string line;
-	enum Section { NONE, exact, partial, priority } section = NONE;
+	enum Section { NONE, exact, partial, priority, refid } section = NONE;
 
 	while (std::getline(iniFile, line))
 	{
 		line = trim(line);
-		if (line.empty()) continue;
+		if (line.empty())
+			continue;
 
-		
 		if (line.starts_with(";"))
 		{
 			toLower(line);
@@ -129,6 +129,8 @@ inline void iniParser()
 				section = partial;
 			else if (line.find("priority") != std::string::npos)
 				section = priority;
+			else if (line.find("exclude by ref form id") != std::string::npos)
+				section = refid;
 			else
 				section = NONE;
 
@@ -150,10 +152,25 @@ inline void iniParser()
 			continue;
 
 		case priority:
-			 toLower(line);
-			 globals::priorityList.push_back(line);
+			toLower(line);
+			globals::priorityList.push_back(line);
 			logger::info("Added priority node: {}", line);
 			continue;
+
+		case refid:
+		{
+			try {
+				RE::FormID id =
+					static_cast<RE::FormID>(std::stoul(line, nullptr, 0));
+
+				globals::excludedRefFormIDs.insert(id);
+				logger::info("Added excluded ref FormID: {:08X}", id);
+			}
+			catch (...) {
+				logger::warn("Invalid FormID in exclude-by-ref section: {}", line);
+			}
+			continue;
+		}
 
 		default:
 			break;
@@ -164,20 +181,17 @@ inline void iniParser()
 			continue;
 
 		std::string key = trim(line.substr(0, eq));
-		toLower(key); 
+		toLower(key);
 
 		std::string value = trim(line.substr(eq + 1));
 		toLower(value);
-
-		std::string vLow = value;
-		toLower(vLow);
 
 		auto parseBool = [&](const std::string& v) {
 			return (v == "true" || v == "1" || v == "yes");
 			};
 
 		if (key == "removefakegloworbs") {
-			globals::removeFakeGlowOrbs = parseBool(vLow);
+			globals::removeFakeGlowOrbs = parseBool(value);
 			continue;
 		}
 
@@ -187,40 +201,21 @@ inline void iniParser()
 		}
 
 		if (key == "logginglevel") {
-			globals::loggingLevel = std::stoi(value);
-			globals::loggingLevel = std::clamp(globals::loggingLevel, 0, 3);
+			globals::loggingLevel = std::clamp(std::stoi(value), 0, 3);
 			logger::info("Logging level set to {}", globals::loggingLevel);
-			spdlog::level::level_enum user_level = spdlog::level::info;
-			switch (globals::loggingLevel) {
-				case 0:
-				{
-					user_level = spdlog::level::critical;
-					break;
-				}
-				case 1:
-				{
-					user_level = spdlog::level::warn;
-					break;
-				}
-				case 2:
-				{
-					user_level = spdlog::level::info;
-					break;
-				}
-				case 3:
-				{
-					user_level = spdlog::level::debug;
-					break;
-				}
-			}
-			spdlog::set_level(user_level);
-			spdlog::flush_on(user_level);
+
+			spdlog::level::level_enum lvl = spdlog::level::info;
+			if (globals::loggingLevel == 0) lvl = spdlog::level::critical;
+			else if (globals::loggingLevel == 1) lvl = spdlog::level::warn;
+			else if (globals::loggingLevel == 3) lvl = spdlog::level::debug;
+
+			spdlog::set_level(lvl);
+			spdlog::flush_on(lvl);
 			continue;
 		}
 	}
 
 	iniFile.close();
-
 	logger::info("ReLight.ini parsed successfully!");
 }
 
@@ -301,7 +296,7 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-inline bool isExclude(const RE::BSFixedString& nodeName, /*const char* nifPath,*/ RE::NiNode* root)
+inline bool isExclude(const RE::BSFixedString& nodeName, /*const char* nifPath,*/ RE::NiNode* root, RE::FormID refformID)
 {
 	if (nodeName == "mpscandleflame01.nif" && globals::removeFakeGlowOrbs) {
 		if (!root)
@@ -336,6 +331,12 @@ inline bool isExclude(const RE::BSFixedString& nodeName, /*const char* nifPath,*
 		if (nodeName.contains(exclude))
 			return true;
 	}
+
+	if (globals::excludedRefFormIDs.contains(refformID)) {
+		logger::debug("found ref formId in exclusion list, skipping light attachment");
+		return true;
+	}
+		
 
 	/*if (!nifPath)
 		return false;

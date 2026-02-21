@@ -38,6 +38,7 @@ namespace globals
     inline std::vector<RE::BSFixedString> exclusionList{};
     inline std::vector<RE::BSFixedString> exclusionListPartialMatch{};
     inline std::vector<RE::BSFixedString> priorityList{};
+    inline std::unordered_set<RE::FormID> excludedRefFormIDs{};
 
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
