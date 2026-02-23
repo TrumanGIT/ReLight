@@ -9,6 +9,8 @@
 #include <unordered_set>
 #include <sstream>
 #include <iostream>
+#include <xbyak/xbyak.h>
+
 
 namespace logger = SKSE::log;
 
@@ -409,4 +411,34 @@ inline void hasInverseSquareLighting()
 	globals::islInstalled = std::filesystem::exists(path);
 
 	logger::info("info isl found?: {}", globals::islInstalled);
+}
+
+
+template <class T, std::size_t BYTES>
+inline void hook_function_prologue(std::uintptr_t a_src)
+{
+	struct Patch : Xbyak::CodeGenerator
+	{
+		Patch(std::uintptr_t a_originalFuncAddr, std::size_t a_originalByteLength)
+		{
+			// Hook returns here. Execute the restored bytes and jump back to the original function.
+			for (size_t i = 0; i < a_originalByteLength; ++i) {
+				db(*reinterpret_cast<std::uint8_t*>(a_originalFuncAddr + i));
+			}
+
+			jmp(ptr[rip]);
+			dq(a_originalFuncAddr + a_originalByteLength);
+		}
+	};
+
+	Patch p(a_src, BYTES);
+	p.ready();
+
+	auto& trampoline = SKSE::GetTrampoline();
+	trampoline.write_branch<5>(a_src, T::thunk);
+
+	auto alloc = trampoline.allocate(p.getSize());
+	std::memcpy(alloc, p.getCode(), p.getSize());
+
+	T::func = reinterpret_cast<std::uintptr_t>(alloc);
 }
