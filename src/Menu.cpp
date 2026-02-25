@@ -230,6 +230,18 @@ namespace UI {
         }
     }
 
+    bool compareLightNames(const char* a, const char* b) {
+        if (!a) a = "";
+        if (!b) b = "";
+        for (;; ++a, ++b) {
+            unsigned char ca = (unsigned char)std::tolower((unsigned char)*a);
+            unsigned char cb = (unsigned char)std::tolower((unsigned char)*b);
+            if (ca < cb) return true;
+            if (ca > cb) return false;
+            if (ca == 0) return false;
+        }
+    }
+
     void refreshAllLights(int& selectedIndex) {
 
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -275,13 +287,13 @@ namespace UI {
         std::sort(lights.begin(), lights.end(),
             [](const RE::NiPointer<RE::BSLight>& a, const RE::NiPointer<RE::BSLight>& b)
             {
-                if (!a || !b || !a->light || !b->light) return false;
+                if (!a || !a->light) return true;
+                if (!b || !b->light) return false;
 
                 const char* nameA = a->light->name.c_str();
                 const char* nameB = b->light->name.c_str();
-                if (!nameA || !nameB) return false;
 
-                return std::strcmp(nameA, nameB) < 0;
+				return compareLightNames(nameA, nameB);
             });
 
         // Update selectded index after sorting
@@ -476,13 +488,14 @@ namespace UI {
                 }
 
                 makeDisplayName(menuName);
-
-                // if 2 lights in the menu has same menu name they cannot be selected , this appends a index to make them unique and their node name after
+     
                 if (nameCounts[menuName] > 1) {
                     const int index = ++nameIndex[menuName];
                     menuName = std::format("{} {} ({})", menuName, index, lightName);
                 }
 
+                // If 2 lights in the menu has same menu name they cannot be selected, 
+				// ImGuiMCP::PushID(i) fixes this by giving each selectable a unique ID
 				ImGuiMCP::PushID(i);
                 if (ImGuiMCP::Selectable(menuName.c_str(), &selected)) {
                     selectedIndex = i;
