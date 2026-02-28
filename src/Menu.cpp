@@ -50,26 +50,13 @@ namespace UI {
             ImGuiMCP::InputInt("Global Max Light Distance (not used)", &globals::maxLightDistance);
         }
 
-        if (ImGuiMCP::Checkbox("enable Light flicker Preventin Measures", &globals::enableHookToRemoveLightsFromBSTriShapes)) {
+        if (ImGuiMCP::Checkbox("enable Light flicker Preventin Measures", &globals::enableLightFlickerPreventionMeasures)) {
         }
 
         if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("sets bounding box for chandeliers reach on tri shapes, & max 6 (closest) candles per trishape");
+            ImGuiMCP::SetTooltip("sets global bounding boxes on light reach, 2 chandeliers per tri shape max");
         }
 
-        if (ImGuiMCP::SliderFloat3("bounding box for chandeliers", globals::shadowLightReachXYZ, 0, 1500)) {
-
-        }
-
-        if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("sets bounding box for chandeliers reach on tri shapese");
-        }
-
-        if (ImGuiMCP::SliderFloat(
-            "shadow light choke",
-            &globals::shadowLightChoke, 0.0f, 2.0f))
-        {
-        }
 
         if (ImGuiMCP::SliderFloat(
             "min candle coverage to affect a tri shape",
@@ -90,9 +77,9 @@ namespace UI {
         }
 
 
-        if (ImGuiMCP::SliderInt(
-            "max triangle count for chandeliers",
-            &globals::maxTriangles, 0.0f, 3000.0f))
+        if (ImGuiMCP::SliderFloat(
+            "z height mininum for merge to carry over original z position",
+            &globals::mergeZmin, 0.0f, 2000.0f))
         {
         }
 

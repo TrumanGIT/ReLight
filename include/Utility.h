@@ -366,7 +366,7 @@ inline const RE::BSFixedString findPriorityMatch(const RE::BSFixedString& nodeNa
 }
 
 //gets users skyrim pref setting. lights reinitialized are set to this exact distance
-inline void getObjectFadeMult(int& fLODFadeOutMultObjects) {
+inline void getObjectFadeMult(float& fLODFadeOutMultObjects) {
 
 	if (auto* setting = RE::GetINISetting("fLODFadeOutMultObjects:LOD")) {
 		if (setting->GetType() == RE::Setting::Type::kFloat) {

@@ -21,7 +21,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     }
 
     //exit in exteriors
-    if (!globals::currentCellIsInterior || !globals::enableHookToRemoveLightsFromBSTriShapes) return true;
+    if (!globals::currentCellIsInterior || !globals::enableLightFlickerPreventionMeasures) return true;
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return false;

@@ -14,6 +14,8 @@ namespace globals
     inline bool lastCellWasInterior = false;
     inline bool currentCellIsInterior = false;
 
+    inline auto lastCellFormID = 0x0; 
+
     inline bool islInstalled = false;
 
     inline int maxLightDistance = 1000;
@@ -21,11 +23,7 @@ namespace globals
 
     inline int maxTriangles = 1000;
 
-    // inline bool disableLightsNotInCameraEnabled = false; 
-
-    inline bool enableHookToRemoveLightsFromBSTriShapes = false;
-
-    //inline bool enableLightMerging = false;
+    inline bool enableLightFlickerPreventionMeasures = false;
 
     inline float lightMergeDistance = 130;
 
@@ -39,21 +37,9 @@ namespace globals
 
     inline float globalCoverage = 580;
 
-    // inline int lightOverlapMinOnTriShapeMult = 5;
-
-    inline int fLODFadeOutMultObjects = 9000;
-
-    //inline float frustumOverlapTolerance = 0.000001;
+    inline float fLODFadeOutMultObjects = 9000;
 
     inline int  maxLightsOnATriShape = 7;
-
-    inline float shadowLightChoke = 0.6f;
-
-    inline float shadowLightReachXYZ[3] = {
-            285.1f, // X
-            485.288f, // Y
-            300.907f   // Z
-    };
 
     inline float mergeZmin = 30;
 
