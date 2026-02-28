@@ -1,196 +1,216 @@
 #include "BSLightingShaderHook.h"
-#include "global.h"
+
 #include "everyframe.h"
 #include "utility.h"
+#include <unordered_set>
 
-// BS tri shapes are passed through this hook 
-//its not a great solution because were fighting the engine, not solving the problem.
-// this hook is also called ALOT, this might be overloading this hook
-// only played with this it needs alot of work
-void BSLightingShader_SetupGeometry::thunk(RE::BSShader* This, RE::BSRenderPass* Pass, uint32_t RenderFlags)
+bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
+    RE::BSLightingShaderProperty* p,
+    RE::BSLight* light)
 {
-   if (!globals::enableHookToRemoveLightsFromBSTriShapes) return func(This, Pass, RenderFlags);
+    if (!p || !light) return false;
 
-   if (Pass && Pass->geometry) {
-       auto geometry = Pass->geometry;
-       auto lightingShader = geometry->lightingShaderProp_cast();
-       if (lightingShader && lightingShader->lightData) {
-           auto& lightList = lightingShader->lightData->lights;
-           auto didSomething = false;
+    if (!light->affectLand)
+    {
+        const auto& flags = p->flags;
+        if (flags.any(RE::BSShaderProperty::EShaderPropertyFlag::kMultiTextureLandscape) ||
+            flags.any(RE::BSShaderProperty::EShaderPropertyFlag::kNoLODLandBlend))
+        {
+            return false;
+        }
+    }
 
-           if (lightList.size() > 7) {
-                didSomething = true; 
+    //exit in exteriors
+    if (!globals::currentCellIsInterior || !globals::enableHookToRemoveLightsFromBSTriShapes) return true;
 
-               int beforeCount = lightList.size();
-               logger::debug("BEFORE cleanup: {} lights", beforeCount);
-
-               // get the position and the model radius for comparing
-               auto& geomPos = geometry->world.translate;
-               float geomRadius = geometry->modelBound.radius;
-
-               // iterate through the light list on the geomatry
-               for (int i = lightList.size() - 1; i >= 0; i--) {
-                   auto light = lightList[i];
-                   if (!light || !light->light.get()) continue;
-
-                   auto nilight = light->light.get();
-
-                   //get light radius to compare
-                   float lightRadius = nilight->GetLightRuntimeData().radius.x;
-                   float dist = nilight->world.translate.GetDistance(geomPos);
-
-                   // compare here. 
-                   if (dist > (lightRadius + geomRadius) * globals::lightOverlapMinOnTriShapeMult) {
-                       lightList.erase(lightList.begin() + i);
-                   }
-               }
-
-               // If still over 7, keep only closest 7
-               if (lightList.size() > 7) {
-                   logger::debug("Still {} lights after overlap check, limiting to 7 closest", lightList.size());
-
-                   std::vector<std::pair<float, RE::BSLight*>> lightDistances;
-                   for (auto light : lightList) {
-                       if (!light || !light->light.get()) continue;
-                       float dist = light->light->world.translate.GetDistance(geomPos);
-                       lightDistances.push_back({ dist, light });
-                   }
-
-                   std::sort(lightDistances.begin(), lightDistances.end());
-
-                   lightList.clear();
-                   for (int i = 0; i < 7; i++) {
-                       lightList.push_back(lightDistances[i].second);
-                   }
-               }
-
-               if (didSomething)  logger::debug("AFTER cleanup: {} lights", lightList.size());
-           }
-
-           func(This, Pass, RenderFlags);
-
-       }
-
-   }
+    auto pass = p->renderPassList.head;
+    if (!pass || !pass->geometry) return false;
 
 
-}
-void BSLightingShader_SetupGeometry::Install() {
+    auto triShape = pass->geometry;
+    const auto& triCenter = triShape->worldBound.center;
+    const float triRadius = triShape->worldBound.radius;
+  
 
-	func = REL::Relocation<std::uintptr_t>(RE::VTABLE_BSLightingShader[0]).write_vfunc(0x6, thunk);
-}
-
-__int64 BSShaderPropertyLightData_AttachLight::thunk(RE::BSShaderPropertyLightData* This, RE::BSLight* BSLight)
-{
-    if (!This || !BSLight) return reinterpret_cast<decltype(&thunk)>(func)(This, BSLight);
-
-    if (This->lights.size() >= 7) {
-    
-        return -1; 
+    const auto& lightPos = light->light->world.translate;
 
 
+    const float dist = triCenter.GetDistance(lightPos);
+
+    //  distance-only reject
 
 
-        /*    if (Pass && Pass->geometry) {
-                auto geometry = Pass->geometry;
-                auto lightingShader = geometry->lightingShaderProp_cast();
-                if (lightingShader && lightingShader->lightData) {
-                    auto& lightList = lightingShader->lightData->lights;
-
-                    if (lightList.size() > 7) {
-                        int beforeCount = lightList.size();
-                        logger::info("BEFORE cleanup: {} lights", beforeCount);
-
-                        auto worldSceneGraph = GetWorldSceneGraph();
-                        //logger::debug("worldSceneGraph loaded");
-                        auto worldCamera = ((RE::BSSceneGraph*)worldSceneGraph)->GetRuntimeData().camera.get();
-
-                        //store a score of how inside the camera the light is
-                        std::vector<std::pair<float, RE::BSLight*>> visibleLights;
-
-                        // get the position and the model radius for comparing
-                        auto& geomPos = geometry->world.translate;
-                        float geomRadius = geometry->modelBound.radius;
-
-                          // iterate through the light list on the bs tri shape
-                        for (int i = lightList.size() - 1; i >= 0; i--) {
-                            auto light = lightList[i];
-                            if (!light || !light->light.get()) continue;
-
-                            auto nilight = light->light.get();
-
-                            bool visible = true;
-
-                            float lightRadius = nilight->GetLightRuntimeData().radius.x;
-                            float coord[4] = {
-                       nilight->world.translate.x,
-                       nilight->world.translate.y,
-                       nilight->world.translate.z,
-                       lightRadius
-                            };
-
-                            float minOut[3]{}, maxOut[3]{};
-
-                            NiCamera_unk_CalculateFrustumOverlap(worldCamera, coord, minOut, maxOut, globals::frustumOverlapTolerance);
-
-                            float frustumScore = 0;
-
-                            for (int v = 0; v < 3; v++) {
-                                if (maxOut[v] <= minOut[v]) {
-                                    visible = false;
-                                    lightList.erase(lightList.begin() + i);
+   /* float lightRadius = std::max({
+        light->light->radius.x,
+        light->light->radius.y,
+        light->light->radius.z
+        });*/
 
 
-                                }
-                                logger::info("  Removed light: minOut[{}]={}, maxOut[{}]={}",
-                                    v, minOut[v], v, maxOut[v]);
-                                break;
-                                float range = maxOut[v] - minOut[v];
-                                frustumScore += range;
-                            }
+    if (light->unk060 == 2)
+    {
 
-                            if (visible) {
-                                visibleLights.emplace_back(frustumScore, light);
-                            }
+        const float dx = std::abs(lightPos.x - triCenter.x);
+        const float dy = std::abs(lightPos.y - triCenter.y);
 
-                        }
+        // Ignore Z almost entirely for candles
+        const float distXY = std::sqrt(dx * dx + dy * dy);
 
-                        // If still over 7, keep the 7 furtherst inside the frustrum (camera view)
-                        if (lightList.size() > 7) {
-                            logger::info("Still {} lights after overlap check, limiting to 7 closest", lightList.size());
+        if (distXY > globals::gMinCandleCoverage)
+            return false;
 
-                            std::sort(visibleLights.begin(), visibleLights.end());
+      /* // first time seeing this tri, build its closest 5 candle list
+       if (p->forcedDarkness == 0.0f) {
+            BuildClosestCandles(
+                p,
+                RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0]->GetRuntimeData().activeLights,
+                triCenter
+            );
+       }  
 
-                            lightList.clear();
-                            for (int i = 0; i < 7; i++) {
-                                lightList.push_back(visibleLights[i].second);
-                            }
-                        }
+        // allow only if light is one of the closest 5
+        if (!IsCandleRelevant(p, light))
+            return false;*/
+    }
 
-                        logger::info("AFTER cleanup: {} lights", lightList.size());
-                    }
+    else if (light->unk060 == 1) {
 
-                    func(This, Pass, RenderFlags);
+      //  if (dist > globals::gMinChandelierCoverage)
+        //    return false;
+ 
 
-                    // checking to see if the light list changed before and after (it doesent here but does elsewhere)
-                    if (Pass && Pass->geometry) {
-                        auto lightingShader = Pass->geometry->lightingShaderProp_cast();
-                        if (lightingShader && lightingShader->lightData) {
-                            logger::info("AFTER func(): {} lights", lightingShader->lightData->lights.size());
-                        }
-                    }
-                }
+        const float dx = std::abs(lightPos.x - triCenter.x);
+        const float dy = std::abs(lightPos.y - triCenter.y);
 
-            }*/
+        // Ignore Z almost entirely for candles
+        const float distXY = std::sqrt(dx * dx + dy * dy);
 
+
+        if (distXY > globals::gMinChandelierCoverage)
+            return false;
+
+
+    /* 
+        const RE::NiPoint3& lightPos = light->light->world.translate;
+
+        // ---- Axis choke bounds (tweak these) ----
+
+   float dx = lightPos.x - triPos.x;
+     float dy = lightPos.y - triPos.y;
+     float dz = lightPos.z - triPos.z;
+
+     // Axis rejection (fail fast)
+     if (std::abs(dx) > globals::shadowLightReachXYZ[0] ||
+         std::abs(dy) > globals::shadowLightReachXYZ[1] ||
+         std::abs(dz) > globals::shadowLightReachXYZ[2])
+     {
+         return false;
+     }
+
+     // ---- Optional spherical distance (recommended) ----
+     const auto& bound = triShape->worldBound;
+
+     float lightRadius = std::max({
+         light->light->radius.x,
+         light->light->radius.y,
+         light->light->radius.z
+         });
+
+     float maxDist = (lightRadius * globals::shadowLightChoke) + bound.radius;
+
+     float distSq = dx * dx + dy * dy + dz * dz;
+
+     if (distSq > maxDist * maxDist)
+         return false; 
+      
+
+     auto trishape4real = triShape->AsTriShape(); 
+
+     if (trishape4real) {
+     
+         if (trishape4real->triangleCount > globals::maxTriangles) return false;
+     
+     }   */
+
+           const float triRadius = triShape->worldBound.radius;
+        const auto& thisLightPos = light->light->world.translate;
+        float thisDistance = triCenter.GetDistance(thisLightPos);
+        float thisRadius = light->light->radius.Length();
+        float thisCoverage = thisRadius - (thisDistance - triRadius);
+
+        auto thisConfigID = light->light->unk138;
+        auto* ss = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+
+        for (auto& otherLight : ss->GetRuntimeData().activeShadowLights) {
+            if (!otherLight || !otherLight->light)
+                continue;
+            if (otherLight->light == light->light)
+                continue;
+            if (otherLight->light->unk138 != thisConfigID)
+                continue;
+
+            float zDiff = std::abs(thisLightPos.z - otherLight->light->world.translate.z);
+
+            if (zDiff > globals::g_maxShadowCompeteDistance)
+                continue;
+
+            float otherDistance = triCenter.GetDistance(otherLight->light->world.translate);
+            float otherCoverage = otherLight->light->radius.Length() - (otherDistance - triRadius);
+
+            logger::debug(
+                "light {:p} dist {:.2f} vs other {:p} dist {:.2f}",
+                static_cast<void*>(light),
+                thisDistance,
+                static_cast<void*>(otherLight.get()),
+                otherDistance
+            );
+
+            if (otherCoverage > thisCoverage) {
+                return false;
+            }
+
+        }
 
     }
 
-
-   // logger::info("attach light called {} : {}", This->lights.size(), BSLight->light->name.c_str() );
-    return reinterpret_cast<decltype(&thunk)>(func)(This, BSLight); 
+    else {
+        if (dist > globals::globalCoverage)
+            return false;
+    
+    }
+    return true;
 }
 
+void BSLightingShaderProperty_IsLightAffectingSurface::Install()
+{
+    auto& trampoline = SKSE::GetTrampoline();
+
+    REL::Relocation<std::uintptr_t> target{
+        RELOCATION_ID(98902, 105550)
+    };
+
+    func = trampoline.write_branch<5>(
+        target.address(),
+        thunk
+    );
+
+    logger::info("BSLightingShaderProperty_IsLightAffectingSurface hook installed");
+}
+
+
+__int64 BSShaderPropertyLightData_AttachLight::thunk(RE::BSShaderPropertyLightData* a_this, RE::BSLight* light)
+{
+    if (!a_this || !light) return reinterpret_cast<decltype(&thunk)>(func)(a_this, light);
+
+    if (a_this->lights.size() >= globals::maxLightsOnATriShape) {
+        return -1;
+    }
+
+    // if (light->unk060 == 1) return -1
+
+    // logger::info("attach light called on tri with total lights: {} with name {} ", a_this->lights.size(), light->light->name.c_str());
+    return reinterpret_cast<decltype(&thunk)>(func)(a_this, light);
+}
 
 void BSShaderPropertyLightData_AttachLight::Install() {
     REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(100990, 107777) };
@@ -198,5 +218,36 @@ void BSShaderPropertyLightData_AttachLight::Install() {
     auto& trampoline = SKSE::GetTrampoline();
     hook_function_prologue<BSShaderPropertyLightData_AttachLight, 5>(target.address());
 
+}
+
+__int64 BSLight_AddFadeNode::thunk(RE::BSLight* light, RE::NiAVObject* root)
+{
+    if (!root) return reinterpret_cast<decltype(&thunk)>(func)(light, root);
+
+    auto geometry = root->AsGeometry();
+    if (!geometry) return reinterpret_cast<decltype(&thunk)>(func)(light, root);
+
+    auto shader = geometry->lightingShaderProp_cast();
+    if (!shader) return reinterpret_cast<decltype(&thunk)>(func)(light, root);
+
+    auto* head = shader->renderPassList.head;
+    if (!head) return reinterpret_cast<decltype(&thunk)>(func)(light, root);
+
+    if (!shader->lightData) return reinterpret_cast<decltype(&thunk)>(func)(light, root);
+
+    auto totalShadowLights = head->numShadowLights;
+    auto totalNonShadowLights = shader->lightData->lights.size();
+    auto totalLights = totalShadowLights + totalNonShadowLights;
+
+    if (totalLights >= 7) return -1;
+
+    return reinterpret_cast<decltype(&thunk)>(func)(light, root);
+}
+
+//101296	131cde0
+//108283  141509760
+void BSLight_AddFadeNode::Install() {
+    REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(101296, 108283) };
+    hook_function_prologue<BSLight_AddFadeNode, 5>(target.address());
 }
 

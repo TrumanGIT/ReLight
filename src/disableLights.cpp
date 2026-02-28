@@ -46,6 +46,8 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 		return false;
 	}
 
+
+
 	if (LightData::excludeLightEditorID(light)) return false;
 
 	auto player = RE::PlayerCharacter::GetSingleton();

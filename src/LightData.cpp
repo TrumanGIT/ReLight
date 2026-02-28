@@ -30,6 +30,8 @@ bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
 	if (!edid.empty()) {
 		for (const auto& group : globals::keywordLightGroups) {
 			if (containsAll(edid, group)) {
+
+				if (edid.contains("SolitudeInnSunlightShadow")) return false;
 				logger::info("Excluding light by editorID: {}", edid);
 				return true;
 			}

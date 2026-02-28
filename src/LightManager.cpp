@@ -69,13 +69,18 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		return;
 	}
 
-	RE::BSLight* BsLight = shadowSceneNode->AddLight(niPointLight, params);
+	RE::BSLight* bsLight = shadowSceneNode->AddLight(niPointLight, params);
 
 
-	if (!BsLight) {
+	if (!bsLight) {
 		logger::info("no BSLight created in (createShadowSceneNode() for {}", niPointLight->name);
 		return;
 	}
+
+	if (cfg.menuName == "Chandelier") bsLight->unk060 = 1; 
+
+	if (cfg.menuName.contains("Candle")) bsLight->unk060 = 2;
+
 }
 
 //TODO:: doesent handle multi lights in a single config
@@ -330,11 +335,16 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		return RE::BSEventNotifyControl::kContinue;
 	}
 
+
+	globals::currentCellIsInterior = cell->IsInteriorCell();
+
 	//TODO Change to use global
 	static int fLODFadeOutMultObjects;
 
 	if (s_firstCellEvent) {
+		logger::info("player is in interior on startup: {}", globals::currentCellIsInterior);
 		s_firstCellEvent = false;
+		
 		globals::lastCellWasInterior = cell->IsInteriorCell();
 		return RE::BSEventNotifyControl::kContinue;
 
@@ -344,15 +354,14 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 
 	}
 
-	const bool currentCellIsInterior = cell->IsInteriorCell();
 
-	if (globals::lastCellWasInterior != currentCellIsInterior) {
+	if (globals::lastCellWasInterior !=	globals::currentCellIsInterior) {
 		
 		LightManager::reinitializeLightsWithinRange(player); 
 	 
 	}
 
-	globals::lastCellWasInterior = currentCellIsInterior;
+	globals::lastCellWasInterior = globals::currentCellIsInterior;
 
 	return RE::BSEventNotifyControl::kContinue;
 }
@@ -372,6 +381,17 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 	// clear this lights list that has merged lights placed into it so tehey can get lights attached again.
 	globals::refsWithAttachedLights.clear();
+
+
+	for (const auto& entry : globals::gTriClosestCandles) {
+		
+		auto geometry = entry.first; 
+		if (!geometry) continue; 
+		geometry->forcedDarkness = 0; 
+	}
+
+	//we make a list of closest candles to tri shape and limit per to 6, this must be reset aswell
+	globals::gTriClosestCandles.clear();
 
 	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 	if (!ssNode) {

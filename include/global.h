@@ -12,26 +12,50 @@ namespace globals
     inline bool removeFakeGlowOrbs = false;
 
     inline bool lastCellWasInterior = false;
+    inline bool currentCellIsInterior = false;
+
     inline bool islInstalled = false;
 
-    inline int maxLightDistance = 1000; 
+    inline int maxLightDistance = 1000;
     inline bool maxLightDistanceEnabled = false;
 
-    inline bool disableLightsNotInCameraEnabled = false; 
+    inline int maxTriangles = 1000;
+
+    // inline bool disableLightsNotInCameraEnabled = false; 
 
     inline bool enableHookToRemoveLightsFromBSTriShapes = false;
 
     //inline bool enableLightMerging = false;
 
-    inline float lightMergeDistance = 120; 
+    inline float lightMergeDistance = 130;
 
     inline float shadowLightMergeDistance = 162;
 
-    inline int lightOverlapMinOnTriShapeMult = 5;
+    inline float g_maxShadowCompeteDistance = 314;
+
+    inline float gMinCandleCoverage = 430;
+
+    inline float gMinChandelierCoverage = 580; 
+
+    inline float globalCoverage = 580;
+
+    // inline int lightOverlapMinOnTriShapeMult = 5;
 
     inline int fLODFadeOutMultObjects = 9000;
 
-    inline float frustumOverlapTolerance = 0.000001;
+    //inline float frustumOverlapTolerance = 0.000001;
+
+    inline int  maxLightsOnATriShape = 7;
+
+    inline float shadowLightChoke = 0.6f;
+
+    inline float shadowLightReachXYZ[3] = {
+            285.1f, // X
+            485.288f, // Y
+            300.907f   // Z
+    };
+
+    inline float mergeZmin = 30;
 
     inline int loggingLevel = 0;
 
@@ -46,11 +70,12 @@ namespace globals
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
     inline std::unordered_set<RE::TESObjectREFR*> refsWithAttachedLights{};
 
+    inline std::unordered_map<RE::BSLightingShaderProperty*, std::vector<RE::BSLight*>> gTriClosestCandles{};
 
     inline RE::TESObjectLIGH* dummyLightObject = nullptr;
 
     inline const std::vector<std::vector<std::string_view>> keywordLightGroups = {
-        { "sun", "light" },   // both must be present
+        { "sun"},   
         { "window" },
         { "loadscreen" },
         { "magic" },

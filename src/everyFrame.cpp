@@ -33,12 +33,6 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 		disableLightsPastMaxDistance(ssRt.activeShadowLights, playerPos, ssNode);
 	}
 
-	if (globals::disableLightsNotInCameraEnabled) {
-		disableLightsNotInCamera(ssRt.activeLights, ssNode, worldCamera, player);
-
-		disableLightsNotInCamera(ssRt.activeShadowLights, ssNode, worldCamera, player);
-	}
-
 	ApplyLightFlicker(ssRt.activeLights, delta);
 
 	ApplyLightFlicker(ssRt.activeShadowLights, delta);

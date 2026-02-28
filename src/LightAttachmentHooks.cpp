@@ -33,7 +33,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-
 	if (LightManager::processByFilePath(a_this, a_root)) {
 		return niAVObject;
 	 }
@@ -47,6 +46,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		if (isExclude(a_root->name, a_root, refFormID)) return niAVObject;
 
 		LightManager::processByNodeName(a_root, nodeNameMatch, a_this);
+
 		return  niAVObject;
 	}
 

@@ -28,8 +28,8 @@ namespace UI {
 
             std::string lightName = light->light->name.c_str();
 
-            if (lightName[0] != 'R' || lightName[1] != 'L')
-                continue;
+            //if (lightName[0] != 'R' || lightName[1] != 'L')
+            //    continue;
 
             const auto& lightRt = light->light->GetLightRuntimeData();
 

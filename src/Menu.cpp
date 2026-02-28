@@ -38,7 +38,7 @@ namespace UI {
         ImGuiMCP::Text("Testing Menu");
         ImGuiMCP::PopStyleColor();
 
-        if (ImGuiMCP::Checkbox("Enable Lights being disabled based on distance (not very usefull)", &globals::maxLightDistanceEnabled)) {
+        if (ImGuiMCP::Checkbox("Enable Lights being disabled based on distance (not used)", &globals::maxLightDistanceEnabled)) {
             ImGuiMCP::SetTooltip("disable all lights not within certain distance, does not reenable them currently)");
         }
 
@@ -47,47 +47,54 @@ namespace UI {
         }
 
         if (globals::maxLightDistanceEnabled) {
-            ImGuiMCP::InputInt("Global Max Light Distance", &globals::maxLightDistance);
+            ImGuiMCP::InputInt("Global Max Light Distance (not used)", &globals::maxLightDistance);
         }
 
-
-        if (ImGuiMCP::Checkbox("disable lights with radius that does not enter camera (and renables them)", &globals::disableLightsNotInCameraEnabled)) {
-           
-        }
-
-        if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("was told vanilla does this already but im not sure it does when enabling light editor the log dump says otherwise)");
-        }
-
-        if (globals::disableLightsNotInCameraEnabled) {
-            ImGuiMCP::SliderFloat("frustumTolerance", &globals::frustumOverlapTolerance, 0.000000, 3.000000);
-
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("how strict to disable lights outside the camera. higher = more strict");
-            }
-        
-        }
-
-        if (ImGuiMCP::Checkbox("enableHookToRemoveLightsFromBSTriShapes (Read tool tip)", &globals::enableHookToRemoveLightsFromBSTriShapes)) {
-        }
-
-        if (globals::enableHookToRemoveLightsFromBSTriShapes) {
-            ImGuiMCP::SliderInt("min Light Overlap On TriShape mult", &globals::lightOverlapMinOnTriShapeMult, 0, 150);
-            if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip(" 80 = light must cover 80% of the light");
-        
+        if (ImGuiMCP::Checkbox("enable Light flicker Preventin Measures", &globals::enableHookToRemoveLightsFromBSTriShapes)) {
         }
 
         if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("the formula is not compelte it needs work. trying other leads will come back to this");
+            ImGuiMCP::SetTooltip("sets bounding box for chandeliers reach on tri shapes, & max 6 (closest) candles per trishape");
         }
 
+        if (ImGuiMCP::SliderFloat3("bounding box for chandeliers", globals::shadowLightReachXYZ, 0, 1500)) {
 
+        }
 
         if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("merge Lights of same type within defined distance. Max 3");
+            ImGuiMCP::SetTooltip("sets bounding box for chandeliers reach on tri shapese");
+        }
+
+        if (ImGuiMCP::SliderFloat(
+            "shadow light choke",
+            &globals::shadowLightChoke, 0.0f, 2.0f))
+        {
+        }
+
+        if (ImGuiMCP::SliderFloat(
+            "min candle coverage to affect a tri shape",
+            &globals::gMinCandleCoverage, 0.0f, 2000.0f))
+        {
+        }
+
+        if (ImGuiMCP::SliderFloat(
+            "min chandelier coverage to affect a tri shape",
+            &globals::gMinChandelierCoverage, 0.0f, 2000.0f))
+        {
+        }
+
+        if (ImGuiMCP::SliderFloat(
+            "min global  coverage to affect a tri shape",
+            &globals::globalCoverage, 0.0f, 2000.0f))
+        {
         }
 
 
+        if (ImGuiMCP::SliderInt(
+            "max triangle count for chandeliers",
+            &globals::maxTriangles, 0.0f, 3000.0f))
+        {
+        }
 
            ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
 

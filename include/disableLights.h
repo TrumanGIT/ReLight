@@ -45,8 +45,7 @@ inline void NiCamera_unk_CalculateFrustumOverlap(RE::NiCamera* camera, float* co
     func(camera, coord, result1, result2, epsilon);
 }
 
-// rurns our engine already does this, (frustrum culling member on ni light) only thing better would be
-//to disable lights behind walls out of player sight but idk how expensive ray casting is. (mabye viable for shadow casters?)
+/*
 template <class T>
 inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE::NiCamera* camera, RE::PlayerCharacter* player) {
 
@@ -122,4 +121,4 @@ inline void disableLightsNotInCamera(T& lights, RE::ShadowSceneNode* ssNode, RE:
             ssNode->RemoveLight(light);
         }
     }
-} 
+} */

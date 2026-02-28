@@ -45,8 +45,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         Load3D::Install();
         AddonNodes::Install(); 
         PlayerCharacter_Update::Install();
-        BSLightingShader_SetupGeometry::Install();
-        BSShaderPropertyLightData_AttachLight::Install();
+        BSLightingShaderProperty_IsLightAffectingSurface::Install();
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE (Learned you can attach a event sink to the player from light placer)
         LightManager::registerEventSink();
 

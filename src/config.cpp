@@ -229,6 +229,7 @@ void parseTemplates() {
 
 			// create a config for each node name listed so 1 json config can work for multuple nodes.
 			for (const auto& nodeName : nodeNames) {
+				if (nodeName.empty()) continue;
 				LightConfig cfg;
 				loadConfiguration(cfg, json);
 				cfg.configPath = p;
@@ -263,6 +264,7 @@ void parseTemplates() {
 			}
 
 			for (const auto& meshPath : meshFilePaths) {
+				if (meshPath.empty()) continue;
 				LightConfig cfg;
 				loadConfiguration(cfg, json);
 				cfg.configPath = p;
