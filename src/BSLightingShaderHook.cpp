@@ -27,9 +27,9 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     if (!pass || !pass->geometry) return false;
 
 
-    auto triShape = pass->geometry;
-    const auto& triCenter = triShape->worldBound.center;
-    const float triRadius = triShape->worldBound.radius;
+    auto geometry = pass->geometry;
+    const auto& triCenter = geometry->worldBound.center;
+    const float triRadius = geometry->worldBound.radius;
   
 
     const auto& lightPos = light->light->world.translate;
@@ -38,7 +38,6 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     const float dist = triCenter.GetDistance(lightPos);
 
     //  distance-only reject
-
 
    /* float lightRadius = std::max({
         light->light->radius.x,
@@ -49,14 +48,32 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
     if (light->unk060 == 2)
     {
+        auto isWallMesh = false;
 
+        RE::TESBoundObject* baseRef = nullptr;
+
+        if (p->fadeNode && p->fadeNode->userData)
+            baseRef = p->fadeNode->userData->data.objectReference;
+
+        if (baseRef) {
+            auto curBaseFormID = baseRef->GetFormID();
+            isWallMesh = globals::wallMeshes.contains(curBaseFormID);
+        }
+   
         const float dx = std::abs(lightPos.x - triCenter.x);
         const float dy = std::abs(lightPos.y - triCenter.y);
 
-        // Ignore Z almost entirely for candles
         const float distXY = std::sqrt(dx * dx + dy * dy);
 
-        if (distXY > globals::gMinCandleCoverage)
+        float coverageThreshold = globals::gMinCandleCoverage;
+
+        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
+          
+            coverageThreshold = globals::minCandleCoverageWall;
+        }
+
+
+        if (distXY > coverageThreshold)
             return false;
 
       /* // first time seeing this tri, build its closest 5 candle list
@@ -132,7 +149,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
      
      }   */
 
-           const float triRadius = triShape->worldBound.radius;
+           const float triRadius = geometry->worldBound.radius;
         const auto& thisLightPos = light->light->world.translate;
         float thisDistance = triCenter.GetDistance(thisLightPos);
         float thisRadius = light->light->radius.Length();
@@ -202,9 +219,6 @@ __int64 BSShaderPropertyLightData_AttachLight::thunk(RE::BSShaderPropertyLightDa
 {
     if (!a_this || !light) return reinterpret_cast<decltype(&thunk)>(func)(a_this, light);
 
-    if (a_this->lights.size() >= globals::maxLightsOnATriShape) {
-        return -1;
-    }
 
     // if (light->unk060 == 1) return -1
 

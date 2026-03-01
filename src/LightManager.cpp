@@ -40,7 +40,7 @@ void LightManager::attachLightUsingAttachPath(
 
 	auto finalNodeName = finalNode->name.c_str();
 
-	logger::debug("attached light to node {} on ref {}", finalNodeName, refFormID);
+	logger::debug("attached light to node {} on ref {:08X} ", finalNodeName, refFormID);
 
 	finalNode->AttachChild(light);
 }
@@ -80,6 +80,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	//tag so we can find with low overhead in shader hooks
 	if (cfg.menuName == "Chandelier") bsLight->unk060 = 1; 
 
+	// TODO:: exclude candlebras 
 	if (cfg.menuName.contains("Candle")) bsLight->unk060 = 2;
 
 }
@@ -539,8 +540,10 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 
 			if (!nodeNameMatch.empty()) {
 
-				// if refA's matched nodename and other refs matched node name are the same, then merge (its a loose match system that works for now)
-				if (nodeName == nodeNameMatch && !isExclude(refB_root->name, refB_root, refBFormID)) {
+				bool looseMatch = nodeNameMatch.find(nodeName) != std::string::npos ||
+					nodeName.find(nodeNameMatch) != std::string::npos;
+
+				if (looseMatch && !isExclude(refB_root->name, refB_root, refBFormID)) {
 
 				auto cfgs =	findConfigsForNode(nodeNameMatch);
 

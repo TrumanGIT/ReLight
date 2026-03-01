@@ -31,17 +31,19 @@ namespace globals
 
     inline float g_maxShadowCompeteDistance = 314;
 
-    inline float gMinCandleCoverage = 430;
+    inline float gMinCandleCoverage = 400;
+
+    //tighter restrictions for wall nodes.
+    inline float minCandleCoverageWall = 230; 
+
+    // larger walls shouldent have such strict bounds or no lights
+    inline float maxWallSizeForStrictLightBounds = 325; 
 
     inline float gMinChandelierCoverage = 580; 
 
     inline float globalCoverage = 580;
 
     inline float fLODFadeOutMultObjects = 9000;
-
-    inline int  maxLightsOnATriShape = 7;
-
-    inline float mergeZmin = 30;
 
     inline int loggingLevel = 0;
 
@@ -55,6 +57,9 @@ namespace globals
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
     inline std::unordered_set<RE::TESObjectREFR*> refsWithAttachedLights{};
+
+    //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
+    inline std::unordered_set<RE::FormID> wallMeshes{};
 
     inline std::unordered_map<RE::BSLightingShaderProperty*, std::vector<RE::BSLight*>> gTriClosestCandles{};
 

@@ -33,6 +33,16 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
+	if (a_root->name.contains("Wal") && a_root->userData)
+	{
+		auto boundObjectRef = a_root->userData->data.objectReference;
+		if (boundObjectRef) {
+			auto boundObjectFormID = boundObjectRef->GetFormID();
+			globals::wallMeshes.emplace(boundObjectFormID);
+			logger::debug("wall mesh found, adding boundObject form ID {:08X} to wallMeshes set", boundObjectFormID);
+		}
+	}
+
 	if (LightManager::processByFilePath(a_this, a_root)) {
 		return niAVObject;
 	 }
@@ -77,7 +87,8 @@ void AddonNodes::thunk(
 {
 
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
-
+		
+	    // slot 9 == torch
         if (a_slot == 9) {
 
             SKSE::GetTaskInterface()->AddTask([=]() {

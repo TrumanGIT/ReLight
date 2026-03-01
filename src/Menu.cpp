@@ -65,6 +65,22 @@ namespace UI {
         }
 
         if (ImGuiMCP::SliderFloat(
+            "min candle coverage to affect a wall",
+            &globals::minCandleCoverageWall, 0.0f, 2000.0f))
+        {
+        }
+
+        if (ImGuiMCP::SliderFloat(
+            "wall size radius must be larger to enforce strict Light bounds",
+            &globals::maxWallSizeForStrictLightBounds, 0.0f, 500.0f))
+        {
+        }
+
+        if (ImGuiMCP::IsItemHovered()) {
+            ImGuiMCP::SetTooltip("some walls like farmintinnwall are huge, and dont need strict bounds");
+        }
+
+        if (ImGuiMCP::SliderFloat(
             "min chandelier coverage to affect a tri shape",
             &globals::gMinChandelierCoverage, 0.0f, 2000.0f))
         {
@@ -76,12 +92,6 @@ namespace UI {
         {
         }
 
-
-        if (ImGuiMCP::SliderFloat(
-            "z height mininum for merge to carry over original z position",
-            &globals::mergeZmin, 0.0f, 2000.0f))
-        {
-        }
 
            ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
 
@@ -177,7 +187,7 @@ namespace UI {
     inline void makeDisplayName(std::string& name) {
         name = removePrefix(name, "RL");
         if (name.empty()) return;
-        name[0] = std::toupper(name[0]);
+        name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(name[0])));
     }
 
     inline int getLightKey(const RE::NiPointer<RE::BSLight>& l) {
@@ -207,7 +217,7 @@ namespace UI {
 
         auto it = LightData::configIDToJsonCfg.find(key);
         if (it != LightData::configIDToJsonCfg.end()) {
-            auto& dataExt = it->second;
+            //auto& dataExt = it->second;
         }
         else {
             logger::debug("light :{} (key={}) has no json cfg entry", name, key);
@@ -315,7 +325,7 @@ namespace UI {
         ImGuiMCP::PopStyleColor();
         ImGuiMCP::SameLine();
 
-        float rowY = ImGuiMCP::GetCursorPosY();
+        //float rowY = ImGuiMCP::GetCursorPosY();
 
 		bool saveClicked = ImGuiMCP::Button("Save");
 
@@ -436,7 +446,7 @@ namespace UI {
                 auto& light = lights[i];
                 if (!light) continue;
 
-                bool selected = (i == selectedIndex);
+                //bool selected = (i == selectedIndex);
 
                 auto lightName = removePrefix(light->light->name.c_str(), "RL");
 
@@ -736,7 +746,7 @@ namespace UI {
 
            const auto& currentRt = light->light->GetLightRuntimeData();
 
-           const  auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
+           //const  auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
 
             for (auto& existingLight : lights) {
 
@@ -767,7 +777,7 @@ namespace UI {
 
             const auto& currentRt = shadowLight->light->GetLightRuntimeData();
 
-            const auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
+            //const auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
 
             bool shadowLightAlreadyInList = false;
             for (auto& existingLight : lights) {
