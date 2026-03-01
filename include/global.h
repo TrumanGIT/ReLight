@@ -14,14 +14,10 @@ namespace globals
     inline bool lastCellWasInterior = false;
     inline bool currentCellIsInterior = false;
 
-    inline auto lastCellFormID = 0x0; 
-
     inline bool islInstalled = false;
 
     inline int maxLightDistance = 1000;
     inline bool maxLightDistanceEnabled = false;
-
-    inline int maxTriangles = 1000;
 
     inline bool enableLightFlickerPreventionMeasures = false;
 
@@ -34,7 +30,7 @@ namespace globals
     inline float gMinCandleCoverage = 400;
 
     //tighter restrictions for wall nodes.
-    inline float minCandleCoverageWall = 230; 
+    inline float minCandleCoverageWall = 210; 
 
     // larger walls shouldent have such strict bounds or no lights
     inline float maxWallSizeForStrictLightBounds = 325; 

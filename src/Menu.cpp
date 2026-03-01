@@ -9,13 +9,21 @@ namespace logger = SKSE::log;
 
 namespace UI {
 
-	static RefreshTicker lightRefreshTicker(std::chrono::milliseconds(500));
+	static RefreshTicker lightRefreshTicker(std::chrono::seconds(1));
     static buttonTicker saveButton{};
     static buttonTicker defaultButton{};
     static vector<RE::NiPointer<RE::BSLight>> lights = {};
     static bool lightsLoaded = false;
     static bool enableLightEditor = false;
     static bool lightAlreadyInList = false;
+
+    auto lightbulbIcon = FontAwesome::UnicodeToUtf8(0xf0eb);
+
+    auto palletIcon = FontAwesome::UnicodeToUtf8(0xf53f); 
+
+    auto coordinatesIcon = FontAwesome::UnicodeToUtf8(0xf601);
+
+    auto editorIcon = FontAwesome::UnicodeToUtf8(0xf044);
 
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
@@ -33,7 +41,7 @@ namespace UI {
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
         FontAwesome::PushSolid();
-        auto iconUtf8 = FontAwesome::UnicodeToUtf8(0xf0eb);
+
 
         ImGuiMCP::Text("Testing Menu");
         ImGuiMCP::PopStyleColor();
@@ -312,6 +320,8 @@ namespace UI {
         }
     }
 
+    bool didRefreshThisFrame = false;
+
     void __stdcall RenderLightEditor() {
 
         static int selectedIndex = -1;
@@ -319,9 +329,9 @@ namespace UI {
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
         FontAwesome::PushSolid();
-        auto iconUtf8 = FontAwesome::UnicodeToUtf8(0xf044);
+     
 
-        ImGuiMCP::Text("%s Light Editor", iconUtf8.c_str());
+        ImGuiMCP::Text("%s Light Editor", editorIcon.c_str());
         ImGuiMCP::PopStyleColor();
         ImGuiMCP::SameLine();
 
@@ -434,6 +444,7 @@ namespace UI {
 
         if (lightRefreshTicker.shouldTick()) {
             refreshAllLights(selectedIndex);
+            didRefreshThisFrame = !didRefreshThisFrame;
         }
 
         if (ImGuiMCP::CollapsingHeader("Loaded Light Templates")) {
@@ -513,229 +524,248 @@ namespace UI {
                 auto& dataExt = LightData::configIDToJsonCfg[lightData.unk138];
                 auto* selectedIslRt = Overlay::Get(selectedLight->light.get());
 
-                if (!selectedIslRt) return;
+                if (!selectedIslRt)
+                    return;
 
                 ImGuiMCP::PushID(selectedLight->light.get());
 
-                // Add spacing at the top for separation
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
-
-                // Shrink slider width for horizontal packing
                 ImGuiMCP::PushItemWidth(150.0f);
 
-                // 2 boxes in 1 row
+               
                 ImGuiMCP::Columns(2, nullptr, false);
+                float boxHeight = globals::islInstalled ? 200.0f : 150.0f;
 
-                float dynamicVecSize = globals::islInstalled ? 200 : 150;
-
-                // ----- Left Box: Brightness & ISL -----
-                if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, dynamicVecSize), true, ImGuiMCP::ImGuiWindowFlags_NoScrollbar)) {
-                    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                    ImGuiMCP::Text("Illuminance");
-                    ImGuiMCP::PopStyleColor(); // restore default text color
+                
+                if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, boxHeight), true,
+                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                {
+                    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                    FontAwesome::PushSolid();
+      
+                    ImGuiMCP::Text("%s Illuminance", lightbulbIcon.c_str());
+                    ImGuiMCP::PopStyleColor();
                     ImGuiMCP::Separator();
 
-                    // Brightness
                     if (ImGuiMCP::SliderFloat("Brightness", &dataExt.startingFade, 0.0f, 10.0f, "%.1f")) {
-                        if (ImGuiMCP::SliderFloat("Brightness", &dataExt.startingFade, 0.0f, 10.0f, "%.1f")) {
-                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                            if (ssNode) {
-                                auto& rt = ssNode->GetRuntimeData();
-                                for (auto& light : rt.activeLights) {
-                                    if (!light) continue;
-                                    auto& existingRt = light->light->GetLightRuntimeData();
-                                    if (existingRt.unk138 != lightData.unk138) continue;
-                                    existingRt.fade = dataExt.startingFade;
-                                }
-                                for (auto& light : rt.activeShadowLights) {
-                                    if (!light) continue;
-                                    auto& existingRt = light->light->GetLightRuntimeData();
-                                    if (existingRt.unk138 != lightData.unk138) continue;
-                                    existingRt.fade = dataExt.startingFade;
-                                }
+                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                        if (ssNode) {
+                            auto& rt = ssNode->GetRuntimeData();
+                            for (auto& l : rt.activeLights) {
+                                if (!l) continue;
+                                auto& rtData = l->light->GetLightRuntimeData();
+                                if (rtData.unk138 == lightData.unk138)
+                                    rtData.fade = dataExt.startingFade;
+                            }
+                            for (auto& l : rt.activeShadowLights) {
+                                if (!l) continue;
+                                auto& rtData = l->light->GetLightRuntimeData();
+                                if (rtData.unk138 == lightData.unk138)
+                                    rtData.fade = dataExt.startingFade;
                             }
                         }
                     }
 
-                    // Radius (only if ISL not installed)
                     if (!globals::islInstalled) {
                         if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 500.0f, "%.2f")) {
                             auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                             if (ssNode) {
                                 auto& rt = ssNode->GetRuntimeData();
-                                for (auto& light : rt.activeLights) {
-                                    if (!light) continue;
-                                    auto& existingRt = light->light->GetLightRuntimeData();
-                                    if (existingRt.unk138 != lightData.unk138) continue;
-                                    existingRt.radius = lightData.radius;
+                                for (auto& l : rt.activeLights) {
+                                    if (!l) continue;
+                                    auto& rtData = l->light->GetLightRuntimeData();
+                                    if (rtData.unk138 == lightData.unk138)
+                                        rtData.radius = lightData.radius;
                                 }
-                                for (auto& light : rt.activeShadowLights) {
-                                    if (!light) continue;
-                                    auto& existingRt = light->light->GetLightRuntimeData();
-                                    if (existingRt.unk138 != lightData.unk138) continue;
-                                    existingRt.radius = lightData.radius;
+                                for (auto& l : rt.activeShadowLights) {
+                                    if (!l) continue;
+                                    auto& rtData = l->light->GetLightRuntimeData();
+                                    if (rtData.unk138 == lightData.unk138)
+                                        rtData.radius = lightData.radius;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
+                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                            if (ssNode) {
+                                auto& rt = ssNode->GetRuntimeData();
+                                for (auto& l : rt.activeLights) {
+                                    if (!l) continue;
+                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                    if (auto* isl = Overlay::Get(l->light.get())) {
+                                        isl->cutoffOverride = selectedIslRt->cutoffOverride;
+                                    }
+                                }
+                                for (auto& l : rt.activeShadowLights) {
+                                    if (!l) continue;
+                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                    if (auto* isl = Overlay::Get(l->light.get())) {
+                                        isl->cutoffOverride = selectedIslRt->cutoffOverride;
+                                    }
                                 }
                             }
                         }
 
-                        // ISL sliders
-                        if (globals::islInstalled) {
-                            if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
-                                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                if (ssNode) {
-                                    auto& rt = ssNode->GetRuntimeData();
-                                    for (auto& light : rt.activeLights) {
-                                        if (!light) continue;
-                                        auto& existingRt = light->light->GetLightRuntimeData();
-                                        if (existingRt.unk138 != lightData.unk138) continue;
-                                        if (auto* islRt = Overlay::Get(light->light.get())) {
-                                            islRt->cutoffOverride = selectedIslRt->cutoffOverride;
-                                        }
+                        if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.0f, 10.0f, "%.2f")) {
+                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                            if (ssNode) {
+                                auto& rt = ssNode->GetRuntimeData();
+                                for (auto& l : rt.activeLights) {
+                                    if (!l) continue;
+                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                    if (auto* isl = Overlay::Get(l->light.get())) {
+                                        isl->size = selectedIslRt->size;
                                     }
-                                    for (auto& light : rt.activeShadowLights) {
-                                        if (!light) continue;
-                                        auto& existingRt = light->light->GetLightRuntimeData();
-                                        if (existingRt.unk138 != lightData.unk138) continue;
-                                        if (auto* islRt = Overlay::Get(light->light.get())) {
-                                            islRt->cutoffOverride = selectedIslRt->cutoffOverride;
-                                        }
+                                }
+                                for (auto& l : rt.activeShadowLights) {
+                                    if (!l) continue;
+                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                    if (auto* isl = Overlay::Get(l->light.get())) {
+                                        isl->size = selectedIslRt->size;
                                     }
                                 }
                             }
-                            if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.0f, 10.0f, "%.2f")) {
-                                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                if (ssNode) {
-                                    auto& rt = ssNode->GetRuntimeData();
-                                    for (auto& light : rt.activeLights) {
-                                        if (!light) continue;
-                                        auto& existingRt = light->light->GetLightRuntimeData();
-                                        if (existingRt.unk138 != lightData.unk138) continue;
-                                        if (auto* islRt = Overlay::Get(light->light.get())) {
-                                            islRt->size = selectedIslRt->size;
-                                        }
-                                    }
-                                    for (auto& light : rt.activeShadowLights) {
-                                        if (!light) continue;
-                                        auto& existingRt = light->light->GetLightRuntimeData();
-                                        if (existingRt.unk138 != lightData.unk138) continue;
-                                        if (auto* islRt = Overlay::Get(light->light.get())) {
-                                            islRt->size = selectedIslRt->size;
-                                        }
-                                    }
+                        }
+                    }
+                }
+                ImGuiMCP::EndChild();
+                ImGuiMCP::NextColumn();
+
+               
+                if (selectedLight->light->name != "RLtorch") {
+                    if (ImGuiMCP::BeginChild(
+                        "FlickerBox",
+                        ImGuiMCP::ImVec2(0, boxHeight),
+                        true,
+                        ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                    {
+                        // ----- Flicker Header -----
+                        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                            ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+
+                        // Choose icon style & color based on tick
+                        if (didRefreshThisFrame && dataExt.flickersPerSecond != 0.0f) {
+                            FontAwesome::PushSolid(); // solid = "lit"
+                            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                                ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                        }
+                        else {
+                            FontAwesome::PushRegular(); // regular = "dim"
+                            ImGuiMCP::PushStyleColor(
+                                ImGuiMCP::ImGuiCol_Text,
+                                ImGuiMCP::ImVec4{ 0.35f, 0.35f, 0.35f, 1.0f }); // dim color
+                        }
+
+                        // Render the icon + text on the same line
+                        ImGuiMCP::Text("%s Flicker", lightbulbIcon.c_str());
+
+                        // Cleanup the pushed font & color
+                        ImGuiMCP::PopStyleColor();
+                        FontAwesome::Pop();
+
+                        ImGuiMCP::PopStyleColor(); // pop header color
+
+                        ImGuiMCP::Separator();
+
+                        // ----- Controls -----
+                        ImGuiMCP::SliderFloat(
+                            "Flicker Intensity",
+                            &dataExt.flickerIntensity,
+                            0.0f, 1.0f, "%.2f");
+
+                        ImGuiMCP::SliderFloat(
+                            "Flickers / Second",
+                            &dataExt.flickersPerSecond,
+                            0.0f, 5.0f, "%.2f");
+
+                    }
+                    ImGuiMCP::EndChild();
+                }
+
+                ImGuiMCP::Columns(1);
+                ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
+
+               
+                ImGuiMCP::Columns(2, nullptr, false);
+
+               
+                if (selectedLight->light->name != "RLtorch") {
+                    if (ImGuiMCP::BeginChild("PositionBox", ImGuiMCP::ImVec2(0, 100), true,
+                        ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                    {
+                        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                            ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                        ImGuiMCP::Text("%s Translation", coordinatesIcon.c_str());
+                        ImGuiMCP::PopStyleColor();
+                        ImGuiMCP::Separator();
+
+                        if (ImGuiMCP::SliderFloat3("Position", &selectedLight->light->local.translate.x,
+                            -250.0f, 250.0f, "%.3f"))
+                        {
+                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                            if (ssNode) {
+                                auto& rt = ssNode->GetRuntimeData();
+                                for (auto& l : rt.activeLights) {
+                                    if (!l) continue;
+                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                    l->light->local.translate = selectedLight->light->local.translate;
+                                }
+                                for (auto& l : rt.activeShadowLights) {
+                                    if (!l) continue;
+                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                    l->light->local.translate = selectedLight->light->local.translate;
                                 }
                             }
                         }
                     }
                     ImGuiMCP::EndChild();
-                    ImGuiMCP::NextColumn();
-
-                    float dynamicVecSizeFlicker = globals::islInstalled ? 200 : 150;
-
-                    // ----- Right Box: Flicker -----
-                    if (selectedLight->light->name != "RLtorch") {
-                        if (ImGuiMCP::BeginChild("FlickerBox", ImGuiMCP::ImVec2(0, dynamicVecSizeFlicker), true, ImGuiMCP::ImGuiWindowFlags_NoScrollbar)) {
-                            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                            ImGuiMCP::Text("Flicker");
-                            ImGuiMCP::PopStyleColor(); // restore default text color
-                            ImGuiMCP::Separator();
-
-                            if (ImGuiMCP::SliderFloat("Flicker Intensity", &dataExt.flickerIntensity, 0.0f, 1.0f, "%.2f")) {}
-                            if (ImGuiMCP::SliderFloat("Flickers / Second", &dataExt.flickersPerSecond, 0.1f, 5.0f, "%.2f")) {}
-                        }
-                        ImGuiMCP::EndChild();
-                    }
-                    ImGuiMCP::Columns(1); // end of row
-
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 5.0f));
-
-                    // ----- Next Row: Position + RGB -----
-                    ImGuiMCP::Columns(2, nullptr, false);
-
-                    // Left Box: Position
-                    if (selectedLight->light->name != "RLtorch") {
-                        if (ImGuiMCP::BeginChild("PositionBox", ImGuiMCP::ImVec2(0, 100), true, ImGuiMCP::ImGuiWindowFlags_NoScrollbar)) {
-                            // Push yellow color for title
-                            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                            ImGuiMCP::Text("Translation");
-                            ImGuiMCP::PopStyleColor(); // restore default text color
-                            ImGuiMCP::Separator();
-                            if (ImGuiMCP::SliderFloat3("Position", &selectedLight->light->local.translate.x, -250.0f, 250.0f, "%.3f")) {
-                                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                if (ssNode) {
-                                    auto& rt = ssNode->GetRuntimeData();
-                                    for (auto& light : rt.activeLights) {
-                                        if (!light) continue;
-                                        auto& existingRt = light->light->GetLightRuntimeData();
-                                        if (existingRt.unk138 != lightData.unk138) continue;
-                                        light->light->local.translate = selectedLight->light->local.translate;
-                                        if (auto* parent = light->light->parent) {
-                                            RE::NiUpdateData updateData{};
-                                            updateData.time = 0.0f;
-                                            updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                            parent->UpdateTransformAndBounds(updateData);
-                                        }
-                                    }
-                                    for (auto& light : rt.activeShadowLights) {
-                                        if (!light) continue;
-                                        auto& existingRt = light->light->GetLightRuntimeData();
-                                        if (existingRt.unk138 != lightData.unk138) continue;
-                                        light->light->local.translate = selectedLight->light->local.translate;
-                                        if (auto* parent = light->light->parent) {
-                                            RE::NiUpdateData updateData{};
-                                            updateData.time = 0.0f;
-                                            updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                            parent->UpdateTransformAndBounds(updateData);
-                                        }
-                                    }
-                                }
-                                ImGuiMCP::EndChild();
-                            }
-                            ImGuiMCP::NextColumn();
-
-                            // Right Box: RGB
-                            if (ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, 100), true, ImGuiMCP::ImGuiWindowFlags_NoScrollbar)) {
-                                // Push yellow color for title
-                                ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                                ImGuiMCP::Text("Color (RGB)");
-                                ImGuiMCP::PopStyleColor(); // restore default text color
-                                ImGuiMCP::Separator();
-                                if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.0f, 1.0f, "%.3f")) {
-                                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                    if (ssNode) {
-                                        auto& rt = ssNode->GetRuntimeData();
-                                        for (auto& light : rt.activeLights) {
-                                            if (!light) continue;
-                                            auto& existingRt = light->light->GetLightRuntimeData();
-                                            if (existingRt.unk138 != lightData.unk138) continue;
-                                            existingRt.diffuse = lightData.diffuse;
-                                        }
-                                        for (auto& light : rt.activeShadowLights) {
-                                            if (!light) continue;
-                                            auto& existingRt = light->light->GetLightRuntimeData();
-                                            if (existingRt.unk138 != lightData.unk138) continue;
-                                            existingRt.diffuse = lightData.diffuse;
-                                        }
-                                    }
-                                }
-                                ImGuiMCP::EndChild();
-
-                                ImGuiMCP::Columns(1); // end of row
-
-                                // Restore default slider width
-                                ImGuiMCP::PopItemWidth();
-
-                            }
-                        }
-                    }
-
-
                 }
 
+                ImGuiMCP::NextColumn();
+
+                
+                if (ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, 100), true,
+                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                {
+                    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+
+                    ImGuiMCP::Text("%s Color (RGB)", palletIcon.c_str());
+                    ImGuiMCP::PopStyleColor();
+                    ImGuiMCP::Separator();
+
+                    if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.0f, 1.0f, "%.3f")) {
+                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                        if (ssNode) {
+                            auto& rt = ssNode->GetRuntimeData();
+                            for (auto& l : rt.activeLights) {
+                                if (!l) continue;
+                                if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                                    l->light->GetLightRuntimeData().diffuse = lightData.diffuse;
+                            }
+                            for (auto& l : rt.activeShadowLights) {
+                                if (!l) continue;
+                                if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                                    l->light->GetLightRuntimeData().diffuse = lightData.diffuse;
+                            }
+                        }
+                    }
+                }
+                ImGuiMCP::EndChild();
+
+                ImGuiMCP::Columns(1);
+                ImGuiMCP::PopItemWidth();
+                ImGuiMCP::PopID();
             }
 
         }
 
     }
+
+
     void saveSettingsToIni() {
         logger::info("Saving ReLight.ini...");
 

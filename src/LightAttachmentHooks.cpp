@@ -79,19 +79,18 @@ void Load3D::Install()
 //attachlight node in the node tree of a torch. I think the game constantly update the first persons lights position as the player moves.
 //would love to have full torch light control someday of torches but reusing vanilla light here is good enough for now.
 void AddonNodes::thunk(
-    RE::NiAVObject* a_clonedNode,
-    RE::NiAVObject* a_node,
-    std::int32_t a_slot,
-    RE::TESObjectREFR* a_actor,
-    RE::BSTSmartPointer<RE::BipedAnim>& a_bipedAnim)
+	RE::NiAVObject* a_clonedNode,
+	RE::NiAVObject* a_node,
+	std::int32_t a_slot,
+	RE::TESObjectREFR* a_actor,
+	RE::BSTSmartPointer<RE::BipedAnim>& a_bipedAnim)
 {
-
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
-		
+		 
 	    // slot 9 == torch
         if (a_slot == 9) {
 
-            SKSE::GetTaskInterface()->AddTask([=]() {
+            SKSE::GetTaskInterface()->AddTask([]() {
                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                 if (!ssNode)
                     return;
@@ -103,10 +102,12 @@ void AddonNodes::thunk(
                         continue;
 
                     auto* light = lightEntry->light.get();
-                    if (!light || !light->parent)
+                    if (!light || !light->parent || !light->parent->name.c_str())
                         continue;
 
-					if (light->parent->name != "AttachLight") {
+					std::string parentName = light->parent->name.c_str(); 
+
+					if (parentName != "AttachLight") {
 						//logger::warn("users torch node tree does not contain object w name AttachLight, cant attach light");
 						continue; 
 					}	
@@ -116,7 +117,7 @@ void AddonNodes::thunk(
 						logger::warn("couldn’t cast torch as node will not apply light to torches");
 						return;
 					}
-
+					
 					std::string torchName = "torch";
 
 					auto cfgs = findConfigsForNode(torchName);
@@ -131,10 +132,10 @@ void AddonNodes::thunk(
 					RE::FormID formID = 0x0;
 					LightData::setNiPointLightDataFromCfg(formID, light, cfg);
 
-					logger::info("Applied torch config to {}", light->name);
+					logger::debug("Applied torch light data");
                 }
             });
-        }
+        } 
 }
 
 

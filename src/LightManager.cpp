@@ -335,8 +335,6 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		return RE::BSEventNotifyControl::kContinue;
 	}
 
-	auto currentCellFormID = cell->GetFormID();
-
 	// set the current cell is interior or not
 	globals::currentCellIsInterior = cell->IsInteriorCell();
 
@@ -344,7 +342,7 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		logger::info("player is in interior on startup: {}", globals::currentCellIsInterior);
 		s_firstCellEvent = false;
 
-		globals::lastCellFormID = cell->GetFormID(); 
+		
 		globals::lastCellWasInterior = cell->IsInteriorCell();
 		return RE::BSEventNotifyControl::kContinue;
 
@@ -522,19 +520,18 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 			auto niAVObject = otherRef->Load3D(false);
 
 			if (!niAVObject) {
-				logger::warn("no ni node casted from niav object from lwhen merging hook");
+				logger::warn("no ni node casted from niav object when merging light {} for  refA {:08X} and refB {:08X}", childLight->name.c_str(), refA->GetFormID(), refBFormID);
 				return RE::BSContainer::ForEachResult::kContinue;
 			}
 
 			//helps filter out a few things we dont want to touch (fog, mist)
 			auto refB_root = niAVObject->AsNode();
 			if (!refB_root) {
-				logger::warn("no ni node casted from niav object during merge");
+				logger::warn("no ni node casted from niav object during merge for refA {:08X} and refB {:08X}", refA->GetFormID(), refBFormID);
 				return RE::BSContainer::ForEachResult::kContinue;
 			}
 
 			// grab name of NiNode (usually 1:1 with mesh names)
-
 			// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
 			 std::string nodeNameMatch = std::string(findPriorityMatch(refB_root->name));
 
@@ -542,7 +539,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 
 				bool looseMatch = nodeNameMatch.find(nodeName) != std::string::npos ||
 					nodeName.find(nodeNameMatch) != std::string::npos;
-
+				
 				if (looseMatch && !isExclude(refB_root->name, refB_root, refBFormID)) {
 
 				auto cfgs =	findConfigsForNode(nodeNameMatch);

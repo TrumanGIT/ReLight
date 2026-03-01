@@ -39,13 +39,13 @@ namespace UI {
 
     class RefreshTicker
     {
-        std::chrono::milliseconds interval;
+        std::chrono::seconds interval;
         std::chrono::steady_clock::time_point last{};
         bool started{ false };
 
     public:
 
-        RefreshTicker(const std::chrono::milliseconds& interval)
+        RefreshTicker(const std::chrono::seconds& interval)
             : interval(interval)
         {}
 
@@ -69,7 +69,7 @@ namespace UI {
             started = false;
         }
 
-        void setInterval(const std::chrono::milliseconds& interval) {
+        void setInterval(const std::chrono::seconds& interval) {
            this->interval = interval;
         }
     };
