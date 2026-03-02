@@ -78,10 +78,21 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	}
 
 	//tag so we can find with low overhead in shader hooks
-	if (cfg.menuName == "Chandelier") bsLight->unk060 = 1; 
+	if (cfg.menuName == "Chandelier") {
+		bsLight->unk060 = 1;
+		return;
+	}
 
 	// TODO:: exclude candlebras 
-	if (cfg.menuName.contains("Candle")) bsLight->unk060 = 2;
+	if (cfg.menuName.contains("Candle")) {
+		bsLight->unk060 = 2;
+	}
+
+	// TODO:: exclude candlebras 
+	if (cfg.menuName.contains("Fire")) {
+		bsLight->unk060 = 3;
+	}
+
 
 }
 
@@ -352,6 +363,10 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 
 	// player changes from interor to exterior or vice versa, must reinitialize lights
 	if (globals::lastCellWasInterior !=	globals::currentCellIsInterior ) {
+		
+		//reset wall meshes gathered when going outside since light flicker prevention is not enabled ine exteriors
+		if (cell->IsExteriorCell()) globals::wallMeshes.clear();
+
 		LightManager::reinitializeLightsWithinRange(player); 
 	}
 
@@ -381,17 +396,6 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 	// clear this lights list that has merged lights placed into it so tehey can get lights attached again.
 	globals::refsWithAttachedLights.clear();
-
-
-	for (const auto& entry : globals::gTriClosestCandles) {
-		
-		auto geometry = entry.first; 
-		if (!geometry) continue; 
-		geometry->forcedDarkness = 0; 
-	}
-
-	//we make a list of closest candles to tri shape and limit per to 6, this must be reset aswell
-	globals::gTriClosestCandles.clear();
 
 	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 	if (!ssNode) {

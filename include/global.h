@@ -27,10 +27,14 @@ namespace globals
 
     inline float g_maxShadowCompeteDistance = 314;
 
-    inline float gMinCandleCoverage = 400;
+    inline float gMinCandleCoverage = 430;
 
     //tighter restrictions for wall nodes.
     inline float minCandleCoverageWall = 210; 
+
+    inline float gMinFireCoverageWall = 140; 
+
+    inline float gMinFireCoverage = 101.493; 
 
     // larger walls shouldent have such strict bounds or no lights
     inline float maxWallSizeForStrictLightBounds = 325; 
@@ -56,10 +60,6 @@ namespace globals
 
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
     inline std::unordered_set<RE::FormID> wallMeshes{};
-
-    inline std::unordered_map<RE::BSLightingShaderProperty*, std::vector<RE::BSLight*>> gTriClosestCandles{};
-
-    inline RE::TESObjectLIGH* dummyLightObject = nullptr;
 
     inline const std::vector<std::vector<std::string_view>> keywordLightGroups = {
         { "sun"},   

@@ -45,56 +45,8 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         light->light->radius.z
         });*/
 
-
-    if (light->unk060 == 2)
-    {
-        auto isWallMesh = false;
-
-        RE::TESBoundObject* baseRef = nullptr;
-
-        if (p->fadeNode && p->fadeNode->userData)
-            baseRef = p->fadeNode->userData->data.objectReference;
-
-        if (baseRef) {
-            auto curBaseFormID = baseRef->GetFormID();
-            isWallMesh = globals::wallMeshes.contains(curBaseFormID);
-        }
-   
-        const float dx = std::abs(lightPos.x - triCenter.x);
-        const float dy = std::abs(lightPos.y - triCenter.y);
-
-        const float distXY = std::sqrt(dx * dx + dy * dy);
-
-        float coverageThreshold = globals::gMinCandleCoverage;
-
-        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
-          
-            coverageThreshold = globals::minCandleCoverageWall;
-        }
-
-
-        if (distXY > coverageThreshold)
-            return false;
-
-      /* // first time seeing this tri, build its closest 5 candle list
-       if (p->forcedDarkness == 0.0f) {
-            BuildClosestCandles(
-                p,
-                RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0]->GetRuntimeData().activeLights,
-                triCenter
-            );
-       }  
-
-        // allow only if light is one of the closest 5
-        if (!IsCandleRelevant(p, light))
-            return false;*/
-    }
-
-    else if (light->unk060 == 1) {
-
-      //  if (dist > globals::gMinChandelierCoverage)
-        //    return false;
- 
+        // chandeliers
+     if (light->unk060 == 1) {
 
         const float dx = std::abs(lightPos.x - triCenter.x);
         const float dy = std::abs(lightPos.y - triCenter.y);
@@ -106,50 +58,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         if (distXY > globals::gMinChandelierCoverage)
             return false;
 
-
-    /* 
-        const RE::NiPoint3& lightPos = light->light->world.translate;
-
-        // ---- Axis choke bounds (tweak these) ----
-
-   float dx = lightPos.x - triPos.x;
-     float dy = lightPos.y - triPos.y;
-     float dz = lightPos.z - triPos.z;
-
-     // Axis rejection (fail fast)
-     if (std::abs(dx) > globals::shadowLightReachXYZ[0] ||
-         std::abs(dy) > globals::shadowLightReachXYZ[1] ||
-         std::abs(dz) > globals::shadowLightReachXYZ[2])
-     {
-         return false;
-     }
-
-     // ---- Optional spherical distance (recommended) ----
-     const auto& bound = triShape->worldBound;
-
-     float lightRadius = std::max({
-         light->light->radius.x,
-         light->light->radius.y,
-         light->light->radius.z
-         });
-
-     float maxDist = (lightRadius * globals::shadowLightChoke) + bound.radius;
-
-     float distSq = dx * dx + dy * dy + dz * dz;
-
-     if (distSq > maxDist * maxDist)
-         return false; 
-      
-
-     auto trishape4real = triShape->AsTriShape(); 
-
-     if (trishape4real) {
-     
-         if (trishape4real->triangleCount > globals::maxTriangles) return false;
-     
-     }   */
-
-           const float triRadius = geometry->worldBound.radius;
+        const float triRadius = geometry->worldBound.radius;
         const auto& thisLightPos = light->light->world.translate;
         float thisDistance = triCenter.GetDistance(thisLightPos);
         float thisRadius = light->light->radius.Length();
@@ -190,6 +99,71 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
     }
 
+     //candles
+    else if (light->unk060 == 2)
+    {
+        auto isWallMesh = false;
+
+        RE::TESBoundObject* baseRef = nullptr;
+
+        if (p->fadeNode && p->fadeNode->userData)
+            baseRef = p->fadeNode->userData->data.objectReference;
+
+        if (baseRef) {
+            auto curBaseFormID = baseRef->GetFormID();
+            isWallMesh = globals::wallMeshes.contains(curBaseFormID);
+        }
+   
+        const float dx = std::abs(lightPos.x - triCenter.x);
+        const float dy = std::abs(lightPos.y - triCenter.y);
+
+        const float distXY = std::sqrt(dx * dx + dy * dy);
+
+        float coverageThreshold = globals::gMinCandleCoverage;
+
+        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
+          
+            coverageThreshold = globals::minCandleCoverageWall;
+        }
+
+
+        if (distXY > coverageThreshold)
+            return false;
+    }
+
+  
+     //fires
+    else if (light->unk060 == 3) {
+     
+         auto isWallMesh = false;
+
+         RE::TESBoundObject* baseRef = nullptr;
+
+         if (p->fadeNode && p->fadeNode->userData)
+             baseRef = p->fadeNode->userData->data.objectReference;
+
+         if (baseRef) {
+             auto curBaseFormID = baseRef->GetFormID();
+             isWallMesh = globals::wallMeshes.contains(curBaseFormID);
+         }
+
+         const float dx = std::abs(lightPos.x - triCenter.x);
+         const float dy = std::abs(lightPos.y - triCenter.y);
+
+         const float distXY = std::sqrt(dx * dx + dy * dy);
+
+         float coverageThreshold = globals::gMinFireCoverage;
+
+         if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
+
+             coverageThreshold = globals::gMinFireCoverageWall;
+         }
+
+
+         if (distXY > coverageThreshold)
+             return false;
+     }
+
     else {
         if (dist > globals::globalCoverage)
             return false;
@@ -214,7 +188,7 @@ void BSLightingShaderProperty_IsLightAffectingSurface::Install()
     logger::info("BSLightingShaderProperty_IsLightAffectingSurface hook installed");
 }
 
-
+// not used 
 __int64 BSShaderPropertyLightData_AttachLight::thunk(RE::BSShaderPropertyLightData* a_this, RE::BSLight* light)
 {
     if (!a_this || !light) return reinterpret_cast<decltype(&thunk)>(func)(a_this, light);
@@ -234,6 +208,7 @@ void BSShaderPropertyLightData_AttachLight::Install() {
 
 }
 
+// not used 
 __int64 BSLight_AddFadeNode::thunk(RE::BSLight* light, RE::NiAVObject* root)
 {
     if (!root) return reinterpret_cast<decltype(&thunk)>(func)(light, root);

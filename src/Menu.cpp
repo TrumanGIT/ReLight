@@ -46,14 +46,6 @@ namespace UI {
         ImGuiMCP::Text("Testing Menu");
         ImGuiMCP::PopStyleColor();
 
-        if (ImGuiMCP::Checkbox("Enable Lights being disabled based on distance (not used)", &globals::maxLightDistanceEnabled)) {
-            ImGuiMCP::SetTooltip("disable all lights not within certain distance, does not reenable them currently)");
-        }
-
-        if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("Sets max distance for lights (does not re-enable them)");
-        }
-
         if (globals::maxLightDistanceEnabled) {
             ImGuiMCP::InputInt("Global Max Light Distance (not used)", &globals::maxLightDistance);
         }
@@ -75,6 +67,18 @@ namespace UI {
         if (ImGuiMCP::SliderFloat(
             "min candle coverage to affect a wall",
             &globals::minCandleCoverageWall, 0.0f, 2000.0f))
+        {
+        }
+
+        if (ImGuiMCP::SliderFloat(
+            "min fire coverage to affect a tri shape",
+            &globals::gMinFireCoverage, 0.0f, 2000.0f))
+        {
+        }
+
+        if (ImGuiMCP::SliderFloat(
+            "min fire coverage to affect a wall",
+            &globals::gMinFireCoverageWall, 0.0f, 2000.0f))
         {
         }
 
