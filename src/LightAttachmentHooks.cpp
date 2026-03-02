@@ -139,10 +139,28 @@ void AddonNodes::thunk(
 }
 
 
-  void AddonNodes::Install()
+void AddonNodes::Install()
 {
-	REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(15527, 15704) };
-	hook_function_prologue<AddonNodes, 5>(target.address());
+	std::array targets{
+		std::make_pair(
+			RELOCATION_ID(15501, 15678),       
+			REL::VariantOffset{ 0xCBF, 0x811, 0 } 
+		), 
 
-	logger::info("Hooked BipedAnim::AddAddonNodes");
+			std::make_pair(
+			RELOCATION_ID(15524, 15701),
+			REL::VariantOffset{0x193, 0x193, 0}
+		), 
+		
+					std::make_pair(
+			RELOCATION_ID(15526, 15703),
+			REL::VariantOffset{0x1D7, 0x1D7, 0}
+		)
+	};
+
+	for (auto& [id, offset] : targets) {
+		REL::Relocation<std::uintptr_t> target(id, offset);
+		auto& trampoline = SKSE::GetTrampoline();
+		func = trampoline.write_call<5>(target.address(), thunk);
+	}
 }
