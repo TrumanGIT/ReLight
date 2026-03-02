@@ -635,55 +635,60 @@ namespace UI {
                 ImGuiMCP::NextColumn();
 
                
-                if (selectedLight->light->name != "RLtorch") {
-                    if (ImGuiMCP::BeginChild(
-                        "FlickerBox",
-                        ImGuiMCP::ImVec2(0, boxHeight),
-                        true,
-                        ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                    {
-                        // ----- Flicker Header -----
-                        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                bool isTorch = (selectedLight->light->name == "RLtorch");
+
+                if (ImGuiMCP::BeginChild(
+                    "FlickerBox",
+                    ImGuiMCP::ImVec2(0, boxHeight),
+                    true,
+                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                {
+                    // ----- Flicker Header -----
+
+                    // ICON (dynamic)
+                    if (didRefreshThisFrame && dataExt.flickersPerSecond != 0.0f) {
+                        FontAwesome::PushSolid();
+                        ImGuiMCP::PushStyleColor(
+                            ImGuiMCP::ImGuiCol_Text,
                             ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-
-                        // Choose icon style & color based on tick
-                        if (didRefreshThisFrame && dataExt.flickersPerSecond != 0.0f) {
-                            FontAwesome::PushSolid(); // solid = "lit"
-                            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
-                                ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                        }
-                        else {
-                            FontAwesome::PushRegular(); // regular = "dim"
-                            ImGuiMCP::PushStyleColor(
-                                ImGuiMCP::ImGuiCol_Text,
-                                ImGuiMCP::ImVec4{ 0.35f, 0.35f, 0.35f, 1.0f }); // dim color
-                        }
-
-                        // Render the icon + text on the same line
-                        ImGuiMCP::Text("%s Flicker", lightbulbIcon.c_str());
-
-                        // Cleanup the pushed font & color
-                        ImGuiMCP::PopStyleColor();
-                        FontAwesome::Pop();
-
-                        ImGuiMCP::PopStyleColor(); // pop header color
-
-                        ImGuiMCP::Separator();
-
-                        // ----- Controls -----
-                        ImGuiMCP::SliderFloat(
-                            "Flicker Intensity",
-                            &dataExt.flickerIntensity,
-                            0.0f, 1.0f, "%.2f");
-
-                        ImGuiMCP::SliderFloat(
-                            "Flickers / Second",
-                            &dataExt.flickersPerSecond,
-                            0.0f, 5.0f, "%.2f");
-
                     }
-                    ImGuiMCP::EndChild();
+                    else {
+                        FontAwesome::PushRegular();
+                        ImGuiMCP::PushStyleColor(
+                            ImGuiMCP::ImGuiCol_Text,
+                            ImGuiMCP::ImVec4{ 0.35f, 0.35f, 0.35f, 1.0f });
+                    }
+
+                    ImGuiMCP::Text("%s", lightbulbIcon.c_str());
+
+                    ImGuiMCP::PopStyleColor();
+                    FontAwesome::Pop();
+
+                    // TEXT (static)
+                    ImGuiMCP::SameLine();
+                    ImGuiMCP::PushStyleColor(
+                        ImGuiMCP::ImGuiCol_Text,
+                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                    ImGuiMCP::Text("Flicker");
+                    ImGuiMCP::PopStyleColor();
+
+                    ImGuiMCP::Separator();
+
+                    // ----- Controls -----
+                    ImGuiMCP::BeginDisabled(isTorch);
+                    ImGuiMCP::SliderFloat(
+                        "Flicker Intensity",
+                        &dataExt.flickerIntensity,
+                        0.0f, 1.0f, "%.2f");
+
+                    ImGuiMCP::SliderFloat(
+                        "Flickers / Second",
+                        &dataExt.flickersPerSecond,
+                        0.0f, 5.0f, "%.2f");
+                    ImGuiMCP::EndDisabled();
                 }
+                ImGuiMCP::EndChild();
+                
 
                 ImGuiMCP::Columns(1);
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
@@ -692,19 +697,27 @@ namespace UI {
                 ImGuiMCP::Columns(2, nullptr, false);
 
                
-                if (selectedLight->light->name != "RLtorch") {
-                    if (ImGuiMCP::BeginChild("PositionBox", ImGuiMCP::ImVec2(0, 100), true,
-                        ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                    {
-                        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
-                            ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                        ImGuiMCP::Text("%s Translation", coordinatesIcon.c_str());
-                        ImGuiMCP::PopStyleColor();
-                        ImGuiMCP::Separator();
+                if (ImGuiMCP::BeginChild(
+                    "PositionBox",
+                    ImGuiMCP::ImVec2(0, 100),
+                    true,
+                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                {
+                    ImGuiMCP::PushStyleColor(
+                        ImGuiMCP::ImGuiCol_Text,
+                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                    ImGuiMCP::Text("%s Translation", coordinatesIcon.c_str());
+                    ImGuiMCP::PopStyleColor();
 
-                        if (ImGuiMCP::SliderFloat3("Position", &selectedLight->light->local.translate.x,
-                            -250.0f, 250.0f, "%.3f"))
-                        {
+                    ImGuiMCP::Separator();
+
+                    ImGuiMCP::BeginDisabled(isTorch);
+                    if (ImGuiMCP::SliderFloat3(
+                        "Position",
+                        &selectedLight->light->local.translate.x,
+                        -250.0f, 250.0f, "%.3f"))
+                    {
+                        if (!isTorch) {
                             auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                             if (ssNode) {
                                 auto& rt = ssNode->GetRuntimeData();
@@ -721,8 +734,9 @@ namespace UI {
                             }
                         }
                     }
-                    ImGuiMCP::EndChild();
+                    ImGuiMCP::EndDisabled();
                 }
+                ImGuiMCP::EndChild();
 
                 ImGuiMCP::NextColumn();
 

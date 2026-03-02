@@ -142,10 +142,10 @@ void AddonNodes::thunk(
 void AddonNodes::Install()
 {
 	std::array targets{
-		std::make_pair(
+	/*	std::make_pair(
 			RELOCATION_ID(15501, 15678),       
 			REL::VariantOffset{ 0xCBF, 0x811, 0 } 
-		), 
+		), */
 
 			std::make_pair(
 			RELOCATION_ID(15524, 15701),
