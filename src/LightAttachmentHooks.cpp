@@ -22,7 +22,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	//logger::info("load3D called");
 	auto niAVObject = func(a_this, a_backgroundLoading);
 	if (!niAVObject) {
-		logger::warn("no ni node casted from niav object from load3d hook");
+		//logger::warn("no ni node casted from niav object from load3d hook");
 		return niAVObject;
 	}
 

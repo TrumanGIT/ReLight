@@ -524,7 +524,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 			auto niAVObject = otherRef->Load3D(false);
 
 			if (!niAVObject) {
-				logger::warn("no ni node casted from niav object when merging light {} for  refA {:08X} and refB {:08X}", childLight->name.c_str(), refA->GetFormID(), refBFormID);
+				//logger::warn("no ni node casted from niav object when merging light {} for  refA {:08X} and refB {:08X}", childLight->name.c_str(), refA->GetFormID(), refBFormID);
 				return RE::BSContainer::ForEachResult::kContinue;
 			}
 
