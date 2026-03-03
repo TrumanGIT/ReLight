@@ -104,7 +104,6 @@ namespace UI {
         {
         }
 
-
            ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
@@ -170,7 +169,7 @@ namespace UI {
             case 3: lvl = spdlog::level::debug;    break;
             default: lvl = spdlog::level::info;    break;
             }
-            spdlog::set_level(lvl);  // <- THIS actually updates the logger
+            spdlog::set_level(lvl); 
         }
 
         ImGuiMCP::Separator();
@@ -729,11 +728,23 @@ namespace UI {
                                     if (!l) continue;
                                     if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
                                     l->light->local.translate = selectedLight->light->local.translate;
+                                    if (auto* parent = l->light->parent) {
+                                        RE::NiUpdateData updateData{};
+                                        updateData.time = 0.0f;
+                                        updateData.flags = RE::NiUpdateData::Flag::kDirty;
+                                        parent->UpdateTransformAndBounds(updateData);
+                                    }
                                 }
                                 for (auto& l : rt.activeShadowLights) {
                                     if (!l) continue;
                                     if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
                                     l->light->local.translate = selectedLight->light->local.translate;
+                                    if (auto* parent = l->light->parent) {
+                                        RE::NiUpdateData updateData{};
+                                        updateData.time = 0.0f;
+                                        updateData.flags = RE::NiUpdateData::Flag::kDirty;
+                                        parent->UpdateTransformAndBounds(updateData);
+                                    }
                                 }
                             }
                         }

@@ -53,6 +53,17 @@ namespace UI {
                 light->light->world.translate,
                 cfg.configID
             );
+
+            if (globals::islInstalled) {
+
+                auto* islRt = Overlay::Get(light->light.get());
+
+                if (!islRt)
+                    return;
+
+                logger::debug("Light size {} light cuttoff {}", islRt->size, islRt->cutoffOverride);
+
+            }
         }
 
         for (auto& light : rt.activeShadowLights) {
@@ -85,6 +96,19 @@ namespace UI {
                 light->light->world.translate,
                 cfg.configID
             );
+
+
+            if (globals::islInstalled) {
+
+                auto* islRt = Overlay::Get(light->light.get());
+
+                if (!islRt)
+                    return;
+
+                logger::debug("Shadow Light size {} light cuttoff {}", islRt->size, islRt->cutoffOverride);
+
+            }
+
         }
     }
 }

@@ -141,15 +141,19 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		LightData::setNiPointLightDataFromCfg(refFormID, cloneLight, cfg);
 
-		std::string temp = "RL" + cfg.nodeName;
+		// attach or merge light uses nodenames to evaluate merges
+		auto nodeNameMatch = std::string(findPriorityMatch(a_root->name.c_str()));
+
+		std::string temp = "RL" + nodeNameMatch;
 		cloneLight->name = temp.c_str();
 
+		// PROBLEM Mabye using nodename match for mesh files paths insent a good idea 
 		if (!cfg.shadowLight) {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::lightMergeDistance, shadowLightFound);
+			LightManager::attachOrMergeLight(a_this, nodeNameMatch, cloneLight, cfg, a_root, globals::lightMergeDistance, shadowLightFound);
 		}
 
 		else {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::shadowLightMergeDistance, shadowLightFound);
+			LightManager::attachOrMergeLight(a_this, nodeNameMatch, cloneLight, cfg, a_root, globals::shadowLightMergeDistance, shadowLightFound);
 		}
 
 		//if one ref was a shadow light, the merged light should be aswell
@@ -236,14 +240,16 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		LightData::setNiPointLightDataFromCfg(refFormID, cloneLight, cfg);
 
-		cloneLight->name = "RL" + cfg.nodeName;
+		auto nodeNameMatch = std::string(findPriorityMatch(a_root->name.c_str()));
+
+		cloneLight->name = "RL" + nodeNameMatch;
 
 		if (!cfg.shadowLight) {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::lightMergeDistance, shadowLightFound);
+			LightManager::attachOrMergeLight(a_this, nodeNameMatch, cloneLight, cfg, a_root, globals::lightMergeDistance, shadowLightFound);
 		}
 
 		else {
-			LightManager::attachOrMergeLight(a_this, cfg.nodeName, cloneLight, cfg, a_root, globals::shadowLightMergeDistance, shadowLightFound);
+			LightManager::attachOrMergeLight(a_this, nodeNameMatch, cloneLight, cfg, a_root, globals::shadowLightMergeDistance, shadowLightFound);
 		}
 
 		// if one is a shadow light then the merged light should be a shadow light
@@ -402,7 +408,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 		logger::warn("ShadowSceneNode[0] is null cant reinitialize lights");
 		return;
 	}
-	auto& rt = ssNode->GetRuntimeData();
+	//.auto& rt = ssNode->GetRuntimeData();
 	
 	RE::TES::GetSingleton()->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
@@ -540,11 +546,25 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 			 std::string nodeNameMatch = std::string(findPriorityMatch(refB_root->name));
 
 			if (!nodeNameMatch.empty()) {
+			
+				bool looseMatch = false;
 
-				bool looseMatch = nodeNameMatch.find(nodeName) != std::string::npos ||
-					nodeName.find(nodeNameMatch) != std::string::npos;
+				if (nodeNameMatch == "candle" || nodeName == "candle") {
+					looseMatch = nodeName == nodeNameMatch;
+				}
+
+				else {
+					//problem it works for mesh paths but unintended merges I can forsee happening with mesh path configs
+					looseMatch = nodeNameMatch.find(nodeName) != std::string::npos ||
+						nodeName.find(nodeNameMatch) != std::string::npos;
+				}
 				
 				if (looseMatch && !isExclude(refB_root->name, refB_root, refBFormID)) {
+
+						float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
+				if (zDiff > globals::fMaxZDiffToMerge) {
+					return RE::BSContainer::ForEachResult::kContinue;
+				}
 
 				auto cfgs =	findConfigsForNode(nodeNameMatch);
 

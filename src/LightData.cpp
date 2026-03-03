@@ -88,10 +88,13 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 		overlay->size = cfg.size; // isl
 		overlay->cutoffOverride = cfg.cutoffOverride; // isl 
-		overlay->fade = cfg.brightness;
-		overlay->radius = cfg.radius;
+		//overlay->fade = cfg.brightness;
+		//overlay->radius = cfg.radius;
 		overlay->lighFormId = 0;
 		overlay->unk138 = static_cast<std::uint32_t>(cfg.configID); 
+
+		logger::debug(" size set to: {} ", overlay->size);
+		logger::debug("cutoffOverride  set to {}", overlay->cutoffOverride);
 	}
 }
 

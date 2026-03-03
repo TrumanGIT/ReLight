@@ -25,6 +25,8 @@ namespace globals
 
     inline float shadowLightMergeDistance = 162;
 
+    inline float fMaxZDiffToMerge = 30;
+
     inline float g_maxShadowCompeteDistance = 314;
 
     inline float gMinCandleCoverage = 430;
@@ -34,7 +36,7 @@ namespace globals
 
     inline float gMinFireCoverageWall = 140; 
 
-    inline float gMinFireCoverage = 101.493; 
+    inline float gMinFireCoverage = 101.49; 
 
     // larger walls shouldent have such strict bounds or no lights
     inline float maxWallSizeForStrictLightBounds = 325; 

@@ -406,7 +406,7 @@ inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
 inline void hasInverseSquareLighting()
 {
 	const auto path =
-		std::filesystem::path("Data/Shaders/Features/InverseSquareLighting.ini");
+		std::filesystem::path("Data/Shaders/InverseSquareLighting/InverseSquareLighting.hlsli");
 
 	globals::islInstalled = std::filesystem::exists(path);
 
