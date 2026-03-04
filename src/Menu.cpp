@@ -104,6 +104,8 @@ namespace UI {
         {
         }
 
+        ImGuiMCP::SliderFloat("Max Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
+
            ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {

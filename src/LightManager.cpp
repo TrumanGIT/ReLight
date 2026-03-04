@@ -430,7 +430,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 				RE::ObjectRefHandle handle(ref);
 				SKSE::GetTaskInterface()->AddTask([handle]() {
 					if (auto ref = handle.get()) {
-						auto root = ref->Load3D(false);
+						auto root = ref->Get3D(false);
 
 						if (!root) return;
 
@@ -526,6 +526,8 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 
 		    const RE::FormID refBFormID = otherRef->GetFormID();
 
+			globals::refsWithAttachedLights.insert(otherRef);
+
 			//call false so it skips our hook
 			auto niAVObject = otherRef->Load3D(false);
 
@@ -533,6 +535,8 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 				//logger::warn("no ni node casted from niav object when merging light {} for  refA {:08X} and refB {:08X}", childLight->name.c_str(), refA->GetFormID(), refBFormID);
 				return RE::BSContainer::ForEachResult::kContinue;
 			}
+
+			globals::refsWithAttachedLights.erase(otherRef);
 
 			//helps filter out a few things we dont want to touch (fog, mist)
 			auto refB_root = niAVObject->AsNode();
@@ -563,6 +567,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 
 						float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
 				if (zDiff > globals::fMaxZDiffToMerge) {
+					logger::debug(" refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {}", refA->GetFormID(), refBFormID, zDiff, nodeName);
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
 

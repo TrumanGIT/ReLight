@@ -7,7 +7,8 @@
 
 RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 {
-	if (!a_this || a_backgroundLoading == false) {
+
+	if (!a_this) {
 		//	logger::debug("Load3D called with null a_this or bg loading = true (light were trying to reinitialize) skipping light attachment");
 		return func(a_this, a_backgroundLoading);
 	}

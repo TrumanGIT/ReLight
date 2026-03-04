@@ -25,7 +25,7 @@ namespace globals
 
     inline float shadowLightMergeDistance = 162;
 
-    inline float fMaxZDiffToMerge = 30;
+    inline float fMaxZDiffToMerge = 25;
 
     inline float g_maxShadowCompeteDistance = 314;
 
