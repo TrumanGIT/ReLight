@@ -58,7 +58,6 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         if (distXY > globals::gMinChandelierCoverage)
             return false;
 
-        const float triRadius = geometry->worldBound.radius;
         const auto& thisLightPos = light->light->world.translate;
         float thisDistance = triCenter.GetDistance(thisLightPos);
         float thisRadius = light->light->radius.Length();

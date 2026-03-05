@@ -205,12 +205,12 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	auto baseObject = a_this->GetBaseObject();
 
-	if (!baseObject) return true;
+	if (!baseObject) return false;
 
 	const auto baseFormID = baseObject->GetFormID();
 
 	const auto bm = baseObject->As<RE::TESModel>();
-	if (!bm) return true;
+	if (!bm) return false;
 
 	const auto currentModel = bm->GetModel();
 
@@ -221,15 +221,18 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		auto refFormID = a_this->GetFormID();
 
-		auto shadowLightFound = false;
-		auto shadowRadiiMult = 1.0; 
+		auto shadowLightFound = false; 
 
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		
 		 std::string match = it->second;
 
 		 //cant do multi lights currently, just would have to iterate if wanted to.
-		 auto cfg = findConfigsForNode(match)[0];
+		 auto cfgs = findConfigsForNode(match);
+
+		 if (cfgs.empty()) return false; 
+
+		 auto cfg = cfgs[0];
 
 		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
@@ -300,6 +303,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	//TODO:: what happens if you have a multi light that wants to merge? 
 	for (auto& cfg : cfgs) {
+
 		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
 
 		if (!cloneLight) {
@@ -307,7 +311,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 			continue;
 		}
 
-		LightData::setNiPointLightDataFromCfg( refFormID, cloneLight, cfg);
+		LightData::setNiPointLightDataFromCfg(refFormID, cloneLight, cfg);
 
 		cloneLight->name = "RL" + cfg.nodeName;
 
@@ -513,6 +517,9 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 	std::vector<RE::TESObjectREFR*> pendingMerge;
 	int potentialMergeCount = 0;
 
+	// keep track of merged lights so we dont attach to them later. we reset the set later in event sink
+	globals::refsWithAttachedLights.insert(refA);
+
 	// Find nearby refs with the same base object that haven't been merged yet
 	RE::TES::GetSingleton()->ForEachReferenceInRange(refA, radius, [&](RE::TESObjectREFR* otherRef) {
 		if (otherRef == refA) return RE::BSContainer::ForEachResult::kContinue;
@@ -521,8 +528,6 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 		if (globals::refsWithAttachedLights.count(otherRef) == 0) {
 			
 			if (potentialMergeCount >= 2) return RE::BSContainer::ForEachResult::kStop;
-		
-			auto baseObj = otherRef->GetBaseObject();
 
 		    const RE::FormID refBFormID = otherRef->GetFormID();
 
@@ -575,11 +580,15 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 
 				//if one merged light is a shadow light, merged light should be a shadow.
 				//doesent work for multi lights currently
-				if (cfgs[0].shadowLight) {
+				if (!cfgs.empty() && cfgs[0].shadowLight) {
 					shadowLightFound = true;
 				}
 
 					pendingMerge.push_back(otherRef);
+
+					// put ref into set so its not prossesssed again
+					globals::refsWithAttachedLights.insert(otherRef);
+
 					logger::debug(" refA {:08X} and refB {:08X} with matched nodeName {} selected to merge ", refA->GetFormID(), refBFormID, nodeName);
 					potentialMergeCount++;
 				}
@@ -657,10 +666,6 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 			parent->UpdateTransformAndBounds(updateData);
 		}
 
-		// Track references with attached lights so we dont double attach lights to them.
-		globals::refsWithAttachedLights.insert(refA);
-		globals::refsWithAttachedLights.insert(refB);
-
 		// Logging after change
 		logger::debug(
 			"[LightMerge:AFTER] '{}'\n"
@@ -737,14 +742,6 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA, const std::string
 			updateData.time = 0.0f;
 			updateData.flags = RE::NiUpdateData::Flag::kDirty;
 			parent->UpdateTransformAndBounds(updateData);
-		}
-
-		// keep track of merged lights so we dont attach to them later. we reset the set later in event sink
-		globals::refsWithAttachedLights.insert(refA);
-
-		for (auto& ref : pendingMerge) {
-			if (ref)
-				globals::refsWithAttachedLights.insert(ref);
 		}
 
 		logger::debug(

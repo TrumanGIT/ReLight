@@ -10,7 +10,7 @@ namespace globals
     inline bool disableShadowCasters = false;
     inline bool disableTorchLights = false;
     inline bool removeFakeGlowOrbs = false;
-
+    
     inline bool lastCellWasInterior = false;
     inline bool currentCellIsInterior = false;
 
@@ -36,7 +36,7 @@ namespace globals
 
     inline float gMinFireCoverageWall = 140; 
 
-    inline float gMinFireCoverage = 101.49; 
+    inline float gMinFireCoverage = 580.49f; 
 
     // larger walls shouldent have such strict bounds or no lights
     inline float maxWallSizeForStrictLightBounds = 325; 
