@@ -9,7 +9,6 @@
 #include "LightManager.h"
 #include "everyFrame.h"
 #include "disableLights.h"
-#include "BSLightingShaderHook.h"
 #include "LightAttachmentHooks.h"
 
 
@@ -50,6 +49,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE (Learned you can attach a event sink to the player from light placer)
         LightManager::registerEventSink();
         getObjectFadeMult(globals::fLODFadeOutMultObjects);
+        logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);
      
         break;
     }
@@ -67,5 +67,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     UI::Register();
    hasInverseSquareLighting();
+
+   if (!globals::islInstalled) globals::enableLightFlickerPreventionMeasures = true; 
+
     return true;
 }

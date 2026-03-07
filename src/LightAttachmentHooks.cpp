@@ -13,13 +13,14 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return func(a_this, a_backgroundLoading);
 	}
 
+	RE::FormID refFormID = a_this->GetFormID();
+
 	// ref already has a light placed, introduced to skip over refs that got a merged light
-	if (globals::refsWithAttachedLights.count(a_this) > 0) {
-		return func(a_this, a_backgroundLoading);
+	{
+		std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
+		if (globals::refsWithAttachedLights.count(refFormID) > 0)
+			return func(a_this, a_backgroundLoading);
 	}
-
-	RE::FormID refFormID = a_this->GetFormID(); 
-
 	//logger::info("load3D called");
 	auto niAVObject = func(a_this, a_backgroundLoading);
 	if (!niAVObject) {
@@ -49,7 +50,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	 }
 
 	// grab name of NiNode (usually 1:1 with mesh names)
-
 	// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
 	const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
 
@@ -64,6 +64,10 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	if (LightManager::dummyHandler(a_this, a_root->name, a_root)) {
 		return niAVObject;
 	}
+
+	// keep track of merged lights so we dont attach to them later. we reset the set later in event sink
+	std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
+	globals::refsWithAttachedLights.insert(refFormID);
 
 	return niAVObject;
 }

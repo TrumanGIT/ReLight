@@ -22,7 +22,6 @@ struct AddonNodes
         std::int32_t a_slot,
         RE::TESObjectREFR* a_actor,
         RE::BSTSmartPointer<RE::BipedAnim>& a_bipedAnim);
-   
 
     static inline REL::Relocation<decltype(thunk)> func;
 

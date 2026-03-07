@@ -28,12 +28,17 @@ namespace UI {
 
             std::string lightName = light->light->name.c_str();
 
-            //if (lightName[0] != 'R' || lightName[1] != 'L')
-            //    continue;
+            if (lightName[0] != 'R' || lightName[1] != 'L')
+                continue;
 
             const auto& lightRt = light->light->GetLightRuntimeData();
+            auto it = LightData::configIDToJsonCfg.find(lightRt.unk138);
+            if (it == LightData::configIDToJsonCfg.end()) {
+                logger::warn("Config ID {:08X} not found in config map", lightRt.unk138);
+                continue;  // or continue depending on your function
+            }
 
-            const auto& cfg = LightData::configIDToJsonCfg[lightRt.unk138];
+            const auto& cfg = it->second;
 
             logger::debug(
                 "[Light] '{}'\n"
@@ -76,7 +81,13 @@ namespace UI {
 
             const auto& lightRt = light->light->GetLightRuntimeData();
 
-            const auto& cfg = LightData::configIDToJsonCfg[lightRt.unk138];
+            auto it = LightData::configIDToJsonCfg.find(lightRt.unk138);
+            if (it == LightData::configIDToJsonCfg.end()) {
+                logger::warn("Config ID {:08X} not found in config map", lightRt.unk138);
+                continue;
+            }
+
+            const auto& cfg = it->second;
 
             logger::debug(
                 "[Shadow Light] '{}'\n"
@@ -108,6 +119,13 @@ namespace UI {
                 logger::debug("Shadow Light size {} light cuttoff {}", islRt->size, islRt->cutoffOverride);
 
             }
+        }
+
+        logger::debug("printing all refs in attached lights set");
+        for (const auto formID : globals::refsWithAttachedLights) {
+
+
+            logger::debug("ref {:08X}", formID);
 
         }
     }

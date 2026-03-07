@@ -18,11 +18,6 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 		return;
 	}
 
-	auto worldSceneGraph = GetWorldSceneGraph();
-	//logger::debug("worldSceneGraph loaded");
-	auto worldCamera = ((RE::BSSceneGraph*)worldSceneGraph)->GetRuntimeData().camera.get();
-	//logger::debug("worldCamera Loaded");
-
 	auto& ssRt = ssNode->GetRuntimeData();
 
 	auto playerPos = player->GetPosition(); 

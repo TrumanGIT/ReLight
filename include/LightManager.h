@@ -26,8 +26,9 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 
-  static void attachOrMergeLight(RE::TESObjectREFR* a_this, const std::string& nodeName,
-      RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root, const float radius, bool shadowLightFound);
+  static void attachOrMergeLight(RE::TESObjectREFR* a_this,
+      RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root, const float radius);
+
 
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;

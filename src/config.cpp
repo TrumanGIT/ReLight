@@ -185,7 +185,7 @@ void sortInPriorityList(const LightConfig& cfg) {
 void parseTemplates() {
 	logger::info("Parsing light templates..");
 	std::vector<std::string> paths = GetConfigPaths();
-	static uint64_t nextID = 1;
+	static uint32_t nextID = 1;
 
 	for (const auto& p : paths) {
 		logger::info(" reading.. {}", p);
@@ -212,7 +212,7 @@ void parseTemplates() {
 			continue;
 		}
 
-		int jsonIndex = 0;
+		uint16_t jsonIndex = 0;
 
 		for (json json : entries) {
 

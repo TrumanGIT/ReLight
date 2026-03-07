@@ -55,7 +55,7 @@ struct LightConfig {
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
     std::vector<std::string> flags{};             // not used but could be for linear lighting.
     std::vector<int> attachPath;
-    uint64_t configID;
+    uint32_t configID;
     uint16_t jsonIndex; 
 
     void print() {

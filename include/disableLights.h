@@ -3,15 +3,6 @@
 #include "global.h"
 #include <unordered_set>
 
-
-struct NiPointerHasher
-{
-    std::size_t operator()(const RE::NiPointer<RE::BSLight>& ptr) const noexcept
-    {
-        return std::hash<RE::BSLight*>{}(ptr.get());
-    }
-};
-
 //PO3's hook used to disable all lights tot start wiht a clean base
 struct TESObjectLIGH_GenDynamic {
     static RE::NiPointLight* thunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
@@ -22,6 +13,45 @@ struct TESObjectLIGH_GenDynamic {
     static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref);
     static void Install();
 };
+
+// meh321s hook from intellightent
+struct BSLightingShaderProperty_IsLightAffectingSurface
+{
+    static bool thunk(RE::BSLightingShaderProperty* p, RE::BSLight* light);
+    static inline REL::Relocation<decltype(thunk)> func;
+    static void Install();
+};
+
+inline void clearSSNodeLights() {
+    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+    if (!ssNode) {
+        logger::warn("ShadowSceneNode[0] is null cant reinitialize lights");
+        return;
+    }
+
+    for (const auto& l : ssNode->activeLights) {
+        if (!l) continue;
+
+        std::string lightName = l->light->name.c_str();
+
+        if (lightName.empty() || lightName[0] != 'R' || lightName[1] != 'L')
+            continue;
+
+        ssNode->RemoveLight(l);
+
+    }
+
+    for (const auto& l : ssNode->activeShadowLights) {
+        if (!l) continue;
+
+        std::string lightName = l->light->name.c_str();
+
+        if (lightName.empty() || lightName[0] != 'R' || lightName[1] != 'L')
+            continue;
+
+        ssNode->RemoveLight(l);
+    }
+}
 
 // not very usefull problem is not # of lights in a cell but # of lights on a bs tri shape
 template <class T>
@@ -34,15 +64,6 @@ inline void disableLightsPastMaxDistance(T& lights, RE::NiPoint3& playerPos, RE:
             ssNode->RemoveLight(light);
         }
     }
-}
-
-// Took in from mehs intellighent mod
-inline void NiCamera_unk_CalculateFrustumOverlap(RE::NiCamera* camera, float* coord, float* result1, float* result2, float epsilon)
-{
-    // 140C65760
-    using func_t = decltype(&NiCamera_unk_CalculateFrustumOverlap);
-    static REL::Relocation<func_t> func{ REL::VariantID(69265, 70632, 0) };
-    func(camera, coord, result1, result2, epsilon);
 }
 
 /*

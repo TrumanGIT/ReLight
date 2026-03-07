@@ -3,6 +3,7 @@
 #include "global.h"
 #include "Utility.h"
 #include "lightManager.h"
+#include "disableLights.h"
 #include <format>
 
 namespace logger = SKSE::log;
@@ -34,7 +35,7 @@ namespace UI {
 
         SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
 
-        SKSEMenuFramework::AddSectionItem("Testing", UI::RenderTestingMenu);
+        SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderTestingMenu);
     }
 
     void __stdcall RenderTestingMenu() {
@@ -42,13 +43,10 @@ namespace UI {
 
         FontAwesome::PushSolid();
 
-
-        ImGuiMCP::Text("Testing Menu");
+        ImGuiMCP::Text("Light Flicker Prevention");
         ImGuiMCP::PopStyleColor();
 
-        if (globals::maxLightDistanceEnabled) {
-            ImGuiMCP::InputInt("Global Max Light Distance (not used)", &globals::maxLightDistance);
-        }
+        ImGuiMCP::Spacing();
 
         if (ImGuiMCP::Checkbox("enable Light flicker Preventin Measures", &globals::enableLightFlickerPreventionMeasures)) {
         }
@@ -57,78 +55,90 @@ namespace UI {
             ImGuiMCP::SetTooltip("sets global bounding boxes on light reach, 2 chandeliers per tri shape max");
         }
 
+        ImGuiMCP::Spacing();
 
-        if (ImGuiMCP::SliderFloat(
-            "min candle coverage to affect a tri shape",
-            &globals::gMinCandleCoverage, 0.0f, 2000.0f))
+        if (ImGuiMCP::BeginChild("Light Bounds", ImGuiMCP::ImVec2(0, 250), true,
+            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
         {
-        }
+            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+            ImGuiMCP::Text("Light reach bounds");
+            ImGuiMCP::PopStyleColor();
 
-        if (ImGuiMCP::SliderFloat(
-            "min candle coverage to affect a wall",
-            &globals::minCandleCoverageWall, 0.0f, 2000.0f))
+            ImGuiMCP::ImVec2 avail{};
+            ImGuiMCP::GetContentRegionAvail(&avail);
+
+            ImGuiMCP::Columns(2, "Bound", false);
+            ImGuiMCP::SetColumnWidth(0, avail.x * 0.5f);   
+            ImGuiMCP::SetColumnWidth(1, avail.x * 0.5f);
+
+            float colWidth = avail.x * 0.25f;         
+            ImGuiMCP::PushItemWidth(colWidth);
+
+            ImGuiMCP::Spacing();
+
+            ImGuiMCP::SliderFloat("Candle reach on tri shape##1", &globals::gMinCandleCoverage, 0.0f, 2000.0f);
+            ImGuiMCP::SliderFloat("Candle reach on wall##1", &globals::minCandleCoverageWall, 0.0f, 2000.0f);
+            ImGuiMCP::SliderFloat("Fire reach on tri shape##1", &globals::gMinFireCoverage, 0.0f, 2000.0f);
+            ImGuiMCP::SliderFloat("Fire reach on wall##1", &globals::gMinFireCoverageWall, 0.0f, 2000.0f);
+
+            ImGuiMCP::PopItemWidth();
+            ImGuiMCP::NextColumn();
+            ImGuiMCP::PushItemWidth(colWidth);      
+
+            ImGuiMCP::SliderFloat("Max wall size strict bounds##2", &globals::maxWallSizeForStrictLightBounds, 0.0f, 500.0f);
+            if (ImGuiMCP::IsItemHovered())
+                ImGuiMCP::SetTooltip("Some walls like farmintinnwall are huge and don't need strict bounds");
+
+            ImGuiMCP::SliderFloat("chandelier reach on tri shape##2", &globals::gMinChandelierCoverage, 0.0f, 2000.0f);
+            ImGuiMCP::SliderFloat("global reach on tri shape##2", &globals::globalCoverage, 0.0f, 2000.0f);
+
+            ImGuiMCP::PopItemWidth();
+            ImGuiMCP::EndColumns();
+        }
+        ImGuiMCP::EndChild();
+    
+        ImGuiMCP::Spacing();
+
+        if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 188), true,
+            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
         {
-        }
+            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
-        if (ImGuiMCP::SliderFloat(
-            "min fire coverage to affect a tri shape",
-            &globals::gMinFireCoverage, 0.0f, 2000.0f))
-        {
-        }
+            ImGuiMCP::Text("Light Merge");
+            ImGuiMCP::PopStyleColor();
 
-        if (ImGuiMCP::SliderFloat(
-            "min fire coverage to affect a wall",
-            &globals::gMinFireCoverageWall, 0.0f, 2000.0f))
-        {
-        }
+            ImGuiMCP::SliderFloat("Max Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
 
-        if (ImGuiMCP::SliderFloat(
-            "wall size radius must be larger to enforce strict Light bounds",
-            &globals::maxWallSizeForStrictLightBounds, 0.0f, 500.0f))
-        {
-        }
-
-        if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("some walls like farmintinnwall are huge, and dont need strict bounds");
-        }
-
-        if (ImGuiMCP::SliderFloat(
-            "min chandelier coverage to affect a tri shape",
-            &globals::gMinChandelierCoverage, 0.0f, 2000.0f))
-        {
-        }
-
-        if (ImGuiMCP::SliderFloat(
-            "min global  coverage to affect a tri shape",
-            &globals::globalCoverage, 0.0f, 2000.0f))
-        {
-        }
-
-        ImGuiMCP::SliderFloat("Max Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
-
-           ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
+            ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Sets minimum distance refs must be apart for them to merge into 1 light.");
+                ImGuiMCP::SetTooltip("Sets max distance refs must be apart for them to merge into 1 light.");
             }
 
-            ImGuiMCP::SliderFloat("Distance of refs to merge shadow light", &globals::shadowLightMergeDistance, 0, 300);
+            ImGuiMCP::SliderFloat("Sets max distance to merge shadow light", &globals::shadowLightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Sets distance of refs to shadow light merge. (to prevent dupicate lights of stacked meshes");
+                ImGuiMCP::SetTooltip("Sets distance of refs to shadow light merge. (Don't turn off)");
             }
-     
 
+        }
+
+        ImGuiMCP::EndChild();
         if (ImGuiMCP::Button("Debug log all lights")) {
             debugLogAllLights(); 
         }
 
+        if (ImGuiMCP::Button("clear ref with attached lights set")) {
+            globals::refsWithAttachedLights.clear();
+        }
 
         if (ImGuiMCP::Button("Reinitialize Lights")) {
+          
+            clearSSNodeLights(); 
 
-            auto player = RE::PlayerCharacter::GetSingleton(); 
+            auto player = RE::PlayerCharacter::GetSingleton();
 
-            if (!player) return; 
+            if (!player) return;
 
             LightManager::reinitializeLightsWithinRange(player);
         }
@@ -526,17 +536,25 @@ namespace UI {
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 auto selectedLight = lights[selectedIndex];
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
-                auto& dataExt = LightData::configIDToJsonCfg[lightData.unk138];
-                auto* selectedIslRt = Overlay::Get(selectedLight->light.get());
-
-                if (!selectedIslRt)
+                auto it = LightData::configIDToJsonCfg.find(lightData.unk138);
+                if (it == LightData::configIDToJsonCfg.end())
                     return;
+
+                auto& dataExt = it->second;
+
+                Overlay* selectedIslRt;
+
+                if (globals::islInstalled) {
+                     selectedIslRt = Overlay::Get(selectedLight->light.get());
+
+                    if (!selectedIslRt)
+                        return;
+                }
 
                 ImGuiMCP::PushID(selectedLight->light.get());
 
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
                 ImGuiMCP::PushItemWidth(150.0f);
-
                
                 ImGuiMCP::Columns(2, nullptr, false);
                 float boxHeight = globals::islInstalled ? 200.0f : 150.0f;
@@ -592,7 +610,7 @@ namespace UI {
                             }
                         }
                     }
-                    else {
+                    else if (selectedIslRt) {
                         if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                             auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                             if (ssNode) {
@@ -638,7 +656,6 @@ namespace UI {
                 }
                 ImGuiMCP::EndChild();
                 ImGuiMCP::NextColumn();
-
                
                 bool isTorch = (selectedLight->light->name == "RLtorch");
 
@@ -788,14 +805,86 @@ namespace UI {
                 ImGuiMCP::EndChild();
 
                 ImGuiMCP::Columns(1);
-                ImGuiMCP::PopItemWidth();
+
+                ImGuiMCP::Spacing();
+
+                ImGuiMCP::Spacing();
+
+                if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 250), true,
+                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                {
+
+                    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                    ImGuiMCP::Text("Non-Runtime Light Settings");
+                    ImGuiMCP::PopStyleColor();
+
+                    ImGuiMCP::SameLine();
+
+                    ImGuiMCP::Separator();
+
+                    ImGuiMCP::ImVec2 avail{};
+                    ImGuiMCP::GetContentRegionAvail(&avail);
+                    float halfWidth = avail.x * 0.3f;
+
+                    ImGuiMCP::Columns(2, "NonRuntimeColumns", false);
+
+                    ImGuiMCP::Spacing();
+
+                    ImGuiMCP::PushItemWidth(halfWidth);
+
+
+                    if (ImGuiMCP::SliderFloat("Fall Off", &dataExt.falloff, 0.0f, 5.0f, "%.1f")) {
+                    }
+
+                    if (ImGuiMCP::SliderFloat("Constant", &dataExt.constAttenuation, 0.0f, 1.0f, "%.2f")) {
+                    }
+
+                    if (ImGuiMCP::SliderFloat("Linear", &dataExt.linearAttenuation, 0.0f, 1.0f, "%.2f")) {
+                    }
+
+                    if (ImGuiMCP::SliderFloat("Quadratic", &dataExt.quadraticAttenuation, 0.0f, 1.0f, "%.2f")) {
+                    }
+
+                    ImGuiMCP::NextColumn();
+
+                    if (ImGuiMCP::SliderFloat("Depth Bias", &dataExt.depthBias, 0.0f, 1.0f, "%.2f")) {
+                    }
+
+                    if (ImGuiMCP::SliderFloat("FOV", &dataExt.fov, 0.0f, 180.0f, "%.2f")) {
+                    }
+
+                    if (ImGuiMCP::SliderFloat("Near Distance", &dataExt.nearDistance, 0.0f, 1.0f, "%.2f")) {
+                    }
+
+                    if (ImGuiMCP::Button("Refresh Lights")) {
+
+                        clearSSNodeLights();
+
+                        auto player = RE::PlayerCharacter::GetSingleton();
+
+                        if (!player) {
+                            logger::warn("no player character, couldent refresh lights");
+                            return;
+                        }
+
+                        LightManager::reinitializeLightsWithinRange(player);
+                    }
+
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("Changes to these settings require refreshing lights to take effect.");
+                    }
+
+                    ImGuiMCP::EndChild();
+                }
+
+
                 ImGuiMCP::PopID();
             }
 
         }
 
     }
-
 
     void saveSettingsToIni() {
         logger::info("Saving ReLight.ini...");
@@ -858,8 +947,6 @@ namespace UI {
                 continue;
 
            const auto& currentRt = light->light->GetLightRuntimeData();
-
-           //const  auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
 
             for (auto& existingLight : lights) {
 

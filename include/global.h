@@ -34,7 +34,7 @@ namespace globals
     //tighter restrictions for wall nodes.
     inline float minCandleCoverageWall = 210; 
 
-    inline float gMinFireCoverageWall = 140; 
+    inline float gMinFireCoverageWall = 250;
 
     inline float gMinFireCoverage = 580.49f; 
 
@@ -58,7 +58,9 @@ namespace globals
 
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
-    inline std::unordered_set<RE::TESObjectREFR*> refsWithAttachedLights{};
+
+    inline std::mutex refsWithAttachedLightsMutex{};
+    inline std::unordered_set<RE::FormID> refsWithAttachedLights{};
 
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
     inline std::unordered_set<RE::FormID> wallMeshes{};
