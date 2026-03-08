@@ -13,11 +13,15 @@
 // (config to json id is for faster lookups then strings, used in flicker logic)
 std::map<uint32_t, LightConfig> LightData::configIDToJsonCfg;
 
-// for search by mesh file path instead of node name
 std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJsonCfg;
 
+std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJsonCfgExteriors;
+
 //base lookup used when attaching lights to meshes
-std::unordered_map<std::string, std::vector<LightConfig>> LightData:: nodeNameToJsonCfg;
+std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJsonCfg;
+
+//base lookup used when attaching lights to meshes
+std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJsonCfgExteriors;
 
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
@@ -186,5 +190,5 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 			cfg.cutoffOverride = overlay->cutoffOverride;
 		}
 	}
-	cfg.print();
+	cfg.print(false);
 }

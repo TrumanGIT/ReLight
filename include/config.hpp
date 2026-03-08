@@ -58,7 +58,8 @@ struct LightConfig {
     uint32_t configID;
     uint16_t jsonIndex; 
 
-    void print() {
+    void print(bool exterior) {
+        if (exterior) logger::info("loading exterior config:");
         logger::info("Path               : {}", configPath);
         logger::info(" Node name         : {}", nodeName);
         logger::info(" Menu name         : {}", menuName);
@@ -69,10 +70,10 @@ struct LightConfig {
         logger::info(" config ID: {}", configID);
         logger::info(" json Index: {}", jsonIndex);
         logger::info(" flags    :");
-        for (const auto& f: flags) {
+        for (const auto& f : flags) {
             logger::info("  {}", f);
         }
-        
+
         logger::info(" attachPath    :");
         for (const auto& i : attachPath) {
             logger::info("  {}", i);
@@ -149,5 +150,6 @@ void parseTemplates();
 
 //void sortFilePathOrNodeName(const LightConfig& cfg);
 
-std::vector<LightConfig> findConfigsForNode(std::string& nodeName);
+std::vector<LightConfig> findConfigsForNode(std::string& nodeName, bool interior);
 
+std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool interior);

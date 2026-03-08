@@ -462,7 +462,7 @@ namespace UI {
 
                 auto lightName = removePrefix(light->light->name.c_str(), "RL");
 
-                auto cfgs = findConfigsForNode(lightName);
+              //  auto cfgs = findConfigsForNode(lightName);
 
                 std::string menuName;
 
@@ -492,7 +492,7 @@ namespace UI {
 
                 auto lightName = removePrefix(light->light->name.c_str(), "RL");
 
-                auto cfgs = findConfigsForNode(lightName);
+//                auto cfgs = findConfigsForNode(lightName);
 
                 std::string menuName;
 

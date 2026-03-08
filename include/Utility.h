@@ -58,6 +58,14 @@ inline void toLower(std::string& str) {
 	}
 }
 
+//immumutable
+inline std::string toLowerImmut(std::string str) {
+	for (auto& c : str) {
+		c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+	}
+	return str;
+}
+
 inline std::string trim(const std::string& s) {
 	size_t start = s.find_first_not_of(" \t");
 	size_t end = s.find_last_not_of(" \t");

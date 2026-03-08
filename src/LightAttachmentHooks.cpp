@@ -100,7 +100,7 @@ void AddonNodes::thunk(
 	    // slot 9 == torch
         if (a_slot == 9) {
 
-            SKSE::GetTaskInterface()->AddTask([]() {
+            SKSE::GetTaskInterface()->AddTask([a_actor]() {
                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                 if (!ssNode)
                     return;
@@ -130,7 +130,16 @@ void AddonNodes::thunk(
 					
 					std::string torchName = "torch";
 
-					auto cfgs = findConfigsForNode(torchName);
+					auto cell = a_actor->GetParentCell();
+
+					if (!cell) {
+						logger::warn("no cell cant determine if should use exterior or interior configs");
+						return;
+					}
+
+					bool isInterior = cell->IsInteriorCell();
+
+					auto cfgs = findConfigsForNode(torchName, isInterior);
 					if (cfgs.empty())
 						continue;
 

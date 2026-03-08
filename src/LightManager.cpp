@@ -94,62 +94,52 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	}
 }
 
-//TODO:: doesent handle multi lights in a single config
- bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
+bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 
-	if (LightData::meshPathToJsonCfg.empty()) return false;
+	if (LightData::meshPathToJsonCfg.empty() || LightData::meshPathToJsonCfgExteriors.empty()) return false;
 
 	const auto baseObject = a_this->GetBaseObject();
 	if (!baseObject) return true;
-
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return true;
+	 auto currentModel = std::string(bm->GetModel());
 
-	const auto currentModel = bm->GetModel();
+	auto cell = a_this->GetParentCell();
 
-	for (auto& [meshPath, cfgs] : LightData::meshPathToJsonCfg) {
+	if (!cell) {
+		logger::warn("no cell cant determine if should use exterior or interior configs");
+		return false;
+	}
 
-		if (meshPath != currentModel) continue;
+	bool isInterior = cell->IsInteriorCell();
 
-	const auto refFormID = a_this->GetFormID(); 
+	auto cfgs = findConfigsForMeshPath(currentModel, isInterior);
 
-	  const auto baseFormID = baseObject->GetFormID();
+	const auto refFormID = a_this->GetFormID();
+	const auto baseFormID = baseObject->GetFormID();
+	globals::baseFormsWithAttachedLights.emplace(baseFormID);
+	logger::debug("file path match found: {}", currentModel);
 
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
+	auto ui = RE::UI::GetSingleton();
+	if (ui && ui->IsMenuOpen("InventoryMenu")) {
+		return true;
+	}
 
-		logger::debug("file path match found: {}", currentModel);
+	auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
+	if (!cloneLight) {
+		logger::warn("Failed to clone NiPointLight for ref {:08X} with mesh '{}' )", refFormID, currentModel);
+		return false;
+	}
 
-		auto ui = RE::UI::GetSingleton();
-
-		if (ui && ui->IsMenuOpen("InventoryMenu")) {
-			//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-			return true;
-		}
-
-		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
-
-		if (!cloneLight) {
-			logger::warn("Failed to clone NiPointLight for ref {:08X} with mesh '{}' )", refFormID, currentModel);
-			continue;
-		}
-
-		for (auto& cfg : cfgs) {
-
-		// PROBLEM Mabye using nodename match for mesh files paths insent a good idea 
+	for (auto& cfg : cfgs) {
 		if (!cfg.shadowLight) {
 			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeDistance);
 		}
-
 		else {
 			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::shadowLightMergeDistance);
-			//if one ref was a shadow light, the merged light should be aswell
 		}
-
-		}
-
-		return true;
 	}
-	return false;
+	return true;
 }
 
  //TODO:: doesent handle multi lights in a single config (idk if it needs to really) 
@@ -209,8 +199,17 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 		 std::string match = it->second;
 
+		 auto cell = a_this->GetParentCell();
+
+		 if (!cell) {
+			 logger::warn("no cell cant determine if should use exterior or interior configs");
+			 return false;
+		 }
+
+		 bool isInterior = cell->IsInteriorCell();
+
 		 //cant do multi lights currently, just would have to iterate if wanted to.
-		 auto cfgs = findConfigsForNode(match);
+		 auto cfgs = findConfigsForNode(match, isInterior);
 
 		 if (cfgs.empty()) return false;
 
@@ -237,7 +236,6 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 
 	 // already returned early if not a dummy, therefor might as well skip this object as it wouldent get light anyway
 	 return true;
-
 }
 
 
@@ -267,7 +265,16 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	if (globals::removeFakeGlowOrbs)
 		glowOrbRemover(a_root);
 
-	auto cfgs = findConfigsForNode(matchStr);
+	auto cell = a_this->GetParentCell(); 
+
+	if (!cell) {
+		logger::warn("no cell cant determine if should use exterior or interior configs");
+		return; 
+	}
+
+	bool isInterior = cell->IsInteriorCell(); 
+
+	auto cfgs = findConfigsForNode(matchStr, isInterior);
 
 	//TODO:: what happens if you have a multi light that wants to merge? 
 	for (auto& cfg : cfgs) {
@@ -533,8 +540,17 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
 
+				auto cell = otherRef->GetParentCell();
+
+				if (!cell) {
+					logger::warn("no cell cant determine if should use exterior or interior configs");
+					RE::BSContainer::ForEachResult::kContinue;
+				}
+
+				bool isInterior = cell->IsInteriorCell();
+
 				//refB configs
-				auto cfgs = findConfigsForNode(nodeNameMatch);
+				auto cfgs = findConfigsForNode(nodeNameMatch, isInterior);
 
 				//if one merged light is a shadow light, merged light should be a shadow.
 				//doesent work for multi lights currently 

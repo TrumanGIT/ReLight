@@ -244,11 +244,29 @@ void parseTemplates() {
 
 				sortInPriorityList(cfg);
 
-				cfg.print();
+				auto pathLower = toLowerImmut(p);
 
-				LightData::configIDToJsonCfg[cfg.configID] = cfg;
-				LightData::defaultConfigs[cfg.configID] = cfg;
-				LightData::nodeNameToJsonCfg[cfg.nodeName].push_back(cfg);
+				std::string cfgName;
+				auto lastSlash = pathLower.find_last_of("/\\");
+				auto filename = (lastSlash != std::string::npos) ? pathLower.substr(lastSlash + 1) : pathLower;
+				auto dotPos = filename.find_last_of('.');
+				cfgName = (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
+
+
+
+				if (cfgName.contains("outdoor")) {
+					cfg.print(true);
+					LightData::configIDToJsonCfg[cfg.configID] = cfg;
+					LightData::defaultConfigs[cfg.configID] = cfg;
+					LightData::nodeNameToJsonCfgExteriors[cfg.nodeName].push_back(cfg);
+				}
+				else {
+					cfg.print(false);
+					LightData::configIDToJsonCfg[cfg.configID] = cfg;
+					LightData::defaultConfigs[cfg.configID] = cfg;
+					LightData::nodeNameToJsonCfg[cfg.nodeName].push_back(cfg);
+				}
+
 			}
 
 			// create a config for each mesh file path
@@ -277,11 +295,26 @@ void parseTemplates() {
 
 				toLower(cfg.meshPath);
 
-				cfg.print();
+				auto pathLower = toLowerImmut(p);
 
-				LightData::configIDToJsonCfg[cfg.configID] = cfg;
-				LightData::defaultConfigs[cfg.configID] = cfg;
-				LightData::meshPathToJsonCfg[cfg.meshPath].push_back(cfg);
+				std::string cfgName;
+				auto lastSlash = pathLower.find_last_of("/\\");
+				auto filename = (lastSlash != std::string::npos) ? pathLower.substr(lastSlash + 1) : pathLower;
+				auto dotPos = filename.find_last_of('.');
+				cfgName = (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
+
+				if (cfgName.contains("outdoor")) {
+					cfg.print(true);
+					LightData::configIDToJsonCfg[cfg.configID] = cfg;
+					LightData::defaultConfigs[cfg.configID] = cfg;
+					LightData::meshPathToJsonCfgExteriors[cfg.nodeName].push_back(cfg);
+				}
+				else {
+					cfg.print(false);
+					LightData::configIDToJsonCfg[cfg.configID] = cfg;
+					LightData::defaultConfigs[cfg.configID] = cfg;
+					LightData::meshPathToJsonCfg[cfg.nodeName].push_back(cfg);
+				}
 			}
 
 			//used to get the right index to save back too
@@ -290,21 +323,35 @@ void parseTemplates() {
 	}
 }
 
-std::vector<LightConfig> findConfigsForNode(std::string& nodeName)
+
+std::vector<LightConfig> findConfigsForNode(std::string& nodeName, bool interior)
 {
 	std::vector<LightConfig> result;
 
 	//careful mutablitiy here idk if matters that much just marking it. 
-	toLower(nodeName); 
+	toLower(nodeName);
 
 	if (nodeName.empty())
 		return result;
 
-	auto it = LightData::nodeNameToJsonCfg.find(nodeName);
-	if (it != LightData::nodeNameToJsonCfg.end()) {
-		result = it->second;
+	std::unordered_map<std::string, std::vector<LightConfig>> exteriorOrInteriorConfigs;
+
+	if (!interior) {
+		auto it = LightData::nodeNameToJsonCfgExteriors.find(nodeName);
+		if (it != LightData::nodeNameToJsonCfgExteriors.end()) {
+			result = it->second;
+			return result;
+		}
+	
+	}
+
+	//fallback
+	auto fallBackIt = LightData::nodeNameToJsonCfg.find(nodeName);
+	if (fallBackIt != LightData::nodeNameToJsonCfg.end()) {
+		result = fallBackIt->second;
 		return result;
 	}
+
 
 	logger::warn(
 		" found node'{}' but no config exists",
@@ -314,4 +361,27 @@ std::vector<LightConfig> findConfigsForNode(std::string& nodeName)
 	return result;
 }
 
+std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool interior)
+{
+	std::vector<LightConfig> result;
+	toLower(meshPath);
+	if (meshPath.empty())
+		return result;
+
+	if (!interior) {
+		auto it = LightData::meshPathToJsonCfgExteriors.find(meshPath);
+		if (it != LightData::meshPathToJsonCfgExteriors.end()) {
+			return it->second;
+		}
+	}
+
+	// fallback to interior
+	auto fallbackIt = LightData::meshPathToJsonCfg.find(meshPath);
+	if (fallbackIt != LightData::meshPathToJsonCfg.end()) {
+		return fallbackIt->second;
+	}
+
+	logger::warn("found meshPath '{}' but no config exists", meshPath);
+	return result;
+}
 
