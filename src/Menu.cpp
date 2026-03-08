@@ -90,6 +90,7 @@ namespace UI {
                 ImGuiMCP::SetTooltip("Some walls like farmintinnwall are huge and don't need strict bounds");
 
             ImGuiMCP::SliderFloat("chandelier reach on tri shape##2", &globals::gMinChandelierCoverage, 0.0f, 2000.0f);
+
             ImGuiMCP::SliderFloat("global reach on tri shape##2", &globals::globalCoverage, 0.0f, 2000.0f);
 
             ImGuiMCP::PopItemWidth();
@@ -130,21 +131,6 @@ namespace UI {
 
         if (ImGuiMCP::Button("clear ref with attached lights set")) {
             globals::refsWithAttachedLights.clear();
-        }
-
-        if (ImGuiMCP::Button("Reinitialize Lights")) {
-          
-            clearSSNodeLights(); 
-
-            auto player = RE::PlayerCharacter::GetSingleton();
-
-            if (!player) return;
-
-            LightManager::reinitializeLightsWithinRange(player);
-        }
-
-        if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("reset all lights within range of your skyrim pref. ini object lod setting");
         }
 
     }

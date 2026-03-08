@@ -322,11 +322,13 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		logger::info("player is in interior on startup: {}", globals::currentCellIsInterior);
 		globals::lastCellWasInterior = cell->IsInteriorCell();
 
-		std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
-		if (!globals::refsWithAttachedLights.empty()) {
-
+		
+		//	std::scoped_lock refsLock(globals::refsWithAttachedLightsMutex);
 			globals::refsWithAttachedLights.clear();
-		}
+		
+			//std::scoped_lock mergedLock(globals::mergedRefsMutex);
+			globals::mergedRefs.clear();
+		
 
 		return RE::BSEventNotifyControl::kContinue;
 	}
@@ -366,10 +368,12 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 	logger::debug("reinitializing lights within range");
 
 	// clear this lights list that has merged lights placed into it so tehey can get lights attached again.
-	{
-		std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
+	
+		//std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
 		globals::refsWithAttachedLights.clear();
-	}  // 
+
+		globals::mergedRefs.clear(); 
+	 
 
 	RE::TES::GetSingleton()->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
@@ -459,8 +463,13 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 			}
 		}
 		});
-	std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
-	globals::refsWithAttachedLights.clear();
+	
+		//std::scoped_lock refsLock(globals::refsWithAttachedLightsMutex);
+		globals::refsWithAttachedLights.clear();
+	
+	//	std::scoped_lock mergedLock(globals::mergedRefsMutex);
+		globals::mergedRefs.clear();
+	
 }
 
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 
@@ -483,30 +492,23 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 		if (potentialMergeCount >= 2) return RE::BSContainer::ForEachResult::kStop;
 
 		const RE::FormID refBFormID = otherRef->GetFormID();
-
-		{
-			std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
-			if (globals::refsWithAttachedLights.count(refBFormID) != 0)
-				return RE::BSContainer::ForEachResult::kContinue;
-		}
 			
-			auto niAVObject = Load3D::func(otherRef, false);
-				
-			if (!niAVObject) {
-				logger::warn("no ni av object when merging, cannot merge"); 
-				return RE::BSContainer::ForEachResult::kContinue;
-			}
+		auto base = otherRef->GetBaseObject();
+		auto model = base ? base->As<RE::TESModel>() : nullptr;
+		if (!model) return RE::BSContainer::ForEachResult::kContinue;
 
-			//helps filter out a few things we dont want to touch (fog, mist)
-			auto refB_root = niAVObject->AsNode();
-			if (!refB_root) {
-				logger::warn("no ni node casted from niav object during merge for refA {:08X} and refB {:08X}", refA->GetFormID(), refBFormID);
-				return RE::BSContainer::ForEachResult::kContinue;
-			}
+		std::string path = model->GetModel();
+
+		// extract filename without extension
+		std::string meshName;
+		auto lastSlash = path.find_last_of("/\\");
+		auto filename = (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;
+		auto dotPos = filename.find_last_of('.');
+		meshName = (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
 
 			// grab name of NiNode (usually 1:1 with mesh names)
 			// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
-			 std::string nodeNameMatch = std::string(findPriorityMatch(refB_root->name));
+			 std::string nodeNameMatch = std::string(findPriorityMatch(meshName));
 
 			if (!nodeNameMatch.empty()) {
 			
@@ -522,7 +524,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 						cfg.nodeName.find(nodeNameMatch) != std::string::npos;
 				}
 				
-				if (looseMatch && !isExclude(refB_root->name, refB_root, refBFormID)) {
+				if (looseMatch && !isExclude(meshName, refBFormID)) {
 
 					//dont merge lights with z distance greater than... (looks off when doing so) 
 				float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
@@ -550,11 +552,11 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 		});
 
 	if (!pendingMerge.empty()) {
-		std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
+	//	std::scoped_lock lock(globals::mergedRefsMutex);
 		for (const auto ref : pendingMerge) {
 			if (!ref) continue;
 		
-			globals::refsWithAttachedLights.insert(ref->GetFormID());
+			globals::mergedRefs.insert(ref->GetFormID());
 		}
 	}
 	

@@ -298,29 +298,8 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-inline bool isExclude(const RE::BSFixedString& nodeName, /*const char* nifPath,*/ RE::NiNode* root, RE::FormID refformID)
+inline bool isExclude(const RE::BSFixedString& nodeName, RE::FormID refformID)
 {
-	if (nodeName == "mpscandleflame01.nif" && globals::removeFakeGlowOrbs) {
-		if (!root)
-			return true;
-
-		// TODO:: mps glow remover doesent seem to be working. I suspect 
-		// that the issue is MPS is not loaded through load3d hook like it is PostCreate() but idk
-		// this is to remove glow orbs from Master particle system candles
-		if (auto* flameNode = root->GetObjectByName("mpscandleflame01")) {
-			if (auto* flameNiNode = flameNode->AsNode()) {
-
-
-				if (auto* glowEmitter = flameNiNode->GetObjectByName("CandleGlow01-Emitter")) {
-					if (auto* emitterNode = glowEmitter->AsNode()) {
-						emitterNode->SetAppCulled(true);
-						logger::info("Culled CandleGlow01 MPS emitter ");
-						return true;
-					}
-				}
-			}
-		}
-	}
 
 	// Exact matches in exclusion list
 	for (const auto& exclude : globals::exclusionList) {
@@ -338,17 +317,7 @@ inline bool isExclude(const RE::BSFixedString& nodeName, /*const char* nifPath,*
 		logger::debug("found ref formId in exclusion list, skipping light attachment");
 		return true;
 	}
-		
-
-	/*if (!nifPath)
-		return false;
-
-	std::string path = nifPath;
-	toLower(path);
-
-	// Some modded torches name "off" variants incorrectly
-	if (path.find("off") != std::string::npos)
-		return true;*/
+	
 
 	return false;
 }

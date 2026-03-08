@@ -81,11 +81,9 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return false;
 
-
     auto geometry = pass->geometry;
     const auto& triCenter = geometry->worldBound.center;
     const float triRadius = geometry->worldBound.radius;
-
 
     const auto& lightPos = light->light->world.translate;
 
@@ -97,7 +95,6 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         const float dx = std::abs(lightPos.x - triCenter.x);
         const float dy = std::abs(lightPos.y - triCenter.y);
 
-        // Ignore Z almost entirely for candles
         const float distXY = std::sqrt(dx * dx + dy * dy);
 
 
@@ -171,11 +168,9 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
             coverageThreshold = globals::minCandleCoverageWall;
         }
 
-
         if (distXY > coverageThreshold)
             return false;
     }
-
 
     //fires
     else if (light->unk060 == 3) {

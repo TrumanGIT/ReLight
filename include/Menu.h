@@ -48,6 +48,7 @@ namespace UI {
                 "  flickerIntensity  {}\n"
                 "  flickersPerSecond {}\n"
                 "  worldPos          {}\n"
+                "  unk060            {}\n"
                 "  configID          {}",
                 lightName,
                 lightRt.fade,
@@ -56,6 +57,7 @@ namespace UI {
                 cfg.flickerIntensity,
                 cfg.flickersPerSecond,
                 light->light->world.translate,
+                light->unk060,
                 cfg.configID
             );
 
@@ -97,6 +99,7 @@ namespace UI {
                 "  flickerIntensity  {}\n"
                 "  flickersPerSecond {}\n"
                 "  worldPos          {}\n"
+                "  unk060            {}\n"
                 "  configID          {}",
                 lightName,
                 lightRt.fade,
@@ -105,6 +108,7 @@ namespace UI {
                 cfg.flickerIntensity,
                 cfg.flickersPerSecond,
                 light->light->world.translate,
+                light->unk060,
                 cfg.configID
             );
 

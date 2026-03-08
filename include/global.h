@@ -59,8 +59,11 @@ namespace globals
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
 
-    inline std::mutex refsWithAttachedLightsMutex{};
+    //inline std::mutex refsWithAttachedLightsMutex{};
     inline std::unordered_set<RE::FormID> refsWithAttachedLights{};
+
+  //  inline std::mutex mergedRefsMutex{};
+    inline std::unordered_set<RE::FormID> mergedRefs{};
 
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
     inline std::unordered_set<RE::FormID> wallMeshes{};
