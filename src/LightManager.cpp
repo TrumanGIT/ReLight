@@ -369,7 +369,6 @@ void LightManager::registerEventSink()
 	}
 }
 
-// TOODO:: put this in the event sink above
 void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 	logger::debug("reinitializing lights within range");
@@ -544,7 +543,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 
 				if (!cell) {
 					logger::warn("no cell cant determine if should use exterior or interior configs");
-					RE::BSContainer::ForEachResult::kContinue;
+					return RE::BSContainer::ForEachResult::kContinue;
 				}
 
 				bool isInterior = cell->IsInteriorCell();

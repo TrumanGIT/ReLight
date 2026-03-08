@@ -48,6 +48,15 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
 	if (LightData::excludeLightEditorID(light)) return false;
 
+    const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+    std::string modName = refOriginFile ? refOriginFile->fileName : "";
+
+    for (const auto& whitelistedMod : globals::whitelist) {
+        if (modName.find(whitelistedMod) != std::string::npos) {
+            return false;
+        }
+    }
+
 	auto player = RE::PlayerCharacter::GetSingleton();
 
 	if (IsInSoulCairnOrApocrypha(player)) {
@@ -76,7 +85,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     }
 
     //exit in exteriors
-    if (!globals::currentCellIsInterior || !globals::enableLightFlickerPreventionMeasures) return true;
+    if (/*!globals::currentCellIsInterior||*/  !globals::enableLightFlickerPreventionMeasures) return true;
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return false;

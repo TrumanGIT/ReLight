@@ -16,15 +16,11 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	RE::FormID refFormID = a_this->GetFormID();
 
 	// ref already has a light placed, introduced to skip over refs that got a merged light
-	
-		//std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
 		if (globals::refsWithAttachedLights.count(refFormID) > 0)
 			return func(a_this, a_backgroundLoading);
-	
-	
-		//std::scoped_lock lock(globals::mergedRefsMutex);
+
 		if (globals::mergedRefs.count(refFormID) > 0)
-			return func(a_this, a_backgroundLoading);  // skip but don't reprocess
+			return func(a_this, a_backgroundLoading);  
 	
 	//logger::info("load3D called");
 	auto niAVObject = func(a_this, a_backgroundLoading);
