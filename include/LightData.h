@@ -71,6 +71,7 @@ struct LightData {
 	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
 
 	static bool foundConfigForLight(const RE::NiLight* light);
+
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);
 
 	static void printLightParams(const RE::ShadowSceneNode::LIGHT_CREATE_PARAMS& params) {

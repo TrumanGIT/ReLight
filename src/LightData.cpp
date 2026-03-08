@@ -156,24 +156,7 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 }
 
 bool LightData::foundConfigForLight(const RE::NiLight* light) {
-	
-	for  (auto& [name, vectorOfConfigs] : LightData::nodeNameToJsonCfg) {
-		for (auto& cfg : vectorOfConfigs) {
-			if (light->unk138 == cfg.configID) {
-				return true;
-			}
-		}
-	}
-
-	for (auto& [meshFilePaths, vectorOfConfigs] : LightData::meshPathToJsonCfg) {
-		for (auto& cfg : vectorOfConfigs) {
-			if (light->unk138 == cfg.configID) {
-				return true;
-			}
-		}
-	}
-
-	return false;
+	return LightData::configIDToJsonCfg.contains(light->unk138);
 }
 
 void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {

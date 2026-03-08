@@ -466,13 +466,15 @@ namespace UI {
 
                 std::string menuName;
 
-                for (auto& cfg : cfgs) {
-                    if (light->light->GetLightRuntimeData().unk138 == cfg.configID)
-                        menuName = cfg.menuName;
-                }
+                auto it = LightData::configIDToJsonCfg.find(light->light->GetLightRuntimeData().unk138);
+                if (it != LightData::configIDToJsonCfg.end()) {
+                    menuName = it->second.menuName;
 
-                if (menuName.empty()) {
-                    menuName = std::string(light->light->name.c_str());
+                    if (menuName.empty()) {
+
+                        logger::debug("menu name empty for config {}", it->second.configID);
+                        menuName = std::string(light->light->name.c_str());
+                    }
                 }
 
                 makeDisplayName(menuName);
@@ -494,13 +496,15 @@ namespace UI {
 
                 std::string menuName;
 
-                for (auto& cfg : cfgs) {
-                    if (light->light->GetLightRuntimeData().unk138 == cfg.configID)
-                        menuName = cfg.menuName;
-                }
+                auto it = LightData::configIDToJsonCfg.find(light->light->GetLightRuntimeData().unk138);
+                if (it != LightData::configIDToJsonCfg.end()) {
+                    menuName = it->second.menuName;
 
-                if (menuName.empty()) {
-                    menuName = lightName;
+                    if (menuName.empty()) {
+
+                        logger::debug("menu name empty for config {}", it->second.configID);
+                        menuName = std::string(light->light->name.c_str());
+                    }
                 }
 
                 makeDisplayName(menuName);
