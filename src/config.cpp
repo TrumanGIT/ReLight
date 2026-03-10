@@ -252,8 +252,6 @@ void parseTemplates() {
 				auto dotPos = filename.find_last_of('.');
 				cfgName = (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
 
-
-
 				if (cfgName.contains("outdoor")) {
 					cfg.print(true);
 					LightData::configIDToJsonCfg[cfg.configID] = cfg;

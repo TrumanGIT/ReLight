@@ -306,23 +306,29 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-inline bool isExclude(const RE::BSFixedString& nodeName, RE::FormID refformID)
+inline bool isExclude(const RE::BSFixedString& nodeName, RE::FormID refFormID)
 {
 
 	// Exact matches in exclusion list
 	for (const auto& exclude : globals::exclusionList) {
-		if (nodeName == exclude)
+		if (nodeName == exclude) {
+			logger::debug("isExclude: '{}' matched exact exclude '{}' skipping light attachment", nodeName.c_str(), exclude);
 			return true;
+		}
+		
 	}
 
 	// Partial matches in exclusion list
 	for (const auto& exclude : globals::exclusionListPartialMatch) {
-		if (nodeName.contains(exclude))
+		if (nodeName.contains(exclude)) {
+			logger::debug("isExclude: '{}' matched partial exclude '{}' skipping light attachment", nodeName.c_str(), exclude);
 			return true;
+		}
+			
 	}
 
-	if (globals::excludedRefFormIDs.contains(refformID)) {
-		logger::debug("found ref formId in exclusion list, skipping light attachment");
+	if (globals::excludedRefFormIDs.contains(refFormID)) {
+		logger::debug("excluded ref '{}' skipping light attachment", refFormID);
 		return true;
 	}
 	
@@ -418,4 +424,11 @@ inline void hook_function_prologue(std::uintptr_t a_src)
 	std::memcpy(alloc, p.getCode(), p.getSize());
 
 	T::func = reinterpret_cast<std::uintptr_t>(alloc);
+}
+
+inline std::string extractMeshName(const std::string& path) {
+	auto lastSlash = path.find_last_of("/\\");
+	auto filename = (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;
+	auto dotPos = filename.find_last_of('.');
+	return (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
 }

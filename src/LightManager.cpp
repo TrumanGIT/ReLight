@@ -149,8 +149,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 
 	 if (!nodeName.contains("dummy")) return false;
 
-	 logger::debug("dummy found");
-
 	 //TODO:: this only works if the node name in the json config is labled exactly as matched below. 
 	 // should probly cover cases where the user changed the node name from chandel to something else 
 	 static const std::unordered_map<std::string, std::string> dummyMeshPaths = {
@@ -488,262 +486,131 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 
 	std::vector<RE::TESObjectREFR*> pendingMerge;
 	int potentialMergeCount = 0;
-
 	LightConfig winningConfig = cfg;
 
-	// Find nearby refs with the same base object that haven't been merged yet
 	RE::TES::GetSingleton()->ForEachReferenceInRange(refA, radius, [&](RE::TESObjectREFR* otherRef) {
 		if (!otherRef || otherRef == refA) return RE::BSContainer::ForEachResult::kContinue;
-
-		if (potentialMergeCount >= 3) return RE::BSContainer::ForEachResult::kStop;
+		if (potentialMergeCount >= 9) return RE::BSContainer::ForEachResult::kStop;
 
 		const RE::FormID refBFormID = otherRef->GetFormID();
-
 		auto base = otherRef->GetBaseObject();
 		auto model = base ? base->As<RE::TESModel>() : nullptr;
 		if (!model) return RE::BSContainer::ForEachResult::kContinue;
 
-		std::string path = model->GetModel();
+		std::string otherRefName = extractMeshName(model->GetModel());
 
-		// extract filename without extension
-		std::string meshName;
-		auto lastSlash = path.find_last_of("/\\");
-		auto filename = (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;
-		auto dotPos = filename.find_last_of('.');
-		meshName = (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
+		std::string otherRefNameMatch = std::string(findPriorityMatch(otherRefName));
 
-		// grab name of NiNode (usually 1:1 with mesh names)
-		// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
-		std::string nodeNameMatch = std::string(findPriorityMatch(meshName));
+		if (!otherRefNameMatch.empty()) {
 
-		if (!nodeNameMatch.empty()) {
+			std::string refALightName = "";
+
+			cfg.nodeName.empty() ? refALightName = extractMeshName(cfg.meshPath) : refALightName = cfg.nodeName;
+
+			if (refALightName.contains("candle") && !refALightName.contains("chande") && !refALightName.contains("bra")) refALightName = "candle";
 
 			bool looseMatch = false;
+		
+				looseMatch = otherRefNameMatch.find(refALightName) != std::string::npos ||
+				refALightName.find(otherRefNameMatch) != std::string::npos;
 
-			if (nodeNameMatch == "candle" || cfg.nodeName == "candle") {
-				looseMatch = cfg.nodeName == nodeNameMatch;
-			}
+				logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {}",
+					refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch);
 
-			else {
-				//problem it works for mesh paths but unintended merges I can forsee happening with mesh path configs
-				looseMatch = nodeNameMatch.find(cfg.nodeName) != std::string::npos ||
-					cfg.nodeName.find(nodeNameMatch) != std::string::npos;
-			}
-
-			if (looseMatch && !isExclude(meshName, refBFormID)) {
-
-				//dont merge lights with z distance greater than... (looks off when doing so) 
+			if (looseMatch && !isExclude(otherRefName, refBFormID)) {
 				float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
 				if (zDiff > globals::fMaxZDiffToMerge) {
-					logger::debug(" refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {}", refA->GetFormID(), refBFormID, zDiff, cfg.nodeName);
+					logger::debug("refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {}",
+						refA->GetFormID(), refBFormID, zDiff, cfg.nodeName);
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
 
 				auto cell = otherRef->GetParentCell();
-
 				if (!cell) {
 					logger::warn("no cell cant determine if should use exterior or interior configs");
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
 
 				bool isInterior = cell->IsInteriorCell();
+				auto cfgs = findConfigsForNode(otherRefNameMatch, isInterior);
 
-				//refB configs
-				auto cfgs = findConfigsForNode(nodeNameMatch, isInterior);
-
-				//if one merged light is a shadow light, merged light should be a shadow.
-				//doesent work for multi lights currently 
 				if (!cfg.shadowLight && !cfgs.empty() && cfgs[0].shadowLight) {
 					winningConfig = cfgs[0];
 				}
-				pendingMerge.push_back(otherRef);
 
-				logger::debug(" refA {:08X} and refB {:08X} with matched nodeName {} selected to merge ", refA->GetFormID(), refBFormID, cfg.nodeName);
+				pendingMerge.push_back(otherRef);
+				logger::debug("refA {:08X} and refB {:08X} with matched nodeName {} selected to merge",
+					refA->GetFormID(), refBFormID, cfg.nodeName);
 				potentialMergeCount++;
 			}
 		}
-
 		return RE::BSContainer::ForEachResult::kContinue;
 		});
 
-	if (!pendingMerge.empty()) {
-		//	std::scoped_lock lock(globals::mergedRefsMutex);
-		for (const auto ref : pendingMerge) {
-			if (!ref) continue;
-
-			globals::mergedRefs.insert(ref->GetFormID());
-		}
+	// mark merged refs
+	for (const auto ref : pendingMerge) {
+		if (ref) globals::mergedRefs.insert(ref->GetFormID());
 	}
 
-	// set data after winning config was determined
 	LightData::setNiPointLightDataFromCfg(refA->GetFormID(), light, winningConfig);
-
 	light->name = "RL" + cfg.nodeName;
 
-	// put ref into set so its not prossesssed again
+	AttachDebugMarker(refA_root, light); 
 
-
-	switch (potentialMergeCount) {
-
-		//1 merge found so place light in between 2 refs. 
-	case 1: {
-		auto refB = pendingMerge[0];
-
-		if (!refB) {
-			logger::warn("no  ref b when merging lights cant merge");
-			return;
+	// handle merge positioning
+	if (!pendingMerge.empty()) {
+		// build positions array: refA first, then all merged refs
+		std::vector<RE::NiPoint3> positions;
+		positions.push_back(refA->GetPosition());
+		for (const auto ref : pendingMerge) {
+			positions.push_back(ref->GetPosition());
 		}
 
-		// Get world positions of the references we want the lgiht to go in between
-		const RE::NiPoint3 refAWorldPos = refA->GetPosition();
-		const RE::NiPoint3 refBWorldPos = refB->GetPosition();
+		const int mergeCount = static_cast<int>(positions.size()); // includes refA
 
-		const float distance = refAWorldPos.GetDistance(refBWorldPos);
+		// check if any ref is far enough to warrant brightness increase
+		bool increaseBrightness = false;
+		for (size_t i = 1; i < positions.size(); i++) {
+			if (positions[0].GetDistance(positions[i]) > 25.0f) {
+				increaseBrightness = true;
+				break;
+			}
+		}
 
-		// find mid point of 2 refs to palce light in between (x y) only
+		if (increaseBrightness) {
+			// scale brightness based on merge count
+			light->fade *= (1.0f + (0.5f * static_cast<float>(mergeCount - 1)));
+		}
+
+		// average X and Y, preserve refA's Z
+		float sumX = 0.0f, sumY = 0.0f;
+		for (const auto& pos : positions) {
+			sumX += pos.x;
+			sumY += pos.y;
+		}
+
 		RE::NiPoint3 worldMid{};
-		worldMid.x = (refAWorldPos.x + refBWorldPos.x) * 0.5f;
-		worldMid.y = (refAWorldPos.y + refBWorldPos.y) * 0.5f;
+		worldMid.x = sumX / static_cast<float>(positions.size());
+		worldMid.y = sumY / static_cast<float>(positions.size());
+		worldMid.z = positions[0].z;
 
-		// Preserve original Z as offset
-		worldMid.z = refAWorldPos.z;
-
-		// Save original local Z so we can apply it again later
 		float originalLocalZ = light->local.translate.z;
 
-		// Convert world midpoint to local space of parent
-		RE::NiTransform parentWorldTransform = refA_root->world;
-		RE::NiTransform invTransform = parentWorldTransform.Invert();
+		RE::NiTransform invTransform = refA_root->world.Invert();
 		RE::NiPoint3 localMid = invTransform * worldMid;
-
-		// Add original Z offset if z level is relatively close
-		//if ((refAWorldPos.z - refBWorldPos.z) > globals::mergeZmin)
 		localMid.z += originalLocalZ;
 
-		// debug log before change.
 		logger::debug(
-			"BEFORE Light '{}' merge\n"
-			"  refA {:08X} worldPos {}\n"
-			"  refB {:08X} worldPos {}\n"
-			"distance between 2 refs {}"
+			"[LightMerge:BEFORE] '{}' merging {} refs\n"
 			"  originalLocalZ {}\n"
 			"  local.translate {}",
-			light->name.c_str(),
-			refA->GetFormID(), refAWorldPos,
-			refB->GetFormID(), refBWorldPos, distance,
+			light->name.c_str(), mergeCount,
 			originalLocalZ,
 			light->local.translate
 		);
 
-		// Apply local position
 		light->local.translate = localMid;
 
-		// only multiply if not a small radius merge (2 meshes stacked on top of each oher)
-		if (distance > 25) {
-			// increase light brightness to simulate larger light
-			logger::debug("distance is greater then 10, increasing brightness");
-			light->fade *= 1.5f;
-		}
-
-		// sometimes have to update the parent for the change to work.
-		if (auto* parent = light->parent) {
-			RE::NiUpdateData updateData{};
-			updateData.time = 0.0f;
-			updateData.flags = RE::NiUpdateData::Flag::kDirty;
-			parent->UpdateTransformAndBounds(updateData);
-		}
-
-		// Logging after change
-		logger::debug(
-			"[LightMerge:AFTER] '{}'\n"
-			"  refA {:08X} worldPos {}\n"
-			"  refB {:08X} worldPos {}\n"
-			"  local.translate {}",
-			light->name.c_str(),
-			refA->GetFormID(), refAWorldPos,
-			refB->GetFormID(), refBWorldPos,
-			light->local.translate
-		);
-
-		break;
-	}
-		  // find the middle of 3 refs and place light in the middle
-	case 2: {
-
-		if (!pendingMerge[0] || !pendingMerge[1]) {
-			logger::warn("object is null during merge cannot merge");
-			return;
-		}
-
-		std::vector<RE::NiPoint3> positions = {
-			refA->GetPosition(),
-			pendingMerge[0]->GetPosition(),
-			pendingMerge[1]->GetPosition()
-		};
-
-
-		auto increaseBrightness = false;
-
-		if (positions.empty()) return;
-
-		RE::NiPoint3 refAPos = positions[0];
-
-		for (const auto& pos : positions) {
-			const float distance = refAPos.GetDistance(pos);
-
-			if (distance > 25) {
-
-				increaseBrightness = true;
-				// increase light brightness to simulate larger light
-				logger::debug("distance is greater then 10, increasing brightness");
-			}
-		}
-
-		if (increaseBrightness) light->fade *= 2.0f;
-
-		// only use x and y so Z can stay the sae
-		RE::NiPoint3 worldMid{};
-		float originalZ = positions[0].z;
-		worldMid.z = originalZ;
-
-		float sumX = 0.0f, sumY = 0.0f;
-		for (const auto& pos : positions) {
-			sumX += pos.x;
-			sumY += pos.y;
-		}
-		worldMid.x = sumX / static_cast<float>(positions.size());
-		worldMid.y = sumY / static_cast<float>(positions.size());
-
-		// save original z position
-		float originalLocalZ = light->local.translate.z;
-
-		// Convert world midpoint to parent's local space
-		RE::NiTransform parentWorldTransform = refA_root->world;
-		RE::NiTransform invTransform = parentWorldTransform.Invert();
-		RE::NiPoint3 localMid = invTransform * worldMid;
-
-		// add the z offset 
-		localMid.z += originalLocalZ;
-
-		logger::debug(
-			"[LightMerge:BEFORE] '{}'\n"
-			"  refA {:08X} pos {}\n"
-			"  refB {:08X} pos {}\n"
-			"  refC {:08X} pos {}\n"
-			"originalLocalZ {}\n"
-			"  local.translate {}",
-			light->name.c_str(),
-			refA->GetFormID(), positions[0],
-			pendingMerge[0]->GetFormID(), positions[1],
-			pendingMerge[1]->GetFormID(), positions[2],
-			originalLocalZ,
-			light->local.translate
-		);
-
-		//we have to use local position its annoying bc its relative to ref a's world position
-		light->local.translate = localMid;
-
-		// gotta update works sometimes without idk why
 		if (auto* parent = light->parent) {
 			RE::NiUpdateData updateData{};
 			updateData.time = 0.0f;
@@ -752,118 +619,41 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 		}
 
 		logger::debug(
-			"[LightMerge:AFTER] '{}'\n"
-			"  refA {:08X}\n"
-			"  refB {:08X}\n"
-			"  refC {:08X}\n"
-			"  local.translate {}\n",
-			light->name.c_str(),
-			refA->GetFormID(),
-			pendingMerge[0]->GetFormID(),
-			pendingMerge[1]->GetFormID(),
-			light->local.translate
-		);
-		break;
-
-	}
-	case 3: {
-		if (!pendingMerge[0] || !pendingMerge[1] || !pendingMerge[2]) {
-			logger::warn("object is null during merge cannot merge");
-			return;
-		}
-		std::vector<RE::NiPoint3> positions = {
-			refA->GetPosition(),
-			pendingMerge[0]->GetPosition(),
-			pendingMerge[1]->GetPosition(),
-			pendingMerge[2]->GetPosition()
-		};
-
-		auto increaseBrightness = false;
-
-		if (positions.empty()) return;
-
-		RE::NiPoint3 refAPos = positions[0];
-
-		for (const auto& pos : positions) {
-			const float distance = refAPos.GetDistance(pos);
-
-			if (distance > 25) {
-
-				increaseBrightness = true;
-				// increase light brightness to simulate larger light
-				logger::debug("distance is greater then 10, increasing brightness");
-			}
-		}
-
-		if (increaseBrightness) light->fade *= 3.5f;
-
-		// only use x and y so Z can stay the same
-		RE::NiPoint3 worldMid{};
-		float originalZ = positions[0].z;
-		worldMid.z = originalZ;
-		float sumX = 0.0f, sumY = 0.0f;
-		for (const auto& pos : positions) {
-			sumX += pos.x;
-			sumY += pos.y;
-		}
-		worldMid.x = sumX / static_cast<float>(positions.size());
-		worldMid.y = sumY / static_cast<float>(positions.size());
-		// save original z position
-		float originalLocalZ = light->local.translate.z;
-		// Convert world midpoint to parent's local space
-		RE::NiTransform parentWorldTransform = refA_root->world;
-		RE::NiTransform invTransform = parentWorldTransform.Invert();
-		RE::NiPoint3 localMid = invTransform * worldMid;
-		// add the z offset
-		localMid.z += originalLocalZ;
-		logger::debug(
-			"[LightMerge:BEFORE] '{}'\n"
-			"  refA {:08X} pos {}\n"
-			"  refB {:08X} pos {}\n"
-			"  refC {:08X} pos {}\n"
-			"  refD {:08X} pos {}\n"
-			"originalLocalZ {}\n"
+			"[LightMerge:AFTER] '{}' merged {} refs\n"
 			"  local.translate {}",
-			light->name.c_str(),
-			refA->GetFormID(), positions[0],
-			pendingMerge[0]->GetFormID(), positions[1],
-			pendingMerge[1]->GetFormID(), positions[2],
-			pendingMerge[2]->GetFormID(), positions[3],
-			originalLocalZ,
+			light->name.c_str(), mergeCount,
 			light->local.translate
 		);
-		// we have to use local position its annoying bc its relative to ref a's world position
-		light->local.translate = localMid;
-
-		// gotta update works sometimes without idk why
-		if (auto* parent = light->parent) {
-			RE::NiUpdateData updateData{};
-			updateData.time = 0.0f;
-			updateData.flags = RE::NiUpdateData::Flag::kDirty;
-			parent->UpdateTransformAndBounds(updateData);
-		}
-		logger::debug(
-			"[LightMerge:AFTER] '{}'\n"
-			"  refA {:08X}\n"
-			"  refB {:08X}\n"
-			"  refC {:08X}\n"
-			"  refD {:08X}\n"
-			"  local.translate {}\n",
-			light->name.c_str(),
-			refA->GetFormID(),
-			pendingMerge[0]->GetFormID(),
-			pendingMerge[1]->GetFormID(),
-			pendingMerge[2]->GetFormID(),
-			light->local.translate
-		);
-		break;
-	}
-
-	default: {
-		break;
-	}
 	}
 
 	LightManager::attachNiPointLightToShadowSceneNode(light, winningConfig, refA);
 }
 
+void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
+{
+	/*if (!Settings::GetSingleton()->LoadDebugMarkers()) {
+		return nullptr;
+	}*/
+
+	RE::NiPointer<RE::NiNode>                              loadedModel;
+	constexpr RE::BSModelDB::DBTraits::ArgsType args{};
+
+	if (const auto error = Demand("marker_light.nif", loadedModel, args); error == RE::BSResource::ErrorCode::kNone) {
+		if (const auto clonedModel = loadedModel->Clone()) {
+			loadedModel.reset();
+			auto clonedModelAsNode = clonedModel->AsNode(); 
+
+			if (!clonedModelAsNode) {
+				logger::debug("could not case debug marker as node, skipping debug marker");
+				return;
+			}
+
+			a_node->AttachChild(clonedModelAsNode);
+
+			clonedModelAsNode->local.translate = light->local.translate; 
+		}
+		else { logger::debug("clone failed for debug light marker"); }
+
+	}
+
+}

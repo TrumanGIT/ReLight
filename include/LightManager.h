@@ -29,6 +29,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
   static void attachOrMergeLight(RE::TESObjectREFR* a_this,
       RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root, const float radius);
 
+  static void AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light);
+
 
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;

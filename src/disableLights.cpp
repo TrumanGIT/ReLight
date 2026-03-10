@@ -213,6 +213,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     }
 
     else {
+
         if (dist > globals::globalCoverage)
             return false;
 
