@@ -76,11 +76,11 @@ namespace UI {
 
             ImGuiMCP::Spacing();
 
-            ImGuiMCP::SliderFloat("Candle reach on tri shape##1", &globals::gMinCandleCoverage, 0.0f, 2000.0f);
-            ImGuiMCP::SliderFloat("Candle reach on wall##1", &globals::minCandleCoverageWall, 0.0f, 2000.0f);
-            ImGuiMCP::SliderFloat("Fire reach on tri shape##1", &globals::gMinFireCoverage, 0.0f, 2000.0f);
-            ImGuiMCP::SliderFloat("Fire reach on wall##1", &globals::gMinFireCoverageWall, 0.0f, 2000.0f);
-
+            ImGuiMCP::SliderFloat("Candle reach on tri shape##1", &globals::gMinCandleCoverage, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Candle reach on small tri shape##1", &globals::gMinCandleCoverageSM, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Candle reach on wall##1", &globals::minCandleCoverageWall, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Fire reach on tri shape##1", &globals::gMinFireCoverage, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Fire reach on wall##1", &globals::gMinFireCoverageWall, 0.0f, 1000.0f);
             ImGuiMCP::PopItemWidth();
             ImGuiMCP::NextColumn();
             ImGuiMCP::PushItemWidth(colWidth);      

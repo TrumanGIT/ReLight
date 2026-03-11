@@ -580,6 +580,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 		if (increaseBrightness) {
 			// scale brightness based on merge count
 			light->fade *= (1.0f + (0.5f * static_cast<float>(mergeCount - 1)));
+			light->radius *= (1.0f + (0.2f * static_cast<float>(mergeCount - 1)));
 		}
 
 		// average X and Y, preserve refA's Z

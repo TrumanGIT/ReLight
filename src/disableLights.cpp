@@ -18,7 +18,6 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 	if (!ref || !light)
 		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-
 	if (shouldDisableLight(light, ref))
 		return nullptr;
 
@@ -106,7 +105,6 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
         const float distXY = std::sqrt(dx * dx + dy * dy);
 
-
         if (distXY > globals::gMinChandelierCoverage)
             return false;
 
@@ -172,6 +170,10 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
         float coverageThreshold = globals::gMinCandleCoverage;
 
+        if (triRadius < globals::maxWallSizeForStrictLightBounds) {
+            coverageThreshold = globals::gMinCandleCoverageSM;
+        }
+
         if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
 
             coverageThreshold = globals::minCandleCoverageWall;
@@ -180,34 +182,23 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         if (distXY > coverageThreshold)
             return false;
     }
-
     //fires
     else if (light->unk060 == 3) {
-
         auto isWallMesh = false;
-
         RE::TESBoundObject* baseRef = nullptr;
-
         if (p->fadeNode && p->fadeNode->userData)
             baseRef = p->fadeNode->userData->data.objectReference;
-
         if (baseRef) {
             auto curBaseFormID = baseRef->GetFormID();
             isWallMesh = globals::wallMeshes.contains(curBaseFormID);
         }
-
         const float dx = std::abs(lightPos.x - triCenter.x);
         const float dy = std::abs(lightPos.y - triCenter.y);
-
         const float distXY = std::sqrt(dx * dx + dy * dy);
-
         float coverageThreshold = globals::gMinFireCoverage;
-
         if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
-
             coverageThreshold = globals::gMinFireCoverageWall;
         }
-
         if (distXY > coverageThreshold)
             return false;
     }

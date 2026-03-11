@@ -21,29 +21,32 @@ namespace globals
 
     inline bool enableLightFlickerPreventionMeasures = false;
 
-    inline float lightMergeDistance = 130;
+    inline float lightMergeDistance = 145;
 
     inline float shadowLightMergeDistance = 162;
 
-    inline float fMaxZDiffToMerge = 25;
+    inline float fMaxZDiffToMerge = 35.70;
 
     inline float g_maxShadowCompeteDistance = 314;
 
     inline float gMinCandleCoverage = 430;
 
+    inline float gMinCandleCoverageSM = 264;
+
     //tighter restrictions for wall nodes.
-    inline float minCandleCoverageWall = 210; 
+    inline float minCandleCoverageWall = 285; 
 
-    inline float gMinFireCoverageWall = 250;
+    inline float gMinFireCoverageWall = 290;
 
-    inline float gMinFireCoverage = 580.49f; 
+    inline float gMinFireCoverage = 535.49f; 
 
+    inline float fireCoverageThresholdZ = 454; 
     // larger walls shouldent have such strict bounds or no lights
     inline float maxWallSizeForStrictLightBounds = 325; 
 
     inline float gMinChandelierCoverage = 580; 
 
-    inline float globalCoverage = 580;
+    inline float globalCoverage = 646;
 
     inline float fLODFadeOutMultObjects = 9000;
 
