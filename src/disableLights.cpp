@@ -98,6 +98,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
     const float dist = triCenter.GetDistance(lightPos);
 
+    // chandelliers
     if (light->unk060 == 1) {
 
         const float dx = std::abs(lightPos.x - triCenter.x);
@@ -203,7 +204,8 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
             return false;
     }
 
-    else {
+    // some point lights in bleak falls barrow for example has radius over 2000 and should be excluded
+    else if (light->light->radius.x < 1000 ) {
 
         if (dist > globals::globalCoverage)
             return false;

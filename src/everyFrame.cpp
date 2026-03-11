@@ -22,12 +22,6 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	auto playerPos = player->GetPosition(); 
 
-	if (globals::maxLightDistanceEnabled) {
-		disableLightsPastMaxDistance(ssRt.activeLights, playerPos, ssNode);
-
-		disableLightsPastMaxDistance(ssRt.activeShadowLights, playerPos, ssNode);
-	}
-
 	ApplyLightFlicker(ssRt.activeLights, delta);
 
 	ApplyLightFlicker(ssRt.activeShadowLights, delta);

@@ -46,7 +46,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         PlayerCharacter_Update::Install();
         AddonNodes::Install();
         BSLightingShaderProperty_IsLightAffectingSurface::Install();
-        // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE (Learned you can attach a event sink to the player from light placer)
+        // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
         getObjectFadeMult(globals::fLODFadeOutMultObjects);
         logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);

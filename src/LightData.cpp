@@ -9,7 +9,6 @@
 #include <vector>
 #include  "Utility.h"
 
-
 // (config to json id is for faster lookups then strings, used in flicker logic)
 std::map<uint32_t, LightConfig> LightData::configIDToJsonCfg;
 
@@ -35,6 +34,7 @@ bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
 		for (const auto& group : globals::keywordLightGroups) {
 			if (containsAll(edid, group)) {
 
+				//TODO:: should exclude by form id instead here
 				if (edid.contains("SolitudeInnSunlightShadow")) return false;
 				logger::info("Excluding light by editorID: {}", edid);
 				return true;

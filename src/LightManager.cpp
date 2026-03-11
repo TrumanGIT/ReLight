@@ -133,7 +133,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 
 	for (auto& cfg : cfgs) {
 		if (!cfg.shadowLight) {
-			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeDistance);
+			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeSeekingDistance);
 		}
 		else {
 			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::shadowLightMergeDistance);
@@ -221,7 +221,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 		 }
 
 		 if (!cfg.shadowLight) {
-			 LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeDistance);
+			 LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeSeekingDistance);
 		 }
 
 		 else {
@@ -287,7 +287,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 		
 /// we merge lights because 2 fxfirewithembers are usually stacked on top of each other, without this double shadow lights (not good)
 		if (!cfg.shadowLight) {
-			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeDistance);
+			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeSeekingDistance);
 		}
 	
 		else {
@@ -327,14 +327,12 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		logger::info("player is in interior on startup: {}", globals::currentCellIsInterior);
 		globals::lastCellWasInterior = cell->IsInteriorCell();
 
-		
 		//	std::scoped_lock refsLock(globals::refsWithAttachedLightsMutex);
 			globals::refsWithAttachedLights.clear();
 		
 			//std::scoped_lock mergedLock(globals::mergedRefsMutex);
 			globals::mergedRefs.clear();
 		
-
 		return RE::BSEventNotifyControl::kContinue;
 	}
 
@@ -505,12 +503,29 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 
 			std::string refALightName = "";
 
+			// if node name emtpy check mesh path as a identifier instead
 			cfg.nodeName.empty() ? refALightName = extractMeshName(cfg.meshPath) : refALightName = cfg.nodeName;
 
-			if (refALightName.contains("candle") && !refALightName.contains("chande") && !refALightName.contains("bra")) refALightName = "candle";
+			float zDistanceToUse = globals::fMaxZDiffToMerge;
+			bool processingRuinCandle = false;
+
+			if (refALightName.contains("candle") || otherRefName.contains("candle")) {
+
+				// ruin candels are aggretious light flickerer casuses and must be merged exxessivly.
+				if (refALightName.contains("ruin") || otherRefName.contains("ruin")) {
+					zDistanceToUse = globals::fMaxZDiffToMergeIncreased;
+					processingRuinCandle = true; 
+					logger::debug("increased distance used");
+				}
+
+				if (!refALightName.contains("chande") && !refALightName.contains("bra")) {
+					refALightName = "candle";
+				}
+			}
 
 			bool looseMatch = false;
 		
+			//if ref a model name contains ref b model name or vice versa, they should merge
 				looseMatch = otherRefNameMatch.find(refALightName) != std::string::npos ||
 				refALightName.find(otherRefNameMatch) != std::string::npos;
 
@@ -519,7 +534,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 
 			if (looseMatch && !isExclude(otherRefName, refBFormID)) {
 				float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
-				if (zDiff > globals::fMaxZDiffToMerge) {
+				if (zDiff > zDistanceToUse) {
 					logger::debug("refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {}",
 						refA->GetFormID(), refBFormID, zDiff, cfg.nodeName);
 					return RE::BSContainer::ForEachResult::kContinue;
@@ -534,8 +549,16 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 				bool isInterior = cell->IsInteriorCell();
 				auto cfgs = findConfigsForNode(otherRefNameMatch, isInterior);
 
-				if (!cfg.shadowLight && !cfgs.empty() && cfgs[0].shadowLight) {
+				if (cfgs.empty()) return RE::BSContainer::ForEachResult::kContinue;
+
+				//the final result of a merged light should  reflect a shadow light if 1 of the emrgies was a shadow light
+				if (!cfg.shadowLight && cfgs[0].shadowLight) {
 					winningConfig = cfgs[0];
+				}
+
+				if (!cfg.shadowLight && !cfgs[0].shadowLight && processingRuinCandle == false) {
+				if (refA->GetDistance(otherRef) > globals::lightMergeDistance)
+					return RE::BSContainer::ForEachResult::kContinue;
 				}
 
 				pendingMerge.push_back(otherRef);
@@ -555,7 +578,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 	LightData::setNiPointLightDataFromCfg(refA->GetFormID(), light, winningConfig);
 	light->name = "RL" + cfg.nodeName;
 
-	AttachDebugMarker(refA_root, light); 
+	if (globals::enableDebugLightBulbs) 	AttachDebugMarker(refA_root, light);
 
 	// handle merge positioning
 	if (!pendingMerge.empty()) {
@@ -577,10 +600,11 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 			}
 		}
 
+		//TODO shouldent include fxfirewiwthembers lgos or the wood one
 		if (increaseBrightness) {
 			// scale brightness based on merge count
-			light->fade *= (1.0f + (0.5f * static_cast<float>(mergeCount - 1)));
-			light->radius *= (1.0f + (0.2f * static_cast<float>(mergeCount - 1)));
+			light->fade *= (1.0f + (0.3f * static_cast<float>(mergeCount - 1)));
+			light->radius *= (1.0f + (0.3f * static_cast<float>(mergeCount - 1)));
 		}
 
 		// average X and Y, preserve refA's Z
@@ -596,6 +620,7 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 		worldMid.z = positions[0].z;
 
 		float originalLocalZ = light->local.translate.z;
+
 
 		RE::NiTransform invTransform = refA_root->world.Invert();
 		RE::NiPoint3 localMid = invTransform * worldMid;

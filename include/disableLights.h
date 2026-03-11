@@ -54,7 +54,7 @@ inline void clearSSNodeLights() {
 }
 
 // not very usefull problem is not # of lights in a cell but # of lights on a bs tri shape
-template <class T>
+/*template <class T>
 inline void disableLightsPastMaxDistance(T& lights, RE::NiPoint3& playerPos, RE::ShadowSceneNode* ssNode) {
     for (auto& light : lights) {
         if (!light) continue;
@@ -64,7 +64,7 @@ inline void disableLightsPastMaxDistance(T& lights, RE::NiPoint3& playerPos, RE:
             ssNode->RemoveLight(light);
         }
     }
-}
+ }*/
 
 /*
 template <class T>

@@ -116,6 +116,12 @@ namespace UI {
                 ImGuiMCP::SetTooltip("Sets max distance refs must be apart for them to merge into 1 light.");
             }
 
+            ImGuiMCP::SliderFloat("Increased Z distance of refs to light merge", &globals::fMaxZDiffToMergeIncreased, 0, 300);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("increased refs must be apart for them to merge into 1 light.");
+            }
+
             ImGuiMCP::SliderFloat("Sets max distance to merge shadow light", &globals::shadowLightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
@@ -155,6 +161,9 @@ namespace UI {
 
         ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &globals::removeFakeGlowOrbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
+
+        ImGuiMCP::Checkbox("Enable Debugging Light Bulbs", &globals::enableDebugLightBulbs);
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Show Creation Kit");
 
         ImGuiMCP::Separator();
 
@@ -838,7 +847,7 @@ namespace UI {
 
                     ImGuiMCP::NextColumn();
 
-                    if (ImGuiMCP::SliderFloat("Depth Bias", &dataExt.depthBias, 0.0f, 1.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Depth Bias", &dataExt.depthBias, 0.0f, 30.0f, "%.2f")) {
                     }
 
                     if (ImGuiMCP::SliderFloat("FOV", &dataExt.fov, 0.0f, 180.0f, "%.2f")) {

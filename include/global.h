@@ -16,31 +16,35 @@ namespace globals
 
     inline bool islInstalled = false;
 
-    inline int maxLightDistance = 1000;
     inline bool maxLightDistanceEnabled = false;
+
+    inline bool enableDebugLightBulbs = false;
 
     inline bool enableLightFlickerPreventionMeasures = false;
 
-    inline float lightMergeDistance = 145;
+    inline float lightMergeSeekingDistance = 225;
+
+    inline float lightMergeDistance = 134;
 
     inline float shadowLightMergeDistance = 162;
 
-    inline float fMaxZDiffToMerge = 35.70;
+    inline float fMaxZDiffToMerge = 28.70;
+
+    inline float fMaxZDiffToMergeIncreased = 150.70;
 
     inline float g_maxShadowCompeteDistance = 314;
 
     inline float gMinCandleCoverage = 430;
 
-    inline float gMinCandleCoverageSM = 264;
+    inline float gMinCandleCoverageSM = 300;
 
     //tighter restrictions for wall nodes.
     inline float minCandleCoverageWall = 285; 
 
     inline float gMinFireCoverageWall = 290;
 
-    inline float gMinFireCoverage = 535.49f; 
+    inline float gMinFireCoverage = 580.49f; 
 
-    inline float fireCoverageThresholdZ = 454; 
     // larger walls shouldent have such strict bounds or no lights
     inline float maxWallSizeForStrictLightBounds = 325; 
 

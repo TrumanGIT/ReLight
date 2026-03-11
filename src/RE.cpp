@@ -6,10 +6,11 @@ __int64 BSShaderPropertyLightData_AttachLight::thunk(RE::BSShaderPropertyLightDa
 {
     if (!a_this || !light) return reinterpret_cast<decltype(&thunk)>(func)(a_this, light);
 
+    if (a_this->lights.size() >= 7) return -1; 
 
     // if (light->unk060 == 1) return -1
 
-    // logger::info("attach light called on tri with total lights: {} with name {} ", a_this->lights.size(), light->light->name.c_str());
+  // logger::info("attach light called on tri with total lights: {} with name {} ", a_this->lights.size(), light->light->name.c_str());
     return reinterpret_cast<decltype(&thunk)>(func)(a_this, light);
 }
 
