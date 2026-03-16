@@ -83,151 +83,55 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
             return false;
         }
     }
+   
+    if (!globals::cellFullyLoaded || !globals::enableLightFlickerPreventionMeasures) return true;
 
-    //light list is 0 on first calls. must ddelay
-    //lightevalstart timer is started in light disable lights.h cell fully loaded event 
-    
-        if (!globals::cellFullyLoaded) return true; 
+    if (p->forcedDarkness == 0.0f)
+    {
+        auto* pass = p->renderPassList.head;
+        if (!pass || !pass->geometry)
+            return true;
 
+        LightData::TriLightCache entry{};
+        entry.lightShaderProp = RE::NiPointer<RE::BSLightingShaderProperty>(p);
 
-        /*    if (p->forcedDarkness == 0.0f) {
-     p->forcedDarkness = -1.0f;
+        ComputeClosestLights(entry.lights, p);
 
-            std::lock_guard lock(PendingProperty::mutex);
-            PendingProperty::list.push_back({ RE::NiPointer<RE::BSLightingShaderProperty>(p), std::chrono::steady_clock::now()});
-          
-          //  logger::debug("[LightHook] Initial forcedDarkness set: {}", static_cast<int>(p->forcedDarkness) - 1);
-            return true; 
-        }*/ 
+        {
+            std::lock_guard lock(LightData::triLightCacheMutex);
 
+            uint32_t index = static_cast<uint32_t>(LightData::triLightCache.size());
+            LightData::triLightCache.push_back(entry);
 
-    // first frame only: initialize forcedDarkness
-    //exit in exteriors and while the 
-    if (  /*p->forcedDarkness < globals::flickerPreventionLightLimit ||*/  !globals::currentCellIsInterior || !globals::enableLightFlickerPreventionMeasures) return true;
+            p->forcedDarkness = static_cast<float>(index + 1);
+        }
+    }
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return false;
 
-    auto geometry = pass->geometry;
-    const auto& triCenter = geometry->worldBound.center;
-    const float triRadius = geometry->worldBound.radius;
+    float fd = p->forcedDarkness;
+    if (fd < 1.0f)
+        return true;
 
-    const auto& lightPos = light->light->world.translate;
+    std::lock_guard lock(LightData::triLightCacheMutex);
 
-    switch (light->unk060)
+    if (fd > static_cast<float>(LightData::triLightCache.size()))
     {
+        p->forcedDarkness = 0.0f;
+        return true;
+    }
 
-        //TODO:: capture its closest light once not every call
-    case 1: // candles
+    uint32_t idx = static_cast<uint32_t>(fd);
+    auto& cache = LightData::triLightCache[idx - 1];
+
+#pragma unroll
+    for (int i = 0; i < 7; i++)
     {
-        bool isWallMesh = false;
-
-        RE::TESBoundObject* baseRef = nullptr;
-        if (p->fadeNode && p->fadeNode->userData)
-            baseRef = p->fadeNode->userData->data.objectReference;
-
-        if (baseRef)
-            isWallMesh = globals::wallMeshes.contains(baseRef->GetFormID());
-
-        const float dx = std::abs(lightPos.x - triCenter.x);
-        const float dy = std::abs(lightPos.y - triCenter.y);
-        const float distXY = std::sqrt(dx * dx + dy * dy);
-
-        float coverageThreshold = globals::minCandleCoverage;
-
-        if (triRadius < globals::maxWallSizeForStrictLightBounds)
-            coverageThreshold = globals::minCandleCoverageSM;
-
-        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds)
-            coverageThreshold = globals::minCandleCoverageWall;
-
-        if (distXY > coverageThreshold)
-            return false;
-        break;
+        if (cache.lights[i].get() == light)
+            return true;
     }
-
-    case 2: // chandeliers
-    {
-        const float dx = std::abs(lightPos.x - triCenter.x);
-        const float dy = std::abs(lightPos.y - triCenter.y);
-        const float distXY = std::sqrt(dx * dx + dy * dy);
-
-        if (distXY > globals::minChandelierCoverage)
-            return false;
-
-        const auto& thisLightPos = light->light->world.translate;
-        float thisDistance = triCenter.GetDistance(thisLightPos);
-        float thisRadius = light->light->radius.Length();
-        float thisCoverage = thisRadius - (thisDistance - triRadius);
-
-        auto thisConfigID = light->light->unk138;
-        auto* ss = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-
-        for (auto& otherLight : ss->GetRuntimeData().activeShadowLights) {
-            if (!otherLight || !otherLight->light)
-                continue;
-            if (otherLight->light == light->light)
-                continue;
-            if (otherLight->light->unk138 != thisConfigID)
-                continue;
-
-            float zDiff = std::abs(thisLightPos.z - otherLight->light->world.translate.z);
-
-            if (zDiff > globals::maxShadowCompeteDistance)
-                continue;
-
-            float otherDistance = triCenter.GetDistance(otherLight->light->world.translate);
-            float otherCoverage = otherLight->light->radius.Length() - (otherDistance - triRadius);
-
-            if (otherCoverage > thisCoverage)
-                return false;
-        }
-
-        break;
-    }
-
-    case 3: // fires
-    {
-        bool isWallMesh = false;
-
-        RE::TESBoundObject* baseRef = nullptr;
-        if (p->fadeNode && p->fadeNode->userData)
-            baseRef = p->fadeNode->userData->data.objectReference;
-
-        if (baseRef)
-            isWallMesh = globals::wallMeshes.contains(baseRef->GetFormID());
-
-        const float dx = std::abs(lightPos.x - triCenter.x);
-        const float dy = std::abs(lightPos.y - triCenter.y);
-        const float distXY = std::sqrt(dx * dx + dy * dy);
-
-        float coverageThreshold = globals::minFireCoverage;
-
-        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds)
-            coverageThreshold = globals::minFireCoverageWall;
-
-        if (distXY > coverageThreshold)
-            return false;
-
-        break;
-    }
-
-    default: // anything besides candles fires or chandelliers
-    { 
-        // exclude large lights like bleak falls barrow01 sunlight
-        if (light->light->radius.x < 1000) {
-            const float dist = triCenter.GetDistance(lightPos);
-
-            if (dist > globals::globalCoverage)
-                return false;
-        }
-
-        break;
-    }
-    }
-
-
-    return true;
+    return false;
 }
 
 //meh321 - intellightent

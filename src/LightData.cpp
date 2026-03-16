@@ -11,6 +11,9 @@
 
 NiPointLight LightData::masterNiPointLight;
 
+std::vector<LightData::TriLightCache> LightData::triLightCache;
+std::mutex LightData::triLightCacheMutex;
+
 // (config to json id is for faster lookups then strings, used in flicker logic)
 std::map<uint32_t, LightConfig> LightData::configIDToJsonCfg;
 

@@ -180,6 +180,11 @@ namespace UI {
             ImGuiMCP::PopItemWidth(); 
         }
 
+        if (ImGuiMCP::Button("clear light cache")) {
+
+            ResetTriLightCache();
+        }
+
         ImGuiMCP::EndChild();
         if (ImGuiMCP::Button("Debug log all lights")) {
             debugLogAllLights(); 

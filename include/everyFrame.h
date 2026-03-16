@@ -59,7 +59,6 @@ static void ApplyLightFlicker(T& lights, float delta)
 	}
 }
 
-
 inline void handlePendingMerges() {
     if (LightManager::pendingMerges.empty()) return;
 
@@ -70,8 +69,8 @@ inline void handlePendingMerges() {
         std::remove_if(LightManager::pendingMerges.begin(), LightManager::pendingMerges.end(),
             [&](LightManager::PendingMerge& entry) {
 
-                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - entry.registeredAt).count();
-                if (elapsed < 1) return false;
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - entry.registeredAt).count();
+                if (elapsed < 500) return false;
 
                 auto refA = entry.refA.get();
                 if (!refA) return true;

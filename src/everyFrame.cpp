@@ -7,6 +7,8 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	func(player, delta);
 
+	if (!globals::cellFullyLoaded) return;
+
 	if (!player) {
 		logger::warn("player is null cant check cell");
 		return;
@@ -22,16 +24,14 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	//auto playerPos = player->GetPosition(); 
 
+	handlePendingMerges();
+
 	ApplyLightFlicker(ssRt.activeLights, delta);
 
 	ApplyLightFlicker(ssRt.activeShadowLights, delta);
 
 	// check stored bs shader properties have created there light list yet and tag their 
 	//forced darkness field with a static # of a guesstamite of their light size. 
-	 
-	//is this cell fully laoded check that runs once enough to postpone until later? 
-	if (globals::cellFullyLoaded) handlePendingMerges();
-
 }
 
 void PlayerCharacter_Update::Install()

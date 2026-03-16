@@ -511,3 +511,65 @@ inline bool HasAnythingBetween(RE::TESObjectREFR* refA, RE::TESObjectREFR* refB)
 	return hitCenter && hitLeft && hitRight;
 }
 
+inline void ComputeClosestLights(RE::NiPointer<RE::BSLight> outLights[7], RE::BSLightingShaderProperty* p)
+{
+	auto* pass = p->renderPassList.head;
+	if (!pass || !pass->geometry)
+		return;
+	auto& center = pass->geometry->worldBound.center;
+	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+	if (!ssNode)
+		return;
+	auto& rt = ssNode->GetRuntimeData();
+
+	struct Candidate
+	{
+		RE::NiPointer<RE::BSLight> light;
+		float dist;
+	};
+
+	std::vector<Candidate> candidates;
+	auto gatherLights = [&](auto& container)
+		{
+			for (auto& l : container)
+			{
+				if (!l)
+					continue;
+				auto* light = l.get();
+				if (!light || !light->light)
+					continue;
+				auto& pos = light->light->world.translate;
+				float dx = pos.x - center.x;
+				float dy = pos.y - center.y;
+				float dz = pos.z - center.z;
+				float dist = dx * dx + dy * dy + dz * dz;
+				candidates.push_back({ RE::NiPointer<RE::BSLight>(light), dist });
+			}
+		};
+
+	gatherLights(rt.activeLights);
+	gatherLights(rt.activeShadowLights);
+
+	std::sort(candidates.begin(), candidates.end(),
+		[](auto& a, auto& b)
+		{
+			return a.dist < b.dist;
+		});
+
+	int count = std::min(7, (int)candidates.size());
+	for (int i = 0; i < count; i++)
+		outLights[i] = candidates[i].light;
+}
+
+inline void ResetTriLightCache()
+{
+	std::lock_guard lock(LightData::triLightCacheMutex);
+
+
+	for (auto& entry : LightData::triLightCache)
+		if (entry.lightShaderProp.get())
+			entry.lightShaderProp->forcedDarkness = 0.0f;
+
+	LightData::triLightCache.clear();
+	globals::cellFullyLoaded = true;
+}

@@ -5,8 +5,6 @@
 #include "LightAttachmentHooks.h"
 #include <chrono>
 
-
-
 //ATTACH LIGHTS AT CORRECT MESH INDEX, USEFULL FOR TORCHES WHERE LIGHT MUST BE INSERTED TO SPECIFIC SPOT
 void LightManager::attachLightUsingAttachPath(
 	const LightConfig& cfg,
@@ -336,27 +334,35 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 
 	// player changes from interor to exterior or vice versa, must reinitialize lights
 	if (globals::lastCellWasInterior !=	globals::currentCellIsInterior ) {
-		
-		// stop islightaffectingsurface hook
-	//	globals::cellFullyLoaded= false;
+	
+		globals::cellFullyLoaded= false;
 
-		//logger::debug(" new cell detected.. islightaffectingsurface hook stopped");
+		logger::debug(" new cell detected.. islightaffectingsurface hook stopped");
 
 		//reset wall meshes gathered when going outside since light flicker prevention is not enabled ine exteriors
 		if (cell->IsExteriorCell()) globals::wallMeshes.clear();
 
 		LightManager::reinitializeLightsWithinRange(player); 
+
+		SKSE::GetTaskInterface()->AddTask([]()
+			{
+				ResetTriLightCache();
+			});
 	}
 
 	// player changes from interor to another interior, must reinitialize otherwise engine cleans the lights
 	if (globals::currentCellIsInterior && globals::lastCellWasInterior) {
 
-		// stop islightaffectingsurface hook
-		//globals::cellFullyLoaded = false; 
+		globals::cellFullyLoaded = false;
 
-		//logger::debug(" new  interior cell detected.. islightaffectingsurface hook stopped");
+		logger::debug(" new cell detected.. islightaffectingsurface hook stopped");
 
 		LightManager::reinitializeLightsWithinRange(player);
+
+		SKSE::GetTaskInterface()->AddTask([]()
+			{
+				ResetTriLightCache();
+			});
 	}
 
 	//set the prev cell after finished evaluating new cell
@@ -403,16 +409,16 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 				logger::debug("baseForm ref that needs reinitializing found");
 
 				RE::ObjectRefHandle handle(ref);
-				SKSE::GetTaskInterface()->AddTask([handle]() {
+
 					if (auto ref = handle.get()) {
 
 						auto root = ref->Get3D(); 
 
-						if (!root) return;
+						if (!root) return RE::BSContainer::ForEachResult::kContinue;
 
 						auto bsFadeNode = root->AsNode();
 
-						if (!bsFadeNode) return;
+						if (!bsFadeNode)return RE::BSContainer::ForEachResult::kContinue;
 
 						//surf children for light
 						for (auto& child : bsFadeNode->GetChildren()) {
@@ -464,12 +470,12 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
 										reattachedBSLight->unk060 = 1;
-										return;
+										return RE::BSContainer::ForEachResult::kContinue;
 									}
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
 										reattachedBSLight->unk060 = 2;
-										return;
+										return RE::BSContainer::ForEachResult::kContinue;
 									}
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
@@ -485,7 +491,6 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 							//}
 						}
 					}
-				});
 			}
 		}
 		});

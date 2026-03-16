@@ -55,6 +55,15 @@ struct Overlay
 
 struct LightData {
 
+	struct TriLightCache
+	{
+		RE::NiPointer<RE::BSLightingShaderProperty> lightShaderProp;
+		RE::NiPointer<RE::BSLight> lights[7]; // not raw pointers
+	};
+
+	static std::mutex triLightCacheMutex;
+	static std::vector<TriLightCache> triLightCache;
+
 	static NiPointLight masterNiPointLight;
 
 	static std::map<uint32_t, LightConfig> configIDToJsonCfg;
