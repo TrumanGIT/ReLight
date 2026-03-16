@@ -73,6 +73,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 {
     if (!p || !light) return false;
 
+    // vanilla logic
     if (!light->affectLand)
     {
         const auto& flags = p->flags;
@@ -83,8 +84,26 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         }
     }
 
-    //exit in exteriors
-    if (/*!globals::currentCellIsInterior||*/  !globals::enableLightFlickerPreventionMeasures) return true;
+    //light list is 0 on first calls. must ddelay
+    //lightevalstart timer is started in light disable lights.h cell fully loaded event 
+    
+        if (!globals::cellFullyLoaded) return true; 
+
+
+        /*    if (p->forcedDarkness == 0.0f) {
+     p->forcedDarkness = -1.0f;
+
+            std::lock_guard lock(PendingProperty::mutex);
+            PendingProperty::list.push_back({ RE::NiPointer<RE::BSLightingShaderProperty>(p), std::chrono::steady_clock::now()});
+          
+          //  logger::debug("[LightHook] Initial forcedDarkness set: {}", static_cast<int>(p->forcedDarkness) - 1);
+            return true; 
+        }*/ 
+
+
+    // first frame only: initialize forcedDarkness
+    //exit in exteriors and while the 
+    if (  /*p->forcedDarkness < globals::flickerPreventionLightLimit ||*/  !globals::currentCellIsInterior || !globals::enableLightFlickerPreventionMeasures) return true;
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return false;
@@ -95,18 +114,45 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
     const auto& lightPos = light->light->world.translate;
 
+    switch (light->unk060)
+    {
 
-    const float dist = triCenter.GetDistance(lightPos);
+        //TODO:: capture its closest light once not every call
+    case 1: // candles
+    {
+        bool isWallMesh = false;
 
-    // chandelliers
-    if (light->unk060 == 1) {
+        RE::TESBoundObject* baseRef = nullptr;
+        if (p->fadeNode && p->fadeNode->userData)
+            baseRef = p->fadeNode->userData->data.objectReference;
+
+        if (baseRef)
+            isWallMesh = globals::wallMeshes.contains(baseRef->GetFormID());
 
         const float dx = std::abs(lightPos.x - triCenter.x);
         const float dy = std::abs(lightPos.y - triCenter.y);
-
         const float distXY = std::sqrt(dx * dx + dy * dy);
 
-        if (distXY > globals::gMinChandelierCoverage)
+        float coverageThreshold = globals::minCandleCoverage;
+
+        if (triRadius < globals::maxWallSizeForStrictLightBounds)
+            coverageThreshold = globals::minCandleCoverageSM;
+
+        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds)
+            coverageThreshold = globals::minCandleCoverageWall;
+
+        if (distXY > coverageThreshold)
+            return false;
+        break;
+    }
+
+    case 2: // chandeliers
+    {
+        const float dx = std::abs(lightPos.x - triCenter.x);
+        const float dy = std::abs(lightPos.y - triCenter.y);
+        const float distXY = std::sqrt(dx * dx + dy * dy);
+
+        if (distXY > globals::minChandelierCoverage)
             return false;
 
         const auto& thisLightPos = light->light->world.translate;
@@ -127,90 +173,60 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
             float zDiff = std::abs(thisLightPos.z - otherLight->light->world.translate.z);
 
-            if (zDiff > globals::g_maxShadowCompeteDistance)
+            if (zDiff > globals::maxShadowCompeteDistance)
                 continue;
 
             float otherDistance = triCenter.GetDistance(otherLight->light->world.translate);
             float otherCoverage = otherLight->light->radius.Length() - (otherDistance - triRadius);
 
-            /*logger::debug(
-                 "light {:p} dist {:.2f} vs other {:p} dist {:.2f}",
-                 static_cast<void*>(light),
-                 thisDistance,
-                 static_cast<void*>(otherLight.get()),
-                 otherDistance
-             );
-             */
-            if (otherCoverage > thisCoverage) {
+            if (otherCoverage > thisCoverage)
                 return false;
-            }
-
         }
 
+        break;
     }
 
-    //candles
-    else if (light->unk060 == 2)
+    case 3: // fires
     {
-        auto isWallMesh = false;
+        bool isWallMesh = false;
 
         RE::TESBoundObject* baseRef = nullptr;
-
         if (p->fadeNode && p->fadeNode->userData)
             baseRef = p->fadeNode->userData->data.objectReference;
 
-        if (baseRef) {
-            auto curBaseFormID = baseRef->GetFormID();
-            isWallMesh = globals::wallMeshes.contains(curBaseFormID);
-        }
+        if (baseRef)
+            isWallMesh = globals::wallMeshes.contains(baseRef->GetFormID());
 
         const float dx = std::abs(lightPos.x - triCenter.x);
         const float dy = std::abs(lightPos.y - triCenter.y);
-
         const float distXY = std::sqrt(dx * dx + dy * dy);
 
-        float coverageThreshold = globals::gMinCandleCoverage;
+        float coverageThreshold = globals::minFireCoverage;
 
-        if (triRadius < globals::maxWallSizeForStrictLightBounds) {
-            coverageThreshold = globals::gMinCandleCoverageSM;
-        }
-
-        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
-
-            coverageThreshold = globals::minCandleCoverageWall;
-        }
+        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds)
+            coverageThreshold = globals::minFireCoverageWall;
 
         if (distXY > coverageThreshold)
             return false;
+
+        break;
     }
-    //fires
-    else if (light->unk060 == 3) {
-        auto isWallMesh = false;
-        RE::TESBoundObject* baseRef = nullptr;
-        if (p->fadeNode && p->fadeNode->userData)
-            baseRef = p->fadeNode->userData->data.objectReference;
-        if (baseRef) {
-            auto curBaseFormID = baseRef->GetFormID();
-            isWallMesh = globals::wallMeshes.contains(curBaseFormID);
+
+    default: // anything besides candles fires or chandelliers
+    { 
+        // exclude large lights like bleak falls barrow01 sunlight
+        if (light->light->radius.x < 1000) {
+            const float dist = triCenter.GetDistance(lightPos);
+
+            if (dist > globals::globalCoverage)
+                return false;
         }
-        const float dx = std::abs(lightPos.x - triCenter.x);
-        const float dy = std::abs(lightPos.y - triCenter.y);
-        const float distXY = std::sqrt(dx * dx + dy * dy);
-        float coverageThreshold = globals::gMinFireCoverage;
-        if (isWallMesh && triRadius < globals::maxWallSizeForStrictLightBounds) {
-            coverageThreshold = globals::gMinFireCoverageWall;
-        }
-        if (distXY > coverageThreshold)
-            return false;
+
+        break;
+    }
     }
 
-    // some point lights in bleak falls barrow for example has radius over 2000 and should be excluded
-    else if (light->light->radius.x < 1000 ) {
 
-        if (dist > globals::globalCoverage)
-            return false;
-
-    }
     return true;
 }
 

@@ -432,3 +432,82 @@ inline std::string extractMeshName(const std::string& path) {
 	auto dotPos = filename.find_last_of('.');
 	return (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
 }
+
+inline bool RayHitStatic(RE::bhkWorld* world, RE::NiPoint3 start, RE::NiPoint3 end)
+{
+	RE::bhkPickData pickData{};
+
+	const float scale = RE::bhkWorld::GetWorldScale();
+	pickData.rayInput.from = start * scale;
+	pickData.rayInput.to = end * scale;
+
+	pickData.rayInput.enableShapeCollectionFilter = true;
+
+	RE::CFilter filter{};
+	filter.SetCollisionLayer(RE::COL_LAYER::kLOS);
+
+	static const std::uint32_t sSystemGroup =
+		RE::bhkCollisionFilter::GetSingleton()->GetNewSystemGroup();
+
+	filter.SetSystemGroup(sSystemGroup);
+	pickData.rayInput.filterInfo = filter;
+
+	world->PickObject(pickData);
+
+	if (!pickData.rayOutput.HasHit())
+		return false;
+
+	auto* collidable = pickData.rayOutput.rootCollidable;
+	if (!collidable)
+		return false;
+
+	auto layer = collidable->GetCollisionLayer();
+
+	return (layer == RE::COL_LAYER::kStatic ||
+		layer == RE::COL_LAYER::kTerrain ||
+		layer == RE::COL_LAYER::kGround);
+}
+
+inline bool HasAnythingBetween(RE::TESObjectREFR* refA, RE::TESObjectREFR* refB)
+{
+	if (!refA || !refB) return false;
+
+	auto* cell = refA->GetParentCell();
+	if (!cell) return false;
+
+	auto* world = cell->GetbhkWorld();
+	if (!world) return false;
+
+	RE::NiPoint3 start = refA->GetPosition();
+	RE::NiPoint3 end = refB->GetPosition();
+
+	start.z += 8.0f;
+	end.z += 30.0f;
+
+	// direction
+	RE::NiPoint3 dir = end - start;
+	dir.Unitize();
+
+	// perpendicular offset
+	RE::NiPoint3 perp(-dir.y, dir.x, 0.0f);
+	perp.Unitize();
+
+	float offset = 20.0f;
+
+	RE::NiPoint3 startLeft = start - perp * offset;
+	RE::NiPoint3 endLeft = end - perp * offset;
+
+	RE::NiPoint3 startRight = start + perp * offset;
+	RE::NiPoint3 endRight = end + perp * offset;
+
+	bool hitCenter = RayHitStatic(world, start, end);
+	bool hitLeft = RayHitStatic(world, startLeft, endLeft);
+	bool hitRight = RayHitStatic(world, startRight, endRight);
+
+	logger::debug("Ray results: center {} left {} right {}",
+		hitCenter, hitLeft, hitRight);
+
+
+	return hitCenter && hitLeft && hitRight;
+}
+

@@ -39,15 +39,17 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     case SKSE::MessagingInterface::kDataLoaded:
     {
         // create master point light. must clone it or crash idk why
-        PointLight::getMasterPointLight();
+        LightData::masterNiPointLight = NiPointLight::NiPointLight();
         SKSE::AllocTrampoline(1 << 8);
         TESObjectLIGH_GenDynamic::Install();
         Load3D::Install();
         PlayerCharacter_Update::Install();
-        AddonNodes::Install();
+        //AddonNodes::Install();
         BSLightingShaderProperty_IsLightAffectingSurface::Install();
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
+//        LightManager::OurEventSink::TESCellFullyLoadedEventInstall(); 
+//        registerEventSink();    // tescellfully loaded event
         getObjectFadeMult(globals::fLODFadeOutMultObjects);
         logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);
      

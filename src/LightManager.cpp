@@ -3,6 +3,9 @@
 #include "config.hpp"
 #include "ClibUtil/EditorID.hpp"
 #include "LightAttachmentHooks.h"
+#include <chrono>
+
+
 
 //ATTACH LIGHTS AT CORRECT MESH INDEX, USEFULL FOR TORCHES WHERE LIGHT MUST BE INSERTED TO SPECIFIC SPOT
 void LightManager::attachLightUsingAttachPath(
@@ -76,33 +79,34 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		logger::warn("no BSLight {} created for ref {:08X}", niPointLight->name.c_str(), a_this->GetFormID());
 		return;
 	}
+	
+	uint32_t mask = cfg.flags; 
 
-	//tag so we can find with low overhead in shader hooks
-	if (cfg.menuName == "Chandelier") {
-		bsLight->unk060 = 1;
-		return;
+	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
+		bsLight->unk060 = 1; 
 	}
 
-	// TODO:: exclude candlebras 
-	if (cfg.menuName.contains("Candle")) {
+	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
 		bsLight->unk060 = 2;
 	}
 
-	// TODO:: exclude candlebras 
-	if (cfg.menuName.contains("Fire")) {
+	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
 		bsLight->unk060 = 3;
 	}
 }
 
 bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
 
-	if (LightData::meshPathToJsonCfg.empty() || LightData::meshPathToJsonCfgExteriors.empty()) return false;
+	if (LightData::meshPathToJsonCfg.empty() && LightData::meshPathToJsonCfgExteriors.empty()) return false;
 
 	const auto baseObject = a_this->GetBaseObject();
 	if (!baseObject) return true;
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return true;
+
 	 auto currentModel = std::string(bm->GetModel());
+
+	 auto meshName = extractMeshName(currentModel); 
 
 	auto cell = a_this->GetParentCell();
 
@@ -113,31 +117,31 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 
 	bool isInterior = cell->IsInteriorCell();
 
-	auto cfgs = findConfigsForMeshPath(currentModel, isInterior);
+	auto cfgs = findConfigsForMeshPath(meshName, isInterior);
+
+	if (cfgs.empty()) return false; 
 
 	const auto refFormID = a_this->GetFormID();
 	const auto baseFormID = baseObject->GetFormID();
 	globals::baseFormsWithAttachedLights.emplace(baseFormID);
-	logger::debug("file path match found: {}", currentModel);
+
+	logger::debug("file path match found: {}", meshName);
 
 	auto ui = RE::UI::GetSingleton();
 	if (ui && ui->IsMenuOpen("InventoryMenu")) {
 		return true;
 	}
 
-	auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
+	auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
 	if (!cloneLight) {
 		logger::warn("Failed to clone NiPointLight for ref {:08X} with mesh '{}' )", refFormID, currentModel);
 		return false;
 	}
 
 	for (auto& cfg : cfgs) {
-		if (!cfg.shadowLight) {
-			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeSeekingDistance);
-		}
-		else {
-			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::shadowLightMergeDistance);
-		}
+		
+		LightManager::fillPendingMerges(a_this, cloneLight, cfg, a_root);
+		
 	}
 	return true;
 }
@@ -152,25 +156,25 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 	 //TODO:: this only works if the node name in the json config is labled exactly as matched below. 
 	 // should probly cover cases where the user changed the node name from chandel to something else 
 	 static const std::unordered_map<std::string, std::string> dummyMeshPaths = {
-	 { "Clutter\\Ruins\\RuinsFloorCandleLampMidOn.nif", "ruinsfloorcandlelampmidon" },
-	 { "Clutter\\Ruins\\RuinsFloorCandleLampMidOn02.nif", "ruinsfloorcandlelampmidon" },
-	 { "Clutter\\Ruins\\RuinsFloorCandleLampSmOn.nif", "ruinsfloorcandlelampsmon" },
-	 { "Clutter\\Ruins\\RuinsFloorCandleLampSmOn02.nif", "ruinsfloorcandlelampsmon" },
+	 { "RuinsFloorCandleLampMidOn", "ruinsfloorcandlelampmidon" },
+	 { "RuinsFloorCandleLampMidOn02", "ruinsfloorcandlelampmidon" },
+	 { "RuinsFloorCandleLampSmOn", "ruinsfloorcandlelampsmon" },
+	 { "RuinsFloorCandleLampSmOn02", "ruinsfloorcandlelampsmon" },
 
-	 { "Clutter\\Imperial\\ImpChandellierCandle01.nif", "chandel" },
-	 { "Clutter\\Imperial\\ImpChandellierCandle01USKP.nif", "chandel" },
+	 { "ImpChandellierCandle01", "chandel" },
+	 { "ImpChandellierCandle01USKP", "chandel" },
 
-	 { "Clutter\\Common\\CandleLanternwithCandle01.nif", "candle" },
+	 { "CandleLanternwithCandle01", "candle" },
 
-	 { "DynDOLOD\\LOD\\Clutter\\CandleLanternHandleDown_DynDOLOD_LOD.nif", "candle" },
-	 { "DynDOLOD\\LOD\\Clutter\\CandleLanternwithCandle01_DynDOLOD_LOD.nif", "candle" },
+	 { "CandleLanternHandleDown_DynDOLOD_LOD", "candle" },
+	 { "CandleLanternwithCandle01_DynDOLOD_LOD.", "candle" },
 
-	 { "DynDOLOD\\LOD\\Clutter\\ImpChandellierCandle01_DynDOLOD_LOD.nif", "chandel" },
+	 { "ImpChandellierCandle01_DynDOLOD_LOD", "chandel" },
 
-	 { "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampMidOn_DynDOLOD_LOD.nif", "ruinsfloorcandlelampmidon" },
-	 { "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampMidOn02_DynDOLOD_LOD.nif", "ruinsfloorcandlelampmidon" },
-	 { "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampSmOn_DynDOLOD_LOD.nif", "ruinsfloorcandlelampsmon" },
-	 { "DynDOLOD\\LOD\\Clutter\\RuinsFloorCandleLampSmOn02_DynDOLOD_LOD.nif", "ruinsfloorcandlelampsmon" },
+	 { "RuinsFloorCandleLampSmOn_DynDOLOD_LOD", "ruinsfloorcandlelampsmon" },
+	 { "RuinsFloorCandleLampMidOn_DynDOLOD_LOD", "ruinsfloorcandlelampmidon" },
+	 { "RuinsFloorCandleLampMidOn02_DynDOLOD_LOD", "ruinsfloorcandlelampmidon" },
+	 { "RuinsFloorCandleLampSmOn02_DynDOLOD_LOD", "ruinsfloorcandlelampsmon" },
 	 };
 
 	 auto baseObject = a_this->GetBaseObject();
@@ -186,9 +190,11 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 
 	 if (!currentModel) return false; 
 
-	 logger::debug("dummy found, Model = {}", currentModel);
+	 const auto modelName = extractMeshName(bm->GetModel());
 
-	 auto it = dummyMeshPaths.find(currentModel);
+	 logger::debug("dummy found, Model = {}", modelName);
+
+	 auto it = dummyMeshPaths.find(modelName);
 	 if (it != dummyMeshPaths.end()) {
 
 		 auto refFormID = a_this->GetFormID();
@@ -213,20 +219,14 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 
 		 LightConfig cfg = cfgs[0];
 
-		 auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
+		 auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
 
 		 if (!cloneLight) {
 			 logger::warn("Failed to clone NiPointLight for node '{}', for ref{:08X})", nodeName, refFormID);
 			 return true;
 		 }
 
-		 if (!cfg.shadowLight) {
-			 LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeSeekingDistance);
-		 }
-
-		 else {
-			 LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::shadowLightMergeDistance);
-		 }
+			 LightManager::fillPendingMerges(a_this, cloneLight, cfg, a_root);
 
 		 logger::debug("dummy node {} with model {} found for ref {:08X} and got light from config: {}", nodeName.c_str(), currentModel, refFormID, cfg.nodeName);
 		 return true;
@@ -277,22 +277,17 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 	//TODO:: what happens if you have a multi light that wants to merge? 
 	for (auto& cfg : cfgs) {
 
-		auto cloneLight = cloneNiPointLight(PointLight::getMasterPointLight().node.get());
+		auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
 
 		if (!cloneLight) {
 			logger::warn("Failed to clone NiPointLight for node '{}' for ref {:08X})", matchStr, refFormID);
 			continue;
 		}
 
-		
-/// we merge lights because 2 fxfirewithembers are usually stacked on top of each other, without this double shadow lights (not good)
-		if (!cfg.shadowLight) {
-			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::lightMergeSeekingDistance);
-		}
+		/// we merge lights because 2 fxfirewithembers are usually stacked on top of each other, without this double shadow lights (not good)
+
+		LightManager::fillPendingMerges(a_this, cloneLight, cfg, a_root);
 	
-		else {
-			LightManager::attachOrMergeLight(a_this, cloneLight, cfg, a_root, globals::shadowLightMergeDistance);
-		}
 	}
 }
 
@@ -300,7 +295,8 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent* event,
 	RE::BSTEventSource<RE::BGSActorCellEvent>*) {
 
-	if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
+	
+if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		return RE::BSEventNotifyControl::kContinue;
 	}
 
@@ -327,18 +323,25 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 		logger::info("player is in interior on startup: {}", globals::currentCellIsInterior);
 		globals::lastCellWasInterior = cell->IsInteriorCell();
 
-		//	std::scoped_lock refsLock(globals::refsWithAttachedLightsMutex);
+	         // clear so ref can be reprocessed again. for mods like dynamic candles
 			globals::refsWithAttachedLights.clear();
 		
-			//std::scoped_lock mergedLock(globals::mergedRefsMutex);
+			// clear so ref can be reprocessed again. for mods like dynamic candles
 			globals::mergedRefs.clear();
 		
+			globals::cellFullyLoaded = true;
+
 		return RE::BSEventNotifyControl::kContinue;
 	}
 
 	// player changes from interor to exterior or vice versa, must reinitialize lights
 	if (globals::lastCellWasInterior !=	globals::currentCellIsInterior ) {
 		
+		// stop islightaffectingsurface hook
+	//	globals::cellFullyLoaded= false;
+
+		//logger::debug(" new cell detected.. islightaffectingsurface hook stopped");
+
 		//reset wall meshes gathered when going outside since light flicker prevention is not enabled ine exteriors
 		if (cell->IsExteriorCell()) globals::wallMeshes.clear();
 
@@ -347,6 +350,11 @@ RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent*
 
 	// player changes from interor to another interior, must reinitialize otherwise engine cleans the lights
 	if (globals::currentCellIsInterior && globals::lastCellWasInterior) {
+
+		// stop islightaffectingsurface hook
+		//globals::cellFullyLoaded = false; 
+
+		//logger::debug(" new  interior cell detected.. islightaffectingsurface hook stopped");
 
 		LightManager::reinitializeLightsWithinRange(player);
 	}
@@ -422,7 +430,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 							auto it = LightData::configIDToJsonCfg.find(light->GetLightRuntimeData().unk138);
 
 							if (it == LightData::configIDToJsonCfg.end()) {
-								logger::warn("attempted to reinitialize light but its config ID wasent found for ref {:08X} ", ref->GetFormID() );
+								logger::warn("attempted to reinitialize light {} but its config ID {} wasent found for ref {:08X}", name, ref->GetFormID(), light->GetLightRuntimeData().unk138);
 								continue;
 							}
 
@@ -450,7 +458,23 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 									logger::debug("reintializing light {} for ref {:08X} is shadow = {}", light->name, ref->GetFormID(), config.shadowLight);
 
 									auto p = LightData::makeLightParams(config);
-									ssNode->AddLight(light, p);
+									auto reattachedBSLight = ssNode->AddLight(light, p);
+
+									uint32_t mask = config.flags;
+
+									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
+										reattachedBSLight->unk060 = 1;
+										return;
+									}
+
+									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
+										reattachedBSLight->unk060 = 2;
+										return;
+									}
+
+									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
+										reattachedBSLight->unk060 = 3;
+									}
 								}
 
 							//}
@@ -471,24 +495,35 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 	
 	//	std::scoped_lock mergedLock(globals::mergedRefsMutex);
 		globals::mergedRefs.clear();
-	
 }
 
+
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 
-void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
-	RE::NiPointLight* light, const LightConfig& cfg, RE::NiNode* refA_root, const float radius) {
+void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
+	RE::NiPointLight* light, const LightConfig& cfg, RE::NiNode* refA_root) {
 
 	if (!refA || !light) return;
 
+	// attach light to mesh
 	LightManager::attachLightUsingAttachPath(cfg, refA_root, light, refA->GetFormID());
 
-	std::vector<RE::TESObjectREFR*> pendingMerge;
-	int potentialMergeCount = 0;
-	LightConfig winningConfig = cfg;
+	PendingMerge p;
 
-	RE::TES::GetSingleton()->ForEachReferenceInRange(refA, radius, [&](RE::TESObjectREFR* otherRef) {
+	p.winningConfig = cfg; 
+
+	p.light = RE::NiPointer<RE::NiPointLight>(light); 
+
+	p.refA = refA->GetHandle(); 
+
+	int potentialMergeCount = 0;
+
+	 p.refALightName = cfg.nodeName.empty() ? extractMeshName(cfg.meshPath) : cfg.nodeName;
+
+	bool increasedMergeDistance = false;
+
+	RE::TES::GetSingleton()->ForEachReferenceInRange(refA, globals::lightMergeSeekingDistance, [&](RE::TESObjectREFR* otherRef) {
 		if (!otherRef || otherRef == refA) return RE::BSContainer::ForEachResult::kContinue;
-		if (potentialMergeCount >= 9) return RE::BSContainer::ForEachResult::kStop;
+		if (potentialMergeCount >= globals::lightMergeMaxLights) return RE::BSContainer::ForEachResult::kStop;
 
 		const RE::FormID refBFormID = otherRef->GetFormID();
 		auto base = otherRef->GetBaseObject();
@@ -497,71 +532,72 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 
 		std::string otherRefName = extractMeshName(model->GetModel());
 
+		//priority grab bc we do partial searches which can bring up false positive matches
 		std::string otherRefNameMatch = std::string(findPriorityMatch(otherRefName));
 
 		if (!otherRefNameMatch.empty()) {
 
-			std::string refALightName = "";
+			bool looseMatch = false;
 
-			// if node name emtpy check mesh path as a identifier instead
-			cfg.nodeName.empty() ? refALightName = extractMeshName(cfg.meshPath) : refALightName = cfg.nodeName;
+			auto cell = otherRef->GetParentCell();
+			if (!cell) {
+				logger::warn("no cell cant determine if should use exterior or interior configs");
+				return RE::BSContainer::ForEachResult::kContinue;
+			}
 
-			float zDistanceToUse = globals::fMaxZDiffToMerge;
-			bool processingRuinCandle = false;
+			bool isInterior = cell->IsInteriorCell();
+			auto cfgs = findConfigsForNode(otherRefNameMatch, isInterior);
 
-			if (refALightName.contains("candle") || otherRefName.contains("candle")) {
+			if (cfgs.empty()) return RE::BSContainer::ForEachResult::kContinue;
 
-				// ruin candels are aggretious light flickerer casuses and must be merged exxessivly.
-				if (refALightName.contains("ruin") || otherRefName.contains("ruin")) {
-					zDistanceToUse = globals::fMaxZDiffToMergeIncreased;
-					processingRuinCandle = true; 
+			LightConfig otherRefCfg = cfgs[0]; 
+
+			uint32_t refAflags = cfg.flags;
+
+			uint32_t otherRefFlags = otherRefCfg.flags;
+
+			if (refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
+
+				p.refALightName = "candle";
+
+				if (!increasedMergeDistance && (refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance) || otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance))) {
+					increasedMergeDistance = true;
 					logger::debug("increased distance used");
-				}
-
-				if (!refALightName.contains("chande") && !refALightName.contains("bra")) {
-					refALightName = "candle";
 				}
 			}
 
-			bool looseMatch = false;
-		
-			//if ref a model name contains ref b model name or vice versa, they should merge
-				looseMatch = otherRefNameMatch.find(refALightName) != std::string::npos ||
-				refALightName.find(otherRefNameMatch) != std::string::npos;
-
-				logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {}",
-					refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch);
-
+				looseMatch = otherRefNameMatch.find(p.refALightName) != std::string::npos ||
+					p.refALightName.find(otherRefNameMatch) != std::string::npos;
+			
+			//logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {} distance={}",
+			//	refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch, distance);
+			
 			if (looseMatch && !isExclude(otherRefName, refBFormID)) {
-				float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
-				if (zDiff > zDistanceToUse) {
-					logger::debug("refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {}",
-						refA->GetFormID(), refBFormID, zDiff, cfg.nodeName);
-					return RE::BSContainer::ForEachResult::kContinue;
-				}
-
-				auto cell = otherRef->GetParentCell();
-				if (!cell) {
-					logger::warn("no cell cant determine if should use exterior or interior configs");
-					return RE::BSContainer::ForEachResult::kContinue;
-				}
-
-				bool isInterior = cell->IsInteriorCell();
-				auto cfgs = findConfigsForNode(otherRefNameMatch, isInterior);
-
-				if (cfgs.empty()) return RE::BSContainer::ForEachResult::kContinue;
 
 				//the final result of a merged light should  reflect a shadow light if 1 of the emrgies was a shadow light
 				if (!cfg.shadowLight && cfgs[0].shadowLight) {
-					winningConfig = cfgs[0];
+					p.winningConfig = cfgs[0];
 				}
 
-				if (!cfg.shadowLight && !cfgs[0].shadowLight && processingRuinCandle == false) {
-				if (refA->GetDistance(otherRef) > globals::lightMergeDistance)
+				float zDistanceToUse = increasedMergeDistance ? globals::fMaxZDiffToMergeIncreased :  globals::fMaxZDiffToMerge;
+
+				auto distanceToUse = p.winningConfig.shadowLight ? globals::shadowLightMergeDistance : globals::lightMergeDistance;
+
+				// no increased merge distance flag among mergies
+				if (!increasedMergeDistance) {
+
+					if (refA->GetDistance(otherRef) > distanceToUse)
+						return RE::BSContainer::ForEachResult::kContinue;
+				}
+
+				float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
+				if (zDiff > zDistanceToUse) {
+					logger::debug("refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {} ",
+						refA->GetFormID(), refBFormID, zDiff, p.refALightName, otherRefName);
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
 
-				pendingMerge.push_back(otherRef);
+				p.candidateHandles.push_back(otherRef->GetHandle());
 				logger::debug("refA {:08X} and refB {:08X} with matched nodeName {} selected to merge",
 					refA->GetFormID(), refBFormID, cfg.nodeName);
 				potentialMergeCount++;
@@ -571,95 +607,141 @@ void LightManager::attachOrMergeLight(RE::TESObjectREFR* refA,
 		});
 
 	// mark merged refs
-	for (const auto ref : pendingMerge) {
-		if (ref) globals::mergedRefs.insert(ref->GetFormID());
+	for (const RE::ObjectRefHandle handle : p.candidateHandles) {
+		auto ref = handle.get();
+		if (ref) globals::mergedRefs.insert(ref.get()->GetFormID());
 	}
 
-	LightData::setNiPointLightDataFromCfg(refA->GetFormID(), light, winningConfig);
-	light->name = "RL" + cfg.nodeName;
-
-	if (globals::enableDebugLightBulbs) 	AttachDebugMarker(refA_root, light);
-
-	// handle merge positioning
-	if (!pendingMerge.empty()) {
-		// build positions array: refA first, then all merged refs
-		std::vector<RE::NiPoint3> positions;
-		positions.push_back(refA->GetPosition());
-		for (const auto ref : pendingMerge) {
-			positions.push_back(ref->GetPosition());
-		}
-
-		const int mergeCount = static_cast<int>(positions.size()); // includes refA
-
-		// check if any ref is far enough to warrant brightness increase
-		bool increaseBrightness = false;
-		for (size_t i = 1; i < positions.size(); i++) {
-			if (positions[0].GetDistance(positions[i]) > 25.0f) {
-				increaseBrightness = true;
-				break;
-			}
-		}
-
-		//TODO shouldent include fxfirewiwthembers lgos or the wood one
-		if (increaseBrightness) {
-			// scale brightness based on merge count
-			light->fade *= (1.0f + (0.3f * static_cast<float>(mergeCount - 1)));
-			light->radius *= (1.0f + (0.3f * static_cast<float>(mergeCount - 1)));
-		}
-
-		// average X and Y, preserve refA's Z
-		float sumX = 0.0f, sumY = 0.0f;
-		for (const auto& pos : positions) {
-			sumX += pos.x;
-			sumY += pos.y;
-		}
-
-		RE::NiPoint3 worldMid{};
-		worldMid.x = sumX / static_cast<float>(positions.size());
-		worldMid.y = sumY / static_cast<float>(positions.size());
-		worldMid.z = positions[0].z;
-
-		float originalLocalZ = light->local.translate.z;
-
-
-		RE::NiTransform invTransform = refA_root->world.Invert();
-		RE::NiPoint3 localMid = invTransform * worldMid;
-		localMid.z += originalLocalZ;
-
-		logger::debug(
-			"[LightMerge:BEFORE] '{}' merging {} refs\n"
-			"  originalLocalZ {}\n"
-			"  local.translate {}",
-			light->name.c_str(), mergeCount,
-			originalLocalZ,
-			light->local.translate
-		);
-
-		light->local.translate = localMid;
-
-		if (auto* parent = light->parent) {
-			RE::NiUpdateData updateData{};
-			updateData.time = 0.0f;
-			updateData.flags = RE::NiUpdateData::Flag::kDirty;
-			parent->UpdateTransformAndBounds(updateData);
-		}
-
-		logger::debug(
-			"[LightMerge:AFTER] '{}' merged {} refs\n"
-			"  local.translate {}",
-			light->name.c_str(), mergeCount,
-			light->local.translate
-		);
+	if (globals::enableDebugLightBulbs) {
+		AttachDebugMarker(refA_root, light);
 	}
 
-	LightManager::attachNiPointLightToShadowSceneNode(light, winningConfig, refA);
+	if (p.candidateHandles.empty()) {
+		LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig);
+
+		p.light->name = "RL" + p.refALightName;
+		LightManager::attachNiPointLightToShadowSceneNode(p.light.get(), p.winningConfig, refA);
+		return; 
+	}
+
+	LightManager::pendingMerges.push_back(p); 
+
+	p.registeredAt = std::chrono::steady_clock::now();
 }
+
+ void LightManager::finalizeMerge(PendingMerge& p, std::vector<RE::ObjectRefHandle> validMerges) {
+
+	 auto light = p.light.get(); 
+
+	 if (!light) return; 
+
+	 LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig);
+
+	 p.light->name = "RL" + p.refALightName;
+
+	 auto refA = p.refA.get();
+	 if (!refA) return;
+
+	 // no merges so just attach as is
+	 if (validMerges.empty()) {
+		 LightManager::attachNiPointLightToShadowSceneNode(p.light.get(), p.winningConfig, refA.get());
+		 return;
+	 }
+		 // build positions array: refA first, then all merged refs
+		 std::vector<RE::NiPoint3> positions;
+
+		 positions.push_back(refA->GetPosition());
+		 for (const RE::ObjectRefHandle refHandle : validMerges) {
+
+			 auto otherRef = refHandle.get(); 
+
+			 if (!otherRef) continue; 
+			 positions.push_back(otherRef->GetPosition());
+		 }
+
+		 const int mergeCount = static_cast<int>(positions.size());  // includes refA
+
+		 // increasing brightness or radius on meeshes close to each other like fxfirewithemberslgos x fxfirewithembers light 
+		 // makes it difficult to configure those cases for users so we dont increase if distance is small
+		 bool increaseBrightness = false;
+
+		 for (size_t i = 1; i < positions.size(); i++) {
+			 if (positions[0].GetDistance(positions[i]) > 25.0f) {
+				 increaseBrightness = true;
+				 break;
+			 }
+		 }
+
+		 //merge count 3 because pending merges includes ref a and we dont want to increase brightness for merges of only 2 light sources
+		 if (increaseBrightness && mergeCount >= 3) {
+			 float fadeMultiplier = 1.0f + globals::lightFadePerMerge * static_cast<float>(mergeCount - 2);
+			 float radiusMultiplier = 1.0f + globals::lightRadiusPerMerge * static_cast<float>(mergeCount - 2);
+
+			 // clamp to max
+			 fadeMultiplier = std::min(fadeMultiplier, globals::lightFadeMax);
+			 radiusMultiplier = std::min(radiusMultiplier, globals::lightRadiusMax);
+
+			 p.light->fade *= fadeMultiplier;
+			 p.light->radius *= radiusMultiplier;
+		 }
+
+		 // average X and Y, preserve ref A's Z to apply later
+		 float sumX = 0.0f, sumY = 0.0f;
+		 for (const auto& pos : positions) {
+			 sumX += pos.x;
+			 sumY += pos.y;
+		 }
+
+		 RE::NiPoint3 worldMid{};
+		 worldMid.x = sumX / static_cast<float>(positions.size());
+		 worldMid.y = sumY / static_cast<float>(positions.size());
+		 worldMid.z = positions[0].z;
+
+		 float originalLocalZ =p.light->local.translate.z;
+
+		 auto* parent = p.light->parent; 
+
+		 if (!parent) {
+			 logger::warn("light parent was null cant finish merging light"); 
+			 return; 
+		 }
+
+		 RE::NiTransform invTransform = parent->world.Invert();
+		 RE::NiPoint3 localMid = invTransform * worldMid;
+		 localMid.z += originalLocalZ;
+
+		 logger::debug(
+			 "[LightMerge:BEFORE] '{}' merging {} refs\n"
+			 "  originalLocalZ {}\n"
+			 "  local.translate {}",
+			 p.light->name.c_str(), mergeCount,
+			 originalLocalZ,
+			 p.light->local.translate
+		 );
+
+		 p.light->local.translate = localMid;
+
+
+			 RE::NiUpdateData updateData{};
+			 updateData.time = 0.0f;
+			 updateData.flags = RE::NiUpdateData::Flag::kDirty;
+			 parent->UpdateTransformAndBounds(updateData);
+		 
+
+		 logger::debug(
+			 "[LightMerge:AFTER] '{}' merged {} refs\n"
+			 "  local.translate {}",
+			 p.light->name.c_str(), mergeCount,
+			 p.light->local.translate
+		 );
+	 
+
+	 LightManager::attachNiPointLightToShadowSceneNode(p.light.get(), p.winningConfig, refA.get());
+}
+
 
 void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 {
-	/*if (!Settings::GetSingleton()->LoadDebugMarkers()) {
-		return nullptr;
-	}*/
 
 	RE::NiPointer<RE::NiNode>                              loadedModel;
 	constexpr RE::BSModelDB::DBTraits::ArgsType args{};
@@ -681,5 +763,4 @@ void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 		else { logger::debug("clone failed for debug light marker"); }
 
 	}
-
 }

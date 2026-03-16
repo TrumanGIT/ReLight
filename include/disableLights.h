@@ -2,6 +2,7 @@
 
 #include "global.h"
 #include <unordered_set>
+//#include <chrono>
 
 //PO3's hook used to disable all lights tot start wiht a clean base
 struct TESObjectLIGH_GenDynamic {
@@ -21,6 +22,17 @@ struct BSLightingShaderProperty_IsLightAffectingSurface
     static inline REL::Relocation<decltype(thunk)> func;
     static void Install();
 };
+
+// used to take a guesstamite of bsshaderproperty light list size
+/*struct PendingProperty {
+    RE::NiPointer<RE::BSLightingShaderProperty> prop;
+    std::chrono::steady_clock::time_point registeredAt; 
+   // int lightScoreBonus = 0; 
+
+    static std::vector<PendingProperty> list;
+    static std::mutex mutex;
+};*/
+
 
 inline void clearSSNodeLights() {
     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];

@@ -1,6 +1,5 @@
 ﻿
 #include "config.hpp"
-#include "LightData.h"
 #include "global.h"
 #include "LightManager.h"
 #include "utility.h"
@@ -54,21 +53,7 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 		}
 
 		if (data.contains("flags")) {
-			if (data["flags"].is_string()) {
-				std::string flags = data["flags"].get<std::string>();
-				size_t start = 0, end = flags.find(',');
-				while (end != std::string::npos) {
-					config.flags.push_back(flags.substr(start, end - start));
-					start = end + 1;
-					end = flags.find(',', start);
-				}
-				config.flags.push_back(flags.substr(start));
-			}
-			else if (data["flags"].is_array()) {
-				for (auto& f : data["flags"]) {
-					config.flags.push_back(f.get<std::string>());
-				}
-			}
+			config.flags = ParseFlags(data["flags"]);
 		}
 
 		if (data.contains("attachPath") && data["attachPath"].is_array()) {
@@ -139,7 +124,9 @@ bool saveConfiguration(const LightConfig& config) {
 			truncateDecimals(config.position[1], 2),
 			truncateDecimals(config.position[2], 2)
 		};
-		newEntry["flags"] = config.flags;
+
+		newEntry["flags"] = FlagsToJson(config.flags);
+
 		newEntry["attachPath"] = config.attachPath;
 
 		// json index is the pos of json objects in a single json file.
@@ -167,6 +154,44 @@ bool saveConfiguration(const LightConfig& config) {
 	}
 }
 
+inline uint32_t ParseFlags(const nlohmann::json& j)
+{
+	uint32_t mask = 0;
+
+	auto setFlag = [&](const std::string& f)
+		{
+			for (const auto& [flag, name] : LightFlagNames) {
+				if (f == name) {
+					mask |= static_cast<uint32_t>(flag);
+					break;
+				}
+			}
+		};
+
+	if (j.is_string()) {
+		setFlag(j.get<std::string>());
+	}
+	else if (j.is_array()) {
+		for (const auto& v : j) {
+			if (!v.is_string()) continue;
+			setFlag(v.get<std::string>());
+		}
+	}
+
+	return mask;
+}
+
+inline nlohmann::json FlagsToJson(uint32_t mask) {
+	nlohmann::json arr = nlohmann::json::array();
+
+	for (const auto& [flag, name] : LightFlagNames) {
+		if (mask & static_cast<uint32_t>(flag)) {
+			arr.push_back(name);
+		}
+	}
+
+	return arr;
+}
 
 // ini parser already filled the users desired, priority nodes, so these ones have no priority
 // doesnet actually sort file path or node name atm.
@@ -305,13 +330,13 @@ void parseTemplates() {
 					cfg.print(true);
 					LightData::configIDToJsonCfg[cfg.configID] = cfg;
 					LightData::defaultConfigs[cfg.configID] = cfg;
-					LightData::meshPathToJsonCfgExteriors[cfg.nodeName].push_back(cfg);
+					LightData::meshPathToJsonCfgExteriors[cfg.meshPath].push_back(cfg);
 				}
 				else {
 					cfg.print(false);
 					LightData::configIDToJsonCfg[cfg.configID] = cfg;
 					LightData::defaultConfigs[cfg.configID] = cfg;
-					LightData::meshPathToJsonCfg[cfg.nodeName].push_back(cfg);
+					LightData::meshPathToJsonCfg[cfg.meshPath].push_back(cfg);
 				}
 			}
 
@@ -379,7 +404,7 @@ std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool inte
 		return fallbackIt->second;
 	}
 
-	logger::warn("found meshPath '{}' but no config exists", meshPath);
+	//logger::warn("found meshPath '{}' but no config exists", meshPath);
 	return result;
 }
 

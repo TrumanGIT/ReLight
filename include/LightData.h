@@ -8,25 +8,28 @@
 #include <unordered_map>
 #include "logger.hpp"
 #include "ClibUtil/EditorID.hpp"
+#include "global.h"
 #include "config.hpp"
 
-#include "global.h"
-
-struct PointLight
+class NiPointLight
 {
-	RE::NiPointer<RE::NiPointLight> node;
-	PointLight()
+public:
+	RE::NiPointer<RE::NiPointLight> light;
+
+	NiPointLight()
 	{
-		RE::NiPointer<RE::NiPointLight> tmp;
-		tmp.reset(RE::NiPointLight::Create());
+		RE::NiPointLight* tmp = RE::NiPointLight::Create();
 
-		auto* cloned = tmp->Clone();
-		node.reset(netimmerse_cast<RE::NiPointLight*>(cloned));
-	}
+		if (!tmp) {
+			return;
+		}
 
-	static PointLight& getMasterPointLight() {
-		static PointLight pl; 
-		return pl;
+		auto clone = netimmerse_cast<RE::NiPointLight*>(tmp->Clone());
+		if (!clone) {
+			return;
+		}
+
+		light.reset(clone);
 	}
 };
 
@@ -52,6 +55,8 @@ struct Overlay
 
 struct LightData {
 
+	static NiPointLight masterNiPointLight;
+
 	static std::map<uint32_t, LightConfig> configIDToJsonCfg;
 
 	static std::unordered_map<std::string, std::vector<LightConfig>> nodeNameToJsonCfg;
@@ -68,7 +73,7 @@ struct LightData {
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
 
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightDataFromCfg(const RE::FormID formID, RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg);
 	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
 	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg);

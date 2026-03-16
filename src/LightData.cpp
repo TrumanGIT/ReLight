@@ -9,6 +9,8 @@
 #include <vector>
 #include  "Utility.h"
 
+NiPointLight LightData::masterNiPointLight;
+
 // (config to json id is for faster lookups then strings, used in flicker logic)
 std::map<uint32_t, LightConfig> LightData::configIDToJsonCfg;
 
@@ -102,7 +104,7 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 	}
 }
 
-void LightData::setNiPointLightDataFromCfg(const RE::FormID formID,  RE::NiLight* niPointLight, const LightConfig& cfg) {
+void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.nodeName);
 		return;

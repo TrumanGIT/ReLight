@@ -17,7 +17,7 @@ __int64 BSShaderPropertyLightData_AttachLight::thunk(RE::BSShaderPropertyLightDa
 void BSShaderPropertyLightData_AttachLight::Install() {
     REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(100990, 107777) };
 
-    auto& trampoline = SKSE::GetTrampoline();
+    //diauto& trampoline = SKSE::GetTrampoline();
     hook_function_prologue<BSShaderPropertyLightData_AttachLight, 5>(target.address());
 
 }

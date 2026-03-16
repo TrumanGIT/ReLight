@@ -20,11 +20,17 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	auto& ssRt = ssNode->GetRuntimeData();
 
-	auto playerPos = player->GetPosition(); 
+	//auto playerPos = player->GetPosition(); 
 
 	ApplyLightFlicker(ssRt.activeLights, delta);
 
 	ApplyLightFlicker(ssRt.activeShadowLights, delta);
+
+	// check stored bs shader properties have created there light list yet and tag their 
+	//forced darkness field with a static # of a guesstamite of their light size. 
+	 
+	//is this cell fully laoded check that runs once enough to postpone until later? 
+	if (globals::cellFullyLoaded) handlePendingMerges();
 
 }
 

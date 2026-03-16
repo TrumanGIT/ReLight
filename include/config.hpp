@@ -44,6 +44,21 @@ F(cutoffOverride , 0.5f) \
 #define BOOL2PRINT(C, I) logger::info(" {:30s} : {:s}", #C, C ? "true" : "false");
 #define FLOAT2PRINT(C, I) logger::info(" {:30s} : {:.2f}", #C, C);
 
+enum class LIGHT_FLAGS : uint32_t
+{
+    kCandle = 1 << 0,
+    kChandelier = 1 << 1,
+    kFire = 1 << 2,
+    kIncreasedMergeDistance = 1 << 3
+};
+
+inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
+    { LIGHT_FLAGS::kFire, "Fire" },
+    { LIGHT_FLAGS::kCandle, "Candle" },
+    { LIGHT_FLAGS::kChandelier, "Chandelier" },
+    { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" }
+};
+
 struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
@@ -53,10 +68,24 @@ struct LightConfig {
     std::string menuName{};
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
-    std::vector<std::string> flags{};             // not used but could be for linear lighting.
+    uint32_t flags{ 0 };
     std::vector<int> attachPath;
-    uint32_t configID;
-    uint16_t jsonIndex; 
+    uint32_t configID = 0;
+    uint16_t jsonIndex = 0;
+
+    inline void printFlags(uint32_t mask)
+    {
+        if (!mask) {
+            logger::info("  <none>");
+            return;
+        }
+
+        for (const auto& [flag, name] : LightFlagNames) {
+            if (mask & static_cast<uint32_t>(flag)) {
+                logger::info("  {}", name);
+            }
+        }
+    }
 
     void print(bool exterior) {
         if (exterior) logger::info("loading exterior config:");
@@ -70,9 +99,7 @@ struct LightConfig {
         logger::info(" config ID: {}", configID);
         logger::info(" json Index: {}", jsonIndex);
         logger::info(" flags    :");
-        for (const auto& f : flags) {
-            logger::info("  {}", f);
-        }
+        printFlags(flags);
 
         logger::info(" attachPath    :");
         for (const auto& i : attachPath) {
@@ -141,6 +168,10 @@ inline std::vector<std::string> GetConfigPaths() {
 
     return paths;
 }
+
+uint32_t ParseFlags(const nlohmann::json& j);
+
+nlohmann::json FlagsToJson(uint32_t mask);
 
 bool loadConfiguration(LightConfig& config, const nlohmann::json& data);
 

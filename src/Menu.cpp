@@ -55,9 +55,16 @@ namespace UI {
             ImGuiMCP::SetTooltip("sets global bounding boxes on light reach, 2 chandeliers per tri shape max");
         }
 
+
+        /*int tmp = static_cast<int>(globals::flickerPreventionLightLimit);
+        if (ImGuiMCP::SliderInt("Surface Lights to prevent flicker", &tmp, 0, 17)) {
+            globals::flickerPreventionLightLimit = static_cast<uint32_t>(tmp);
+        }*/
+
+   
         ImGuiMCP::Spacing();
 
-        if (ImGuiMCP::BeginChild("Light Bounds", ImGuiMCP::ImVec2(0, 250), true,
+        if (ImGuiMCP::BeginChild("Light Bounds", ImGuiMCP::ImVec2(0, 300), true,
             ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
         {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
@@ -76,11 +83,11 @@ namespace UI {
 
             ImGuiMCP::Spacing();
 
-            ImGuiMCP::SliderFloat("Candle reach on tri shape##1", &globals::gMinCandleCoverage, 0.0f, 1000.0f);
-            ImGuiMCP::SliderFloat("Candle reach on small tri shape##1", &globals::gMinCandleCoverageSM, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Candle reach on tri shape##1", &globals::minCandleCoverage, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Candle reach on small tri shape##1", &globals::minCandleCoverageSM, 0.0f, 1000.0f);
             ImGuiMCP::SliderFloat("Candle reach on wall##1", &globals::minCandleCoverageWall, 0.0f, 1000.0f);
-            ImGuiMCP::SliderFloat("Fire reach on tri shape##1", &globals::gMinFireCoverage, 0.0f, 1000.0f);
-            ImGuiMCP::SliderFloat("Fire reach on wall##1", &globals::gMinFireCoverageWall, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Fire reach on tri shape##1", &globals::minFireCoverage, 0.0f, 1000.0f);
+            ImGuiMCP::SliderFloat("Fire reach on wall##1", &globals::minFireCoverageWall, 0.0f, 1000.0f);
             ImGuiMCP::PopItemWidth();
             ImGuiMCP::NextColumn();
             ImGuiMCP::PushItemWidth(colWidth);      
@@ -89,7 +96,7 @@ namespace UI {
             if (ImGuiMCP::IsItemHovered())
                 ImGuiMCP::SetTooltip("Some walls like farmintinnwall are huge and don't need strict bounds");
 
-            ImGuiMCP::SliderFloat("chandelier reach on tri shape##2", &globals::gMinChandelierCoverage, 0.0f, 2000.0f);
+            ImGuiMCP::SliderFloat("chandelier reach on tri shape##2", &globals::minChandelierCoverage, 0.0f, 2000.0f);
 
             ImGuiMCP::SliderFloat("global reach on tri shape##2", &globals::globalCoverage, 0.0f, 2000.0f);
 
@@ -100,7 +107,7 @@ namespace UI {
     
         ImGuiMCP::Spacing();
 
-        if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 188), true,
+        if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 325), true,
             ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
         {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
@@ -108,26 +115,69 @@ namespace UI {
             ImGuiMCP::Text("Light Merge");
             ImGuiMCP::PopStyleColor();
 
-            ImGuiMCP::SliderFloat("Max Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
+            ImGuiMCP::ImVec2 avail{};
+            ImGuiMCP::GetContentRegionAvail(&avail);
 
-            ImGuiMCP::SliderFloat("Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
+            ImGuiMCP::Columns(2, "Bound", false);
+            ImGuiMCP::SetColumnWidth(0, avail.x * 0.5f);
+            ImGuiMCP::SetColumnWidth(1, avail.x * 0.5f);
+
+            float colWidth = avail.x * 0.25f;
+            ImGuiMCP::PushItemWidth(colWidth);
+
+            ImGuiMCP::SliderFloat("Max Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
+
+            ImGuiMCP::SliderFloat("Extended X distance allowed to merge", &globals::fMaxZDiffToMergeIncreased, 0, 300);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Used for ruin candles, as they need aggressive merging.");
+            }
 
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Sets max distance refs must be apart for them to merge into 1 light.");
             }
 
+            ImGuiMCP::SliderFloat("Max Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
+
             ImGuiMCP::SliderFloat("Increased Z distance of refs to light merge", &globals::fMaxZDiffToMergeIncreased, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("increased refs must be apart for them to merge into 1 light.");
+                ImGuiMCP::SetTooltip("Used for ruin candles");
             }
 
-            ImGuiMCP::SliderFloat("Sets max distance to merge shadow light", &globals::shadowLightMergeDistance, 0, 300);
+            ImGuiMCP::NextColumn(); 
+            ImGuiMCP::PushItemWidth(colWidth);
+
+            ImGuiMCP::SliderFloat("Fade Boost per Merge", &globals::lightFadePerMerge, 0.0f, 1.0f);
+            if (ImGuiMCP::IsItemHovered())
+                ImGuiMCP::SetTooltip("Increase in fade per additional merged light.");
+
+            ImGuiMCP::SliderFloat("Radius Boost per Merge", &globals::lightRadiusPerMerge, 0.0f, 1.0f);
+            if (ImGuiMCP::IsItemHovered())
+                ImGuiMCP::SetTooltip("Increase in radius per additional merged light.");
+
+            ImGuiMCP::SliderFloat("Max Fade Multiplier", &globals::lightFadeMax, 1.0f, 5.0f);
+            if (ImGuiMCP::IsItemHovered())
+                ImGuiMCP::SetTooltip("Max fade mult after merging.");
+
+            ImGuiMCP::SliderFloat("Max Radius Multiplier", &globals::lightRadiusMax, 1.0f, 5.0f);
+            if (ImGuiMCP::IsItemHovered())
+                ImGuiMCP::SetTooltip("Max radius mult after merging.");
+
+            ImGuiMCP::SliderFloat("Max distance to merge shadow light", &globals::shadowLightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Sets distance of refs to shadow light merge. (Don't turn off)");
+                ImGuiMCP::SetTooltip("Dont turn this down");
             }
 
+            ImGuiMCP::SliderInt("Max lights to merge", &globals::lightMergeMaxLights, 0, 25);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("will merge no more then this amount of lights during 1 merge");
+            }
+            
+           
+            ImGuiMCP::PopItemWidth(); 
         }
 
         ImGuiMCP::EndChild();
@@ -733,6 +783,7 @@ namespace UI {
                     ImGuiMCP::Separator();
 
                     ImGuiMCP::BeginDisabled(isTorch);
+
                     if (ImGuiMCP::SliderFloat3(
                         "Position",
                         &selectedLight->light->local.translate.x,

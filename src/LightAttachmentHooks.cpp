@@ -94,7 +94,7 @@ void AddonNodes::thunk(
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
 		 
 	    // slot 9 == torch
-        if (a_slot == 9) {
+	if (a_slot == 9 && globals::cellFullyLoaded) {
 
             SKSE::GetTaskInterface()->AddTask([a_actor]() {
                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -144,8 +144,7 @@ void AddonNodes::thunk(
 					light->name = "RL" + torchName;
 					light->unk138 = cfg.configID;
 
-					RE::FormID formID = 0x0;
-					LightData::setNiPointLightDataFromCfg(formID, light, cfg);
+					LightData::setNiPointLightDataFromCfg(light, cfg);
 
 					logger::debug("Applied torch light data");
                 }
@@ -157,10 +156,10 @@ void AddonNodes::thunk(
 void AddonNodes::Install()
 {
 	std::array targets{
-	/*	std::make_pair(
+		std::make_pair(
 			RELOCATION_ID(15501, 15678),       
 			REL::VariantOffset{ 0xCBF, 0x811, 0 } 
-		), */
+		), 
 
 			std::make_pair(
 			RELOCATION_ID(15524, 15701),
