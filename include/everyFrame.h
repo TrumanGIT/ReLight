@@ -70,7 +70,7 @@ inline void handlePendingMerges() {
             [&](LightManager::PendingMerge& entry) {
 
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - entry.registeredAt).count();
-                if (elapsed < 500) return false;
+                if (elapsed < 250) return false;
 
                 auto refA = entry.refA.get();
                 if (!refA) return true;

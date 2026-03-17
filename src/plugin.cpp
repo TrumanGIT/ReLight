@@ -44,7 +44,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         TESObjectLIGH_GenDynamic::Install();
         Load3D::Install();
         PlayerCharacter_Update::Install();
-        //AddonNodes::Install();
+        AddonNodes::Install();
         BSLightingShaderProperty_IsLightAffectingSurface::Install();
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();

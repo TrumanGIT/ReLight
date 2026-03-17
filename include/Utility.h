@@ -571,5 +571,10 @@ inline void ResetTriLightCache()
 			entry.lightShaderProp->forcedDarkness = 0.0f;
 
 	LightData::triLightCache.clear();
-	globals::cellFullyLoaded = true;
+
+
+//	SKSE::GetTaskInterface()->AddTask([]()
+	//	{
+			globals::cellFullyLoaded = true;
+		//});
 }

@@ -71,7 +71,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     RE::BSLightingShaderProperty* p,
     RE::BSLight* light)
 {
-    if (!p || !light) return false;
+    if (!p || !light || !light->light) return false;
 
     // vanilla logic
     if (!light->affectLand)
@@ -86,20 +86,29 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
    
     if (!globals::cellFullyLoaded || !globals::enableLightFlickerPreventionMeasures) return true;
 
+    auto pass = p->renderPassList.head;
+    if (!pass || !pass->geometry) return false;
+
+    if (pass->geometry->worldBound.radius > 2000) {
+
+        if (light->light->radius.x < 1000) {
+            const float dist = pass->geometry->worldBound.center.GetDistance(light->light->world.translate);
+
+            if (dist > globals::globalCoverage)
+                return false;
+        }
+        return true; 
+    }
+
     if (p->forcedDarkness == 0.0f)
     {
-        auto* pass = p->renderPassList.head;
-        if (!pass || !pass->geometry)
-            return true;
-
         LightData::TriLightCache entry{};
         entry.lightShaderProp = RE::NiPointer<RE::BSLightingShaderProperty>(p);
 
-        ComputeClosestLights(entry.lights, p);
-
+   
         {
             std::lock_guard lock(LightData::triLightCacheMutex);
-
+            ComputeClosestLights(entry.lights, p);
             uint32_t index = static_cast<uint32_t>(LightData::triLightCache.size());
             LightData::triLightCache.push_back(entry);
 
@@ -107,22 +116,24 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         }
     }
 
-    auto pass = p->renderPassList.head;
-    if (!pass || !pass->geometry) return false;
+    //torch (can shine at any time shouldent be blocked
+    if (light->unk060 == 4) return true; 
 
     float fd = p->forcedDarkness;
-    if (fd < 1.0f)
+    if (!std::isfinite(fd) || fd < 1.0f)
         return true;
-
     std::lock_guard lock(LightData::triLightCacheMutex);
-
     if (fd > static_cast<float>(LightData::triLightCache.size()))
     {
         p->forcedDarkness = 0.0f;
         return true;
     }
-
     uint32_t idx = static_cast<uint32_t>(fd);
+    if (idx == 0 || idx > LightData::triLightCache.size())
+    {
+        p->forcedDarkness = 0.0f;
+        return true;
+    }
     auto& cache = LightData::triLightCache[idx - 1];
 
 #pragma unroll

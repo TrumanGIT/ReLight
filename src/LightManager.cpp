@@ -326,7 +326,7 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		
 			// clear so ref can be reprocessed again. for mods like dynamic candles
 			globals::mergedRefs.clear();
-		
+
 			globals::cellFullyLoaded = true;
 
 		return RE::BSEventNotifyControl::kContinue;
@@ -340,7 +340,7 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		logger::debug(" new cell detected.. islightaffectingsurface hook stopped");
 
 		//reset wall meshes gathered when going outside since light flicker prevention is not enabled ine exteriors
-		if (cell->IsExteriorCell()) globals::wallMeshes.clear();
+		//if (cell->IsExteriorCell()) globals::wallMeshes.clear();
 
 		LightManager::reinitializeLightsWithinRange(player); 
 
@@ -542,6 +542,8 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		if (!otherRefNameMatch.empty()) {
 
+			 if (isExclude(otherRefName, refBFormID)) return RE::BSContainer::ForEachResult::kContinue;
+
 			bool looseMatch = false;
 
 			auto cell = otherRef->GetParentCell();
@@ -577,7 +579,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 			//logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {} distance={}",
 			//	refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch, distance);
 			
-			if (looseMatch && !isExclude(otherRefName, refBFormID)) {
+			if (looseMatch) {
 
 				//the final result of a merged light should  reflect a shadow light if 1 of the emrgies was a shadow light
 				if (!cfg.shadowLight && cfgs[0].shadowLight) {
@@ -585,8 +587,16 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 				}
 
 				float zDistanceToUse = increasedMergeDistance ? globals::fMaxZDiffToMergeIncreased :  globals::fMaxZDiffToMerge;
+				
+	
 
 				auto distanceToUse = p.winningConfig.shadowLight ? globals::shadowLightMergeDistance : globals::lightMergeDistance;
+
+				uint32_t mask = cfg.flags;
+
+				if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kTorchWall)) {
+					increasedMergeDistance = true;
+				}
 
 				// no increased merge distance flag among mergies
 				if (!increasedMergeDistance) {

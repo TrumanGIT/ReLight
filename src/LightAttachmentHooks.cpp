@@ -36,7 +36,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-	if (a_root->name.contains("Wal") && a_root->userData)
+	/*if (a_root->name.contains("Wal") && a_root->userData)
 	{
 		auto boundObjectRef = a_root->userData->data.objectReference;
 		if (boundObjectRef) {
@@ -44,7 +44,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 			globals::wallMeshes.emplace(boundObjectFormID);
 			logger::debug("wall mesh found, adding boundObject form ID {:08X} to wallMeshes set", boundObjectFormID);
 		}
-	}
+	}*/
 
 	if (LightManager::processByFilePath(a_this, a_root)) {
 		return niAVObject;
@@ -146,6 +146,8 @@ void AddonNodes::thunk(
 
 					LightData::setNiPointLightDataFromCfg(light, cfg);
 
+					lightEntry->unk060 = 4; 
+
 					logger::debug("Applied torch light data");
                 }
             });
@@ -158,7 +160,7 @@ void AddonNodes::Install()
 	std::array targets{
 		std::make_pair(
 			RELOCATION_ID(15501, 15678),       
-			REL::VariantOffset{ 0xCBF, 0x811, 0 } 
+			REL::VariantOffset{ 0xCBF, 0x617, 0 } 
 		), 
 
 			std::make_pair(

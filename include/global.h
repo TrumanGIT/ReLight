@@ -32,9 +32,15 @@ namespace globals
 
     inline int lightMergeMaxLights = 10;
 
-    inline float lightMergeSeekingDistance = 225;
+    inline float lightMergeSeekingDistance = 224;
 
     inline float lightMergeDistance = 147;
+
+    inline float fMaxZDiffToMergeIncreased = 160.70f;
+
+    inline float shadowLightMergeDistance = 162;
+
+    inline float fMaxZDiffToMerge = 28.70f;
 
     inline float lightFadePerMerge = 0.3f;   
 
@@ -43,12 +49,7 @@ namespace globals
     inline float lightFadeMax = 2.0f;    // maximum total fade multiplier
     inline float lightRadiusMax = 2.0f;  // maximum total radius multiplier
 
-    //used when detecs a ruin candle
-    inline float fMaxZDiffToMergeIncreased = 160.70f;
-
-    inline float shadowLightMergeDistance = 162;
-
-    inline float fMaxZDiffToMerge = 28.70f;
+    // flicker prevention
 
     // Candle Bounds
     inline float minCandleCoverage = 430;
@@ -67,10 +68,7 @@ namespace globals
 
     inline float maxShadowCompeteDistance = 314;
 
-    inline float globalCoverage = 646;
-
-    // larger walls shouldent have such strict bounds or no lights
-    inline float maxWallSizeForStrictLightBounds = 325;
+    inline float globalCoverage = 850;
 
     // used to reinitialize lights based on this distance as we put lights into object geomatry
     inline float fLODFadeOutMultObjects = 9000;
@@ -99,7 +97,7 @@ namespace globals
     inline std::unordered_set<RE::FormID> mergedRefs{};
 
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
-    inline std::unordered_set<RE::FormID> wallMeshes{};
+   // inline std::unordered_set<RE::FormID> wallMeshes{};
 
     inline const std::vector<std::vector<std::string_view>> keywordLightGroups = {
         { "sun"},

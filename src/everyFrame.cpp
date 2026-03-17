@@ -7,12 +7,14 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	func(player, delta);
 
-	if (!globals::cellFullyLoaded) return;
-
 	if (!player) {
 		logger::warn("player is null cant check cell");
 		return;
 	}
+
+	handlePendingMerges();
+
+	if (!globals::cellFullyLoaded) return;
 
 	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 	if (!ssNode) {
@@ -23,8 +25,6 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 	auto& ssRt = ssNode->GetRuntimeData();
 
 	//auto playerPos = player->GetPosition(); 
-
-	handlePendingMerges();
 
 	ApplyLightFlicker(ssRt.activeLights, delta);
 
