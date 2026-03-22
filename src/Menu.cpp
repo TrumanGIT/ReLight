@@ -40,6 +40,7 @@ namespace UI {
     }
 
     void __stdcall RenderTestingMenu() {
+
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
         FontAwesome::PushSolid();
@@ -47,61 +48,36 @@ namespace UI {
         ImGuiMCP::Text("Light Flicker Prevention");
         ImGuiMCP::PopStyleColor();
 
+        ImGuiMCP::SameLine();
+
+        bool saveINIClicked = ImGuiMCP::Button("Save INI");
+
+        ImGuiMCP::ImVec2 rectMax;
+        ImGuiMCP::GetItemRectMax(&rectMax);
+        ImGuiMCP::ImVec2 rectMin;
+        ImGuiMCP::GetItemRectMin(&rectMin);
+        ImGuiMCP::ImVec2 winPos;
+        ImGuiMCP::GetWindowPos(&winPos);
+
+        float iconX = (rectMax.x - winPos.x) + 10.0f;
+        float iconY = (rectMin.y - winPos.y) + 4.0f;
+        if (saveINIClicked) {
+            bool ok = false;
+            saveINIButton.set(buttonState::Working);
+            ok = saveSettingsToIni();
+            saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
+        }
+        renderDone(saveINIButton, iconX, iconY);
+
         ImGuiMCP::Spacing();
 
-        if (ImGuiMCP::Checkbox("enable Light flicker Preventin Measures", &globals::enableLightFlickerPreventionMeasures)) {
+        if (ImGuiMCP::Checkbox("Enable Light flicker prevention", &globals::enableLightFlickerPreventionMeasures)) {
         }
 
         if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("sets global bounding boxes on light reach, 2 chandeliers per tri shape max");
+            ImGuiMCP::SetTooltip("Only the 7 closest lights can affect a surface");
         }
-
-
-        /*int tmp = static_cast<int>(globals::flickerPreventionLightLimit);
-        if (ImGuiMCP::SliderInt("Surface Lights to prevent flicker", &tmp, 0, 17)) {
-            globals::flickerPreventionLightLimit = static_cast<uint32_t>(tmp);
-        }*/
-
-   
-        ImGuiMCP::Spacing();
-
-        if (ImGuiMCP::BeginChild("Light Bounds", ImGuiMCP::ImVec2(0, 300), true,
-            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-        {
-            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-            ImGuiMCP::Text("Light reach bounds");
-            ImGuiMCP::PopStyleColor();
-
-            ImGuiMCP::ImVec2 avail{};
-            ImGuiMCP::GetContentRegionAvail(&avail);
-
-            ImGuiMCP::Columns(2, "Bound", false);
-            ImGuiMCP::SetColumnWidth(0, avail.x * 0.5f);   
-            ImGuiMCP::SetColumnWidth(1, avail.x * 0.5f);
-
-            float colWidth = avail.x * 0.25f;         
-            ImGuiMCP::PushItemWidth(colWidth);
-
-            ImGuiMCP::Spacing();
-
-            ImGuiMCP::SliderFloat("Candle reach on tri shape##1", &globals::minCandleCoverage, 0.0f, 1000.0f);
-            ImGuiMCP::SliderFloat("Candle reach on small tri shape##1", &globals::minCandleCoverageSM, 0.0f, 1000.0f);
-            ImGuiMCP::SliderFloat("Candle reach on wall##1", &globals::minCandleCoverageWall, 0.0f, 1000.0f);
-            ImGuiMCP::SliderFloat("Fire reach on tri shape##1", &globals::minFireCoverage, 0.0f, 1000.0f);
-            ImGuiMCP::SliderFloat("Fire reach on wall##1", &globals::minFireCoverageWall, 0.0f, 1000.0f);
-            ImGuiMCP::PopItemWidth();
-            ImGuiMCP::NextColumn();
-            ImGuiMCP::PushItemWidth(colWidth);      
-
-            ImGuiMCP::SliderFloat("chandelier reach on tri shape##2", &globals::minChandelierCoverage, 0.0f, 2000.0f);
-
-            ImGuiMCP::SliderFloat("global reach on tri shape##2", &globals::globalCoverage, 0.0f, 2000.0f);
-
-            ImGuiMCP::PopItemWidth();
-            ImGuiMCP::EndColumns();
-        }
-        ImGuiMCP::EndChild();
-    
+  
         ImGuiMCP::Spacing();
 
         if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 325), true,
@@ -122,9 +98,15 @@ namespace UI {
             float colWidth = avail.x * 0.25f;
             ImGuiMCP::PushItemWidth(colWidth);
 
+            ImGuiMCP::SliderInt("Max lights to merge", &globals::lightMergeMaxLights, 0, 25);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("will merge no more then this amount of lights during 1 merge");
+            }
+
             ImGuiMCP::SliderFloat("Max Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
 
-            ImGuiMCP::SliderFloat("Extended X distance allowed to merge", &globals::fMaxZDiffToMergeIncreased, 0, 300);
+            ImGuiMCP::SliderFloat("Extended Z distance allowed to merge", &globals::fMaxZDiffToMergeIncreased, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Used for ruin candles, as they need aggressive merging.");
@@ -166,14 +148,7 @@ namespace UI {
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Dont turn this down");
             }
-
-            ImGuiMCP::SliderInt("Max lights to merge", &globals::lightMergeMaxLights, 0, 25);
-
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("will merge no more then this amount of lights during 1 merge");
-            }
-            
-           
+  
             ImGuiMCP::PopItemWidth(); 
         }
 
@@ -182,9 +157,18 @@ namespace UI {
             debugLogAllLights(); 
         }
 
-        if (ImGuiMCP::Button("clear ref with attached lights set")) {
+      /*  if (ImGuiMCP::Button("clear ref with attached lights set")) {
             globals::refsWithAttachedLights.clear();
         }
+
+        if (ImGuiMCP::Button("clear tri shape lights cache")) {
+            ResetTriLightCache();
+        }
+
+        if (ImGuiMCP::Button("log atomic bools")) {
+            logger::info("cell fully loaded = {}, 1 second after fully loaded = {}", globals::cellFullyLoaded, globals::secondAfterCellFullyLoaded);
+        }
+        */
 
     }
 
@@ -295,16 +279,17 @@ namespace UI {
 
         seen.insert(key);
 
-        // For debuggong
-        //auto& rt = activeLight->light->GetLightRuntimeData();
-
         auto it = LightData::configIDToJsonCfg.find(key);
         if (it != LightData::configIDToJsonCfg.end()) {
-            //auto& dataExt = it->second;
         }
         else {
             logger::debug("light :{} (key={}) has no json cfg entry", name, key);
         }
+
+       /*logger::info("Active light found: {}, and its key{}, NiLight ptr={}, NiLight ptr={}",
+            activeLight->light->name.c_str(),
+            key,
+            static_cast<void*>(activeLight->light.get()), static_cast<void*>(activeLight.get()));*/ 
 
         // Refresh light pointer in list or add if new
         auto itIdx = keyToIndex.find(key);
@@ -438,7 +423,7 @@ namespace UI {
             saveButton.set(buttonState::Working);
 
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
-                auto selectedLight = lights[selectedIndex];
+                RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
                 auto niLight = selectedLight->light.get();
                 if (!niLight) {
                     logger::error("no ni light from bslight when saving template");
@@ -532,16 +517,13 @@ namespace UI {
                 auto& light = lights[i];
                 if (!light) continue;
 
-                //bool selected = (i == selectedIndex);
-
                 auto lightName = removePrefix(light->light->name.c_str(), "RL");
-
-              //  auto cfgs = findConfigsForNode(lightName);
 
                 std::string menuName;
 
                 auto it = LightData::configIDToJsonCfg.find(light->light->GetLightRuntimeData().unk138);
                 if (it != LightData::configIDToJsonCfg.end()) {
+
                     menuName = it->second.menuName;
 
                     if (menuName.empty()) {
@@ -598,13 +580,13 @@ namespace UI {
             }
 
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
-                auto selectedLight = lights[selectedIndex];
+                RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
                 auto it = LightData::configIDToJsonCfg.find(lightData.unk138);
                 if (it == LightData::configIDToJsonCfg.end())
                     return;
 
-                auto& dataExt = it->second;
+                auto& config = it->second;
 
                 Overlay* selectedIslRt;
 
@@ -635,7 +617,7 @@ namespace UI {
                     ImGuiMCP::PopStyleColor();
                     ImGuiMCP::Separator();
 
-                    if (ImGuiMCP::SliderFloat("Brightness", &dataExt.startingFade, 0.0f, 10.0f, "%.1f")) {
+                    if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, 10.0f, "%.1f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
                             auto& rt = ssNode->GetRuntimeData();
@@ -643,13 +625,13 @@ namespace UI {
                                 if (!l) continue;
                                 auto& rtData = l->light->GetLightRuntimeData();
                                 if (rtData.unk138 == lightData.unk138)
-                                    rtData.fade = dataExt.startingFade;
+                                    rtData.fade = config.startingFade;
                             }
                             for (auto& l : rt.activeShadowLights) {
                                 if (!l) continue;
                                 auto& rtData = l->light->GetLightRuntimeData();
                                 if (rtData.unk138 == lightData.unk138)
-                                    rtData.fade = dataExt.startingFade;
+                                    rtData.fade = config.startingFade;
                             }
                         }
                     }
@@ -732,7 +714,7 @@ namespace UI {
                     // ----- Flicker Header -----
 
                     // ICON (dynamic)
-                    if (didRefreshThisFrame && dataExt.flickersPerSecond != 0.0f) {
+                    if (didRefreshThisFrame && config.flickersPerSecond != 0.0f) {
                         FontAwesome::PushSolid();
                         ImGuiMCP::PushStyleColor(
                             ImGuiMCP::ImGuiCol_Text,
@@ -764,12 +746,12 @@ namespace UI {
                     ImGuiMCP::BeginDisabled(isTorch);
                     ImGuiMCP::SliderFloat(
                         "Flicker Intensity",
-                        &dataExt.flickerIntensity,
+                        &config.flickerIntensity,
                         0.0f, 1.0f, "%.2f");
 
                     ImGuiMCP::SliderFloat(
                         "Flickers / Second",
-                        &dataExt.flickersPerSecond,
+                        &config.flickersPerSecond,
                         0.0f, 5.0f, "%.2f");
                     ImGuiMCP::EndDisabled();
                 }
@@ -782,6 +764,9 @@ namespace UI {
                
                 ImGuiMCP::Columns(2, nullptr, false);
 
+                float sliderRange = (config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMenuXYZScale))
+                    ? 1250.0f
+                    : 250.0f;
                
                 if (ImGuiMCP::BeginChild(
                     "PositionBox",
@@ -802,7 +787,7 @@ namespace UI {
                     if (ImGuiMCP::SliderFloat3(
                         "Position",
                         &selectedLight->light->local.translate.x,
-                        -250.0f, 250.0f, "%.3f"))
+                        -sliderRange, sliderRange, "%.3f"))
                     {
                         if (!isTorch) {
                             auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -899,27 +884,27 @@ namespace UI {
                     ImGuiMCP::PushItemWidth(halfWidth);
 
 
-                    if (ImGuiMCP::SliderFloat("Fall Off", &dataExt.falloff, 0.0f, 5.0f, "%.1f")) {
+                    if (ImGuiMCP::SliderFloat("Fall Off", &config.falloff, 0.0f, 5.0f, "%.1f")) {
                     }
 
-                    if (ImGuiMCP::SliderFloat("Constant", &dataExt.constAttenuation, 0.0f, 1.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Constant", &config.constAttenuation, 0.0f, 1.0f, "%.2f")) {
                     }
 
-                    if (ImGuiMCP::SliderFloat("Linear", &dataExt.linearAttenuation, 0.0f, 1.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Linear", &config.linearAttenuation, 0.0f, 1.0f, "%.2f")) {
                     }
 
-                    if (ImGuiMCP::SliderFloat("Quadratic", &dataExt.quadraticAttenuation, 0.0f, 1.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Quadratic", &config.quadraticAttenuation, 0.0f, 1.0f, "%.2f")) {
                     }
 
                     ImGuiMCP::NextColumn();
 
-                    if (ImGuiMCP::SliderFloat("Depth Bias", &dataExt.depthBias, 0.0f, 30.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f")) {
                     }
 
-                    if (ImGuiMCP::SliderFloat("FOV", &dataExt.fov, 0.0f, 180.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 180.0f, "%.2f")) {
                     }
 
-                    if (ImGuiMCP::SliderFloat("Near Distance", &dataExt.nearDistance, 0.0f, 1.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 1.0f, "%.2f")) {
                     }
 
                     if (ImGuiMCP::Button("Refresh Lights")) {
@@ -951,50 +936,81 @@ namespace UI {
 
     }
 
-    bool saveSettingsToIni() {
+    bool saveSettingsToIni()
+    {
         logger::info("Saving ReLight.ini...");
-
         const std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
-        std::ofstream outFile(path, std::ios::trunc);
 
-        if (!outFile.is_open()) {
+        // READ: grab everything from the exclude refs section downward as a raw block
+        std::string preservedBlock;
+        {
+            std::ifstream inFile(path);
+            if (inFile.is_open())
+            {
+                std::string line;
+                bool inSection = false;
+                while (std::getline(inFile, line))
+                {
+                    if (!inSection && line.find("; priority list (higher = first match)") != std::string::npos)
+                        inSection = true;
+                    if (inSection)
+                        preservedBlock += line + "\n";
+                }
+            }
+        }
+
+     
+        std::ofstream outFile(path, std::ios::trunc);
+        if (!outFile.is_open())
+        {
             logger::error("Failed to open {} for writing!", path);
             return false;
         }
 
-        outFile << "; ReLight INI\n";
-        outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info)\n";
-        outFile << "loggingLevel=" << globals::loggingLevel << "\n\n";
-
+        outFile << "; enable light flicker prevention (default = false)\n";
+        outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
         outFile << "; remove fake glow orbs (default = true)\n";
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
+        outFile << "; enable debug bulbs (default = false)\n";
+        outFile << "enableDebugBulbs=" << (globals::enableDebugLightBulbs ? "true" : "false") << "\n\n";
+        outFile << "; ReLight INI\n";
+        outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
+        outFile << "loggingLevel=" << globals::loggingLevel << "\n";
+        outFile << "\n; Light merge settings\n";
+        outFile << "light merge distance=" << globals::lightMergeDistance << "\n";
+        outFile << "shadow light merge distance=" << globals::shadowLightMergeDistance << "\n";
+        outFile << "light merge distance increased=" << globals::lightMergeSeekingDistance << "\n";
+        outFile << "max z diff to merge=" << globals::fMaxZDiffToMerge << "\n";
+        outFile << "max z diff to merge increased=" << globals::fMaxZDiffToMergeIncreased << "\n";
+        outFile << "light fade per merge=" << globals::lightFadePerMerge << "\n";
+        outFile << "light radius per merge=" << globals::lightRadiusPerMerge << "\n";
+        outFile << "light fade max=" << globals::lightFadeMax << "\n";
+        outFile << "light radius max=" << globals::lightRadiusMax << "\n";
+        outFile << "light merge maxlights=" << globals::lightMergeMaxLights << "\n\n";
 
         outFile << "; add esps by name to undisable their lights (usually not needed)\n";
         outFile << "whitelist=";
-        for (size_t i = 0; i < globals::whitelist.size(); i++) {
+        for (size_t i = 0; i < globals::whitelist.size(); i++)
+        {
             outFile << globals::whitelist[i];
             if (i + 1 < globals::whitelist.size()) outFile << ",";
         }
         outFile << "\n\n";
-
         outFile << "; exclude specific nodes\n";
         for (auto& node : globals::exclusionList)
             outFile << node.c_str() << "\n";
-
         outFile << "\n; exclude partial nodes\n";
         for (auto& node : globals::exclusionListPartialMatch)
             outFile << node.c_str() << "\n";
 
-        outFile << "\n; priority list (higher = first match. Usefull for candlechandelier ect to get correct lighting)\n";
-        for (auto& node : globals::priorityList)
-            outFile << node.c_str() << "\n";
+        // dump the entire preserved block back verbatim - comments, formids, everything
+        if (!preservedBlock.empty())
+            outFile << "\n" << preservedBlock;
 
         outFile.close();
         logger::info("ReLight.ini saved successfully!");
-
         return true;
     }
-
     //TODO:: clean and only use isl overlay if its installed
     void getAllLights() {
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];

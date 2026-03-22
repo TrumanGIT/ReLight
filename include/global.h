@@ -21,18 +21,20 @@ namespace globals
 
     inline bool enableDebugLightBulbs = false;
 
-    //Flicker Prevntion
+    //Flicker Prevention
     inline bool enableLightFlickerPreventionMeasures = false;
 
-    //inline uint32_t flickerPreventionLightLimit = 6;
-
     inline std::atomic_bool cellFullyLoaded = false;
+
+    inline std::atomic_bool secondAfterCellFullyLoaded = false;
+
+    inline std::chrono::steady_clock::time_point cellFullyLoadedTimerStart;
 
     // Merge
 
     inline int lightMergeMaxLights = 10;
 
-    inline float lightMergeSeekingDistance = 224;
+    inline float lightMergeSeekingDistance = 188;
 
     inline float lightMergeDistance = 147;
 
@@ -52,31 +54,32 @@ namespace globals
     // flicker prevention
 
     // Candle Bounds
-    inline float minCandleCoverage = 430;
-
     inline float minCandleCoverageSM = 383;
 
-    inline float minCandleCoverageWall = 210;
+    inline float minCandleCoverage = 430;
+
+    inline float minCandleCoverageXL = 800;
 
     //FireBounds
-    inline float minFireCoverageWall = 465;
+   // inline float minFireCoverageSM = 465;
 
-    inline float minFireCoverage = 580.49f;
+    inline float minFireCoverage = 680.49f;
+
+    inline float minFireCoverageXL = 1200.00f;
 
     // Chandeliers
+  //  inline float minChandelierCoverageSM = 314;
+
     inline float minChandelierCoverage = 580;
 
-    inline float maxShadowCompeteDistance = 314;
+    inline float ChandelierZCompeteDistance = 314;
 
-    inline float globalCoverage = 850;
+    inline float globalCoverage = 670; 
+
+    inline float globalCoverageXL = 1200;
 
     // used to reinitialize lights based on this distance as we put lights into object geomatry
     inline float fLODFadeOutMultObjects = 9000;
-
-    //Is Light Attached to Surface
-    //inline std::atomic_bool staredtIsLightAffectingSurfaceTimer = false;
-
-  // inline std::chrono::steady_clock::time_point lightEvalStart;
 
     inline int loggingLevel = 0;
 
@@ -90,10 +93,10 @@ namespace globals
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
 
-    //inline std::mutex refsWithAttachedLightsMutex{};
+    inline std::mutex refsWithAttachedLightsMutex{};
     inline std::unordered_set<RE::FormID> refsWithAttachedLights{};
 
-    //  inline std::mutex mergedRefsMutex{};
+      inline std::mutex mergedRefsMutex{};
     inline std::unordered_set<RE::FormID> mergedRefs{};
 
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.

@@ -57,12 +57,12 @@ struct LightData {
 
 	struct TriLightCache
 	{
-		RE::NiPointer<RE::BSLightingShaderProperty> lightShaderProp;
-		RE::NiPointer<RE::BSLight> lights[7]; // not raw pointers
+		RE::BSLightingShaderProperty* lightShaderProp;
+		RE::BSLight* lights[7]; 
 	};
 
 	static std::mutex triLightCacheMutex;
-	static std::vector<TriLightCache> triLightCache;
+	static std::deque<TriLightCache> triLightCache;
 
 	static NiPointLight masterNiPointLight;
 

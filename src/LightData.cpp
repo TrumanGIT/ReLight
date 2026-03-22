@@ -11,7 +11,7 @@
 
 NiPointLight LightData::masterNiPointLight;
 
-std::vector<LightData::TriLightCache> LightData::triLightCache;
+std::deque<LightData::TriLightCache> LightData::triLightCache; 
 std::mutex LightData::triLightCacheMutex;
 
 // (config to json id is for faster lookups then strings, used in flicker logic)
@@ -114,7 +114,9 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	}
 	auto& data = niPointLight->GetLightRuntimeData();
 
-	logger::debug(" Setting Light Data for {} from Configs", cfg.nodeName);
+	auto& nodeNameOrMeshPath = cfg.nodeName.empty() ? cfg.meshPath : cfg.nodeName;
+
+	logger::debug(" Setting Light Data for {} from Configs", nodeNameOrMeshPath);
 
 	data.fade = cfg.brightness;
 	data.radius = getNiPointLightRadius(cfg);

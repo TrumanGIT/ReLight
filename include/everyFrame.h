@@ -60,10 +60,12 @@ static void ApplyLightFlicker(T& lights, float delta)
 }
 
 inline void handlePendingMerges() {
+    std::lock_guard lock(LightManager::pendingMergesMutex);
     if (LightManager::pendingMerges.empty()) return;
 
     auto now = std::chrono::steady_clock::now();
-    std::lock_guard lock(LightManager::pendingMergesMutex);
+
+    std::vector<RE::ObjectRefHandle> reprocessQueue{};
 
     LightManager::pendingMerges.erase(
         std::remove_if(LightManager::pendingMerges.begin(), LightManager::pendingMerges.end(),
@@ -81,65 +83,12 @@ inline void handlePendingMerges() {
                     auto refB = handle.get();
                     if (!refB) continue;
 
+                    // ray cast to ensure no walls in between
                     if (HasAnythingBetween(refA.get(), refB.get())) {
-                        logger::debug("obstacle detected between refA {:08X} and refB {:08X}, giving refB its own light",
-                            refA->GetFormID(), refB->GetFormID());
-
-                        //globals::mergedRefs.erase(refB->GetFormID());
-                        auto refB3D = refB->Get3D();
-                        if (!refB3D) continue;
-
-                        auto a_root = refB3D->AsNode();
-                        if (!a_root) {
-                            logger::warn("no ni node casted from niav object in pending merges");
-                            continue;
-                        }
-
-                        const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
-                        if (nodeNameMatch.empty()) continue;
-                        if (isExclude(a_root->name, refB->GetFormID())) continue;
-
-                        std::string matchStr = nodeNameMatch.c_str();
-                        auto refFormID = refB->GetFormID();
-
-                        auto ui = RE::UI::GetSingleton();
-                        if (ui && ui->IsMenuOpen("InventoryMenu")) continue;
-
-                        const auto baseObject = refB->GetBaseObject();
-                        const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
-                        if (baseFormID != 0) {
-                            globals::baseFormsWithAttachedLights.emplace(baseFormID);
-                            logger::debug("processing ref {:08X} with node name: {} with baseFormID: {} emplaced in set", refFormID, matchStr, baseFormID);
-                        }
-
-                        if (globals::removeFakeGlowOrbs)
-                            glowOrbRemover(a_root);
-
-                        auto cell = refB->GetParentCell();
-                        if (!cell) {
-                            logger::warn("no cell cant determine if should use exterior or interior configs");
-                            continue;
-                        }
-
-                        bool isInterior = cell->IsInteriorCell();
-                        auto cfgs = findConfigsForNode(matchStr, isInterior);
-
-                        for (auto& cfg : cfgs) {
-                            auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
-                            if (!cloneLight) {
-                                logger::warn("Failed to clone NiPointLight for node '{}' for ref {:08X})", matchStr, refFormID);
-                                continue;
-                            }
-
-                            LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
-                            LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-                            cloneLight->name = "RL" + matchStr;
-                            LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, refB.get());
-                        }
-
-                        continue; // don't add to validCandidates
+                        reprocessQueue.emplace_back(handle);
+                        continue;
                     }
-
+              
                     validCandidates.push_back(handle);
                 }
 
@@ -147,39 +96,103 @@ inline void handlePendingMerges() {
                 return true;
             }),
         LightManager::pendingMerges.end());
+
+    while (!reprocessQueue.empty()) {
+
+        auto retryRefAHandle = reprocessQueue.front();
+        reprocessQueue.erase(reprocessQueue.begin());
+
+        auto retryRefA = retryRefAHandle.get();
+        if (!retryRefA) continue;
+
+        std::vector<RE::ObjectRefHandle> nextQueue;
+        std::vector<RE::ObjectRefHandle> mergeGroup;
+
+        for (const auto& handle : reprocessQueue) {
+
+            auto otherRef = handle.get();
+            if (!otherRef) continue;
+
+            auto formID = otherRef->GetFormID();
+          
+            if (HasAnythingBetween(retryRefA.get(), otherRef.get())) {
+                nextQueue.emplace_back(handle);
+            }
+            else {
+                mergeGroup.emplace_back(handle);
+            }
+        }
+
+        auto root = retryRefA->Get3D();
+        if (!root) { reprocessQueue = std::move(nextQueue); continue; }
+
+        auto rootNode = root->AsNode();
+        if (!rootNode) { reprocessQueue = std::move(nextQueue); continue; }
+
+        auto base = retryRefA->GetBaseObject();
+        auto model = base ? base->As<RE::TESModel>() : nullptr;
+        if (!model) { reprocessQueue = std::move(nextQueue); continue; }
+
+        std::string meshName = extractMeshName(model->GetModel());
+        std::string match = std::string(findPriorityMatch(meshName));
+        if (match.empty()) { reprocessQueue = std::move(nextQueue); continue; }
+
+        auto cell = retryRefA->GetParentCell();
+        if (!cell) { reprocessQueue = std::move(nextQueue); continue; }
+
+        auto cfgs = findConfigsForNode(match, cell->IsInteriorCell());
+        if (cfgs.empty()) {
+            logger::warn("Dropping ref {:08X} — no configs found", retryRefA->GetFormID());
+            // keep all other refs for retry
+            nextQueue.insert(nextQueue.end(), mergeGroup.begin(), mergeGroup.end());
+            reprocessQueue = std::move(nextQueue);
+            continue;
+        }
+
+        uint32_t flags = cfgs[0].flags;
+  
+        if (cfgs.size() == 1 && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
+            auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
+            if (!cloneLight) { reprocessQueue = std::move(nextQueue); continue; }
+
+            logger::debug("RE processing ref {:08X} with light {}", retryRefA->GetFormID(), match);
+
+            LightManager::attachLightUsingAttachPath(cfgs[0], rootNode, cloneLight, retryRefA->GetFormID());
+
+            LightManager::PendingMerge p;
+            p.refA = retryRefAHandle;
+            p.refARoot = rootNode;
+            p.candidateHandles = mergeGroup;
+            p.light = RE::NiPointer<RE::NiPointLight>(cloneLight);
+            p.refALightName = match;
+            p.winningConfig = cfgs[0]; 
+
+            LightManager::finalizeMerge(p, mergeGroup);
+        }
+        //TODO:: doesent attach debug markers
+        else {
+            for (const auto& cfg : cfgs) {
+                auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
+                if (!cloneLight) continue;
+
+                LightManager::attachLightUsingAttachPath(cfg, rootNode, cloneLight, retryRefA->GetFormID());
+                LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+                LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, retryRefA.get());
+            }
+
+            // multi-light can't merge, retry others
+            nextQueue.insert(nextQueue.end(), mergeGroup.begin(), mergeGroup.end());
+        }
+
+        reprocessQueue = std::move(nextQueue);
+    }
 }
 
-/*inline void OnFrameUpdate() {
+inline bool OneSecondPassed(const std::chrono::steady_clock::time_point& timerStart)
+{
+
     auto now = std::chrono::steady_clock::now();
-	if (LightManager::pendingMerges.empty()) return;
-    std::lock_guard lock(PendingProperty::mutex);
+    auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - timerStart).count();
 
-	PendingProperty::list.erase(
-        std::remove_if(PendingProperty::list.begin(), PendingProperty::list.end(),
-            [&](PendingProperty& entry) {
-                if (!entry.prop) return true; 
-
-                auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
-                    now - entry.registeredAt).count();
-
-                if (elapsed < 1) return false; // not ready yet, keep in list
-
-				auto pass = entry.prop->renderPassList.head;
-				if (!pass || !pass->geometry) return false;
-
-				uint32_t count = pass->numLights;
-
-					if (count == 0) {
-						entry.prop->forcedDarkness = 1.0f; // permanently skip, will always return true in hook
-						return true; // remove from list
-					}
-
-					if (pass->geometry->worldBound.radius > globals::maxWallSizeForStrictLightBounds) count++; 
-
-                    entry.prop->forcedDarkness = static_cast<float>(count + 1);
-                    logger::debug("[LightHook] Cached after delay: {}", count + 1);
-                //}
-                return true; // done, remove
-            }),
-		PendingProperty::list.end());
-}*/
+    return elapsed >= 1;
+}

@@ -11,7 +11,6 @@
 #include <iostream>
 #include <xbyak/xbyak.h>
 
-
 namespace logger = SKSE::log;
 
 /*inline void initialize() {
@@ -141,8 +140,8 @@ inline void iniParser()
 				section = priority;
 			else if (line.find("exclude by ref form id") != std::string::npos)
 				section = refid;
-			else
-				section = NONE;
+			//else
+			//	section = NONE;
 
 			continue;
 		}
@@ -163,9 +162,12 @@ inline void iniParser()
 
 		case priority:
 			toLower(line);
-			globals::priorityList.push_back(line);
-			logger::info("Added priority node: {}", line);
-			continue;
+			if (!line.starts_with("0")) {
+				globals::priorityList.push_back(line);
+				logger::info("Added priority node: {}", line);
+				continue;
+			}
+		
 
 		case refid:
 		{
@@ -196,12 +198,18 @@ inline void iniParser()
 		std::string value = trim(line.substr(eq + 1));
 		toLower(value);
 
-		auto parseBool = [&](const std::string& v) {
-			return (v == "true" || v == "1" || v == "yes");
-			};
-
 		if (key == "removefakegloworbs") {
-			globals::removeFakeGlowOrbs = parseBool(value);
+			globals::removeFakeGlowOrbs = value == "true";
+			continue;
+		}
+
+		if (key == "enablelightflickerprevention") {
+			globals::enableLightFlickerPreventionMeasures = value == "true";
+			continue; 
+		}
+
+		if (key == "enabledebugbulbs") {
+			globals::enableDebugLightBulbs= value == "true";
 			continue;
 		}
 
@@ -221,6 +229,57 @@ inline void iniParser()
 
 			spdlog::set_level(lvl);
 			spdlog::flush_on(lvl);
+			continue;
+		}
+
+
+		if (key == "light merge distance") {
+			globals::lightMergeDistance = std::stof(value);
+			continue;
+		}
+
+		if (key == "shadow light merge distance") {
+			globals::shadowLightMergeDistance = std::stof(value);
+			continue;
+		}
+
+		if (key == "light merge distance increased") {
+			globals::lightMergeSeekingDistance = std::stof(value);
+			continue;
+		}
+
+		if (key == "max z diff to merge") {
+			globals::fMaxZDiffToMerge = std::stof(value);
+			continue;
+		}
+
+		if (key == "max z diff to merge increased") {
+			globals::fMaxZDiffToMergeIncreased = std::stof(value);
+			continue;
+		}
+
+		if (key == "light fade per merge") {
+			globals::lightFadePerMerge = std::stof(value);
+			continue;
+		}
+
+		if (key == "light radius per merge") {
+			globals::lightRadiusPerMerge = std::stof(value);
+			continue;
+		}
+
+		if (key == "light fade max") {
+			globals::lightFadeMax = std::stof(value);
+			continue;
+		}
+
+		if (key == "light radius max") {
+			globals::lightRadiusMax = std::stof(value);
+			continue;
+		}
+
+		if (key == "light merge maxlights") {
+			globals::lightMergeMaxLights = std::stoi(value);
 			continue;
 		}
 	}
@@ -349,11 +408,11 @@ inline const RE::BSFixedString findPriorityMatch(const RE::BSFixedString& nodeNa
 }
 
 //gets users skyrim pref setting. lights reinitialized are set to this exact distance
-inline void getObjectFadeMult(float& fLODFadeOutMultObjects) {
+inline void getObjectFadeMult() {
 
 	if (auto* setting = RE::GetINISetting("fLODFadeOutMultObjects:LOD")) {
 		if (setting->GetType() == RE::Setting::Type::kFloat) {
-			fLODFadeOutMultObjects = setting->GetFloat() * 1000;
+			globals::fLODFadeOutMultObjects = setting->GetFloat() * 1000;
 		}
 	}
 }
@@ -433,129 +492,145 @@ inline std::string extractMeshName(const std::string& path) {
 	return (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
 }
 
-inline bool RayHitStatic(RE::bhkWorld* world, RE::NiPoint3 start, RE::NiPoint3 end)
+
+inline bool TESRayHitStatic(RE::bhkWorld* world, RE::NiPoint3 start, RE::NiPoint3 end)
 {
 	RE::bhkPickData pickData{};
-
 	const float scale = RE::bhkWorld::GetWorldScale();
 	pickData.rayInput.from = start * scale;
 	pickData.rayInput.to = end * scale;
-
 	pickData.rayInput.enableShapeCollectionFilter = true;
-
 	RE::CFilter filter{};
 	filter.SetCollisionLayer(RE::COL_LAYER::kLOS);
-
 	static const std::uint32_t sSystemGroup =
 		RE::bhkCollisionFilter::GetSingleton()->GetNewSystemGroup();
-
 	filter.SetSystemGroup(sSystemGroup);
 	pickData.rayInput.filterInfo = filter;
-
 	world->PickObject(pickData);
-
 	if (!pickData.rayOutput.HasHit())
 		return false;
-
 	auto* collidable = pickData.rayOutput.rootCollidable;
 	if (!collidable)
 		return false;
-
 	auto layer = collidable->GetCollisionLayer();
-
-	return (layer == RE::COL_LAYER::kStatic ||
-		layer == RE::COL_LAYER::kTerrain ||
-		layer == RE::COL_LAYER::kGround);
+	if (layer != RE::COL_LAYER::kStatic &&
+		layer != RE::COL_LAYER::kTerrain &&
+		layer != RE::COL_LAYER::kGround)
+		return false;
+	auto* niObj = RE::TES::GetSingleton()->Pick(pickData);
+	if (!niObj || niObj->name.empty())
+		return false;
+	logger::debug("TES::Pick hit node: {}", niObj->name.c_str());
+	return (niObj->name.contains("wall") || niObj->name.contains("floor") || niObj->name.contains("intcor") || niObj->name.contains("farmintend") ) &&
+		!niObj->name.contains("shelf");
 }
 
 inline bool HasAnythingBetween(RE::TESObjectREFR* refA, RE::TESObjectREFR* refB)
 {
 	if (!refA || !refB) return false;
-
 	auto* cell = refA->GetParentCell();
 	if (!cell) return false;
-
 	auto* world = cell->GetbhkWorld();
 	if (!world) return false;
 
 	RE::NiPoint3 start = refA->GetPosition();
 	RE::NiPoint3 end = refB->GetPosition();
 
-	start.z += 8.0f;
-	end.z += 30.0f;
+	bool hitLow = TESRayHitStatic(world, start + RE::NiPoint3(0, 0, 35.0f), end + RE::NiPoint3(0, 0, 35.0f));
+	bool hitMid = TESRayHitStatic(world, start + RE::NiPoint3(0, 0, 70.0f), end + RE::NiPoint3(0, 0, 70.0f));
+	bool hitHigh = TESRayHitStatic(world, start + RE::NiPoint3(0, 0, 105.0f), end + RE::NiPoint3(0, 0, 105.0f));
 
-	// direction
-	RE::NiPoint3 dir = end - start;
-	dir.Unitize();
-
-	// perpendicular offset
-	RE::NiPoint3 perp(-dir.y, dir.x, 0.0f);
-	perp.Unitize();
-
-	float offset = 20.0f;
-
-	RE::NiPoint3 startLeft = start - perp * offset;
-	RE::NiPoint3 endLeft = end - perp * offset;
-
-	RE::NiPoint3 startRight = start + perp * offset;
-	RE::NiPoint3 endRight = end + perp * offset;
-
-	bool hitCenter = RayHitStatic(world, start, end);
-	bool hitLeft = RayHitStatic(world, startLeft, endLeft);
-	bool hitRight = RayHitStatic(world, startRight, endRight);
-
-	logger::debug("Ray results: center {} left {} right {}",
-		hitCenter, hitLeft, hitRight);
-
-
-	return hitCenter && hitLeft && hitRight;
+	logger::debug("Ray results: low {} mid {} high {}", hitLow, hitMid, hitHigh);
+	return hitLow && hitMid && hitHigh;
 }
 
-inline void ComputeClosestLights(RE::NiPointer<RE::BSLight> outLights[7], RE::BSLightingShaderProperty* p)
+inline auto PackFloat = [](float z, float coverage) -> float {
+	uint32_t zBits = (uint32_t)(int16_t)(int)z & 0xFFFF;
+	uint32_t covBits = (uint32_t)(int16_t)(int)coverage & 0xFFFF;
+	uint32_t packed = (zBits << 16) | covBits;
+	float result;
+	memcpy(&result, &packed, sizeof(float));
+	return result;
+	};
+
+inline auto UnpackFloat = [](float packed, float& z, float& coverage) {
+	uint32_t bits;
+	memcpy(&bits, &packed, sizeof(float));
+	z = (float)(int16_t)((bits >> 16) & 0xFFFF);
+	coverage = (float)(int16_t)(bits & 0xFFFF);
+	};
+
+inline void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p)
 {
 	auto* pass = p->renderPassList.head;
 	if (!pass || !pass->geometry)
 		return;
 	auto& center = pass->geometry->worldBound.center;
+
+	const float triRadius = pass->geometry->worldBound.radius;
+
 	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 	if (!ssNode)
 		return;
 	auto& rt = ssNode->GetRuntimeData();
-
 	struct Candidate
 	{
-		RE::NiPointer<RE::BSLight> light;
+		RE::BSLight* light;
 		float dist;
 	};
-
 	std::vector<Candidate> candidates;
 	auto gatherLights = [&](auto& container)
 		{
 			for (auto& l : container)
 			{
-				if (!l)
-					continue;
+				if (!l) continue;
 				auto* light = l.get();
-				if (!light || !light->light)
-					continue;
+				if (!light || !light->light) continue;
+
 				auto& pos = light->light->world.translate;
 				float dx = pos.x - center.x;
 				float dy = pos.y - center.y;
 				float dz = pos.z - center.z;
-				float dist = dx * dx + dy * dy + dz * dz;
-				candidates.push_back({ RE::NiPointer<RE::BSLight>(light), dist });
+				float distXY2 = dx * dx + dy * dy + dz * dz;
+
+				switch (light->unk060)
+				{
+				case 1:
+				{
+					float threshold = globals::minCandleCoverage;
+					if (triRadius < 325) threshold = globals::minCandleCoverageSM;
+					else if (triRadius > 1000) threshold = globals::minCandleCoverageXL;
+					if (distXY2 > threshold * threshold) continue;
+					break;
+				}
+				case 2:
+					if (distXY2 > globals::minChandelierCoverage * globals::minChandelierCoverage) continue;
+					break;
+				case 3:
+				{
+					float threshold = globals::minFireCoverage;
+					if (triRadius > 900) threshold = globals::minFireCoverageXL;
+					if (distXY2 > threshold * threshold) continue;
+					break;
+				}
+				default:
+					if (light->light->radius.x < 1000) {
+						float threshold = triRadius > 1000 ? globals::globalCoverageXL : globals::globalCoverage;
+						if (distXY2 > threshold * threshold) continue;
+					}
+					break;
+				}
+
+				candidates.push_back({ light, distXY2 });
 			}
 		};
-
 	gatherLights(rt.activeLights);
 	gatherLights(rt.activeShadowLights);
-
 	std::sort(candidates.begin(), candidates.end(),
 		[](auto& a, auto& b)
 		{
 			return a.dist < b.dist;
 		});
-
 	int count = std::min(7, (int)candidates.size());
 	for (int i = 0; i < count; i++)
 		outLights[i] = candidates[i].light;
@@ -564,17 +639,11 @@ inline void ComputeClosestLights(RE::NiPointer<RE::BSLight> outLights[7], RE::BS
 inline void ResetTriLightCache()
 {
 	std::lock_guard lock(LightData::triLightCacheMutex);
-
-
-	for (auto& entry : LightData::triLightCache)
-		if (entry.lightShaderProp.get())
-			entry.lightShaderProp->forcedDarkness = 0.0f;
+	//for (auto& entry : LightData::triLightCache)
+	//	if (entry.lightShaderProp)
+		//	entry.lightShaderProp->forcedDarkness = 0.0f;
 
 	LightData::triLightCache.clear();
 
-
-//	SKSE::GetTaskInterface()->AddTask([]()
-	//	{
-			globals::cellFullyLoaded = true;
-		//});
+		//	globals::cellFullyLoaded = true;	
 }

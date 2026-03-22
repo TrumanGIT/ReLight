@@ -83,46 +83,45 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
             return false;
         }
     }
-   
-    if (!globals::cellFullyLoaded || !globals::enableLightFlickerPreventionMeasures) return true;
 
-    auto pass = p->renderPassList.head;
-    if (!pass || !pass->geometry) return false;
+    auto ui = RE::UI::GetSingleton();
+    if (ui && ui->GameIsPaused()) {
+        return true;
+    }
 
-    if (pass->geometry->worldBound.radius > 2000) {
 
-        if (light->light->radius.x < 1000) {
-            const float dist = pass->geometry->worldBound.center.GetDistance(light->light->world.translate);
-
-            if (dist > globals::globalCoverage)
-                return false;
-        }
+    if (globals::cellFullyLoaded.load() && !globals::secondAfterCellFullyLoaded.load()) {
+        // crash on effect materials idk why 
+        if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
+        std::lock_guard lock(LightData::triLightCacheMutex); 
+        p->forcedDarkness = 0.0f; 
         return true; 
     }
+
+    if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures) return true;
+
+    if (light->unk060 == 4) return true;
+
+    auto pass = p->renderPassList.head;
+    if (!pass || !pass->geometry) return true;
+    if (pass->geometry->worldBound.radius > 1800)
+        return true;
+
+    std::lock_guard lock(LightData::triLightCacheMutex);
 
     if (p->forcedDarkness == 0.0f)
     {
         LightData::TriLightCache entry{};
-        entry.lightShaderProp = RE::NiPointer<RE::BSLightingShaderProperty>(p);
-
-   
-        {
-            std::lock_guard lock(LightData::triLightCacheMutex);
-            ComputeClosestLights(entry.lights, p);
-            uint32_t index = static_cast<uint32_t>(LightData::triLightCache.size());
-            LightData::triLightCache.push_back(entry);
-
-            p->forcedDarkness = static_cast<float>(index + 1);
-        }
+        entry.lightShaderProp = p;
+        ComputeClosestLights(entry.lights, p);
+        uint32_t index = static_cast<uint32_t>(LightData::triLightCache.size());
+        LightData::triLightCache.push_back(entry);
+        p->forcedDarkness = static_cast<float>(index + 1);
     }
-
-    //torch (can shine at any time shouldent be blocked
-    if (light->unk060 == 4) return true; 
 
     float fd = p->forcedDarkness;
     if (!std::isfinite(fd) || fd < 1.0f)
         return true;
-    std::lock_guard lock(LightData::triLightCacheMutex);
     if (fd > static_cast<float>(LightData::triLightCache.size()))
     {
         p->forcedDarkness = 0.0f;
@@ -135,16 +134,13 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         return true;
     }
     auto& cache = LightData::triLightCache[idx - 1];
-
-#pragma unroll
     for (int i = 0; i < 7; i++)
     {
-        if (cache.lights[i].get() == light)
+        if (cache.lights[i] == light)
             return true;
     }
     return false;
 }
-
 //meh321 - intellightent
 void BSLightingShaderProperty_IsLightAffectingSurface::Install()
 {

@@ -16,11 +16,17 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	RE::FormID refFormID = a_this->GetFormID();
 
 	// ref already has a light placed, introduced to skip over refs that got a merged light
+
+	{
+		std::lock_guard lock(globals::refsWithAttachedLightsMutex);
 		if (globals::refsWithAttachedLights.count(refFormID) > 0)
 			return func(a_this, a_backgroundLoading);
-
+	}
+	{
+		std::lock_guard lock(globals::mergedRefsMutex);
 		if (globals::mergedRefs.count(refFormID) > 0)
-			return func(a_this, a_backgroundLoading);  
+			return func(a_this, a_backgroundLoading);
+	}
 	
 	//logger::info("load3D called");
 	auto niAVObject = func(a_this, a_backgroundLoading);
@@ -32,19 +38,10 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	//helps filter out a few things we dont want to touch (fog, mist)
 	auto a_root = niAVObject->AsNode();
 	if (!a_root) {
-		logger::warn("no ni node casted from niav object in load3d");
+		//logger::warn("no ni node casted from niav object in load3d");
 		return niAVObject;
 	}
 
-	/*if (a_root->name.contains("Wal") && a_root->userData)
-	{
-		auto boundObjectRef = a_root->userData->data.objectReference;
-		if (boundObjectRef) {
-			auto boundObjectFormID = boundObjectRef->GetFormID();
-			globals::wallMeshes.emplace(boundObjectFormID);
-			logger::debug("wall mesh found, adding boundObject form ID {:08X} to wallMeshes set", boundObjectFormID);
-		}
-	}*/
 
 	if (LightManager::processByFilePath(a_this, a_root)) {
 		return niAVObject;
@@ -62,13 +59,9 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return  niAVObject;
 	}
 
-	if (LightManager::dummyHandler(a_this, a_root->name, a_root)) {
+	if (LightManager::dummyHandler(a_this, a_root)) {
 		return niAVObject;
 	}
-
-	// keep track of merged lights so we dont attach to them later. we reset the set later in event sink
-	//std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
-	globals::refsWithAttachedLights.insert(refFormID);
 
 	return niAVObject;
 }
@@ -94,7 +87,7 @@ void AddonNodes::thunk(
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
 		 
 	    // slot 9 == torch
-	if (a_slot == 9 && globals::cellFullyLoaded) {
+	if (a_slot == 9 && globals::secondAfterCellFullyLoaded.load()) {
 
             SKSE::GetTaskInterface()->AddTask([a_actor]() {
                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -151,16 +144,16 @@ void AddonNodes::thunk(
 					logger::debug("Applied torch light data");
                 }
             });
-        } 
+    } 
 }
-
 
 void AddonNodes::Install()
 {
+	// this addres crashes must wait for a delay after game is loaded idk why
 	std::array targets{
 		std::make_pair(
 			RELOCATION_ID(15501, 15678),       
-			REL::VariantOffset{ 0xCBF, 0x617, 0 } 
+			REL::VariantOffset{ 0xCBF, 0x617, 0} 
 		), 
 
 			std::make_pair(

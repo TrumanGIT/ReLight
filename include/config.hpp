@@ -52,7 +52,8 @@ enum class LIGHT_FLAGS : uint32_t
     kTorchWall = 1 << 3,
     khandHeld = 1 << 4,
     kIncreasedMergeDistance = 1 << 5,
-    kIncreasedXYZScale = 1 << 6
+    kIncreasedMenuXYZScale = 1 << 6,
+    kNoMerging = 1 << 7
 };
 
 inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
@@ -61,7 +62,8 @@ inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kChandelier, "Chandelier" },
     { LIGHT_FLAGS::kTorchWall, "TorchWall" },
     { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
-    { LIGHT_FLAGS::kIncreasedXYZScale, "IncreasedXYZScale" },
+    { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
+    { LIGHT_FLAGS::kNoMerging, "NoMerging" },
     { LIGHT_FLAGS::khandHeld, "Handheld" }
 
 };

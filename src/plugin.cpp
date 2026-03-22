@@ -48,9 +48,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         BSLightingShaderProperty_IsLightAffectingSurface::Install();
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
-//        LightManager::OurEventSink::TESCellFullyLoadedEventInstall(); 
-//        registerEventSink();    // tescellfully loaded event
-        getObjectFadeMult(globals::fLODFadeOutMultObjects);
+//      LightManager::OurEventSink::TESCellFullyLoadedEventInstall(); 
+        getObjectFadeMult();
         logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);
      
         break;
@@ -69,8 +68,5 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     UI::Register();
    hasInverseSquareLighting();
-
-   if (!globals::islInstalled) globals::enableLightFlickerPreventionMeasures = true; 
-
     return true;
 }
