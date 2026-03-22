@@ -84,18 +84,18 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         }
     }
 
-    auto ui = RE::UI::GetSingleton();
-    if (ui && ui->GameIsPaused()) {
-        return true;
-    }
-
+    // crash on effect materials idk why 
+    if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
     if (globals::cellFullyLoaded.load() && !globals::secondAfterCellFullyLoaded.load()) {
-        // crash on effect materials idk why 
-        if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
         std::lock_guard lock(LightData::triLightCacheMutex); 
         p->forcedDarkness = 0.0f; 
         return true; 
+    }
+
+    auto ui = RE::UI::GetSingleton();
+    if (ui && ui->GameIsPaused()) {
+        return true;
     }
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures) return true;

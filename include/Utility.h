@@ -232,7 +232,6 @@ inline void iniParser()
 			continue;
 		}
 
-
 		if (key == "light merge distance") {
 			globals::lightMergeDistance = std::stof(value);
 			continue;
