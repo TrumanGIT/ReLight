@@ -56,9 +56,9 @@ namespace globals
     // Candle Bounds
     inline float minCandleCoverageSM = 383;
 
-    inline float minCandleCoverage = 430;
+    inline float minCandleCoverage = 470;
 
-    inline float minCandleCoverageXL = 800;
+    inline float minCandleCoverageXL = 1100;
 
     //FireBounds
    // inline float minFireCoverageSM = 465;

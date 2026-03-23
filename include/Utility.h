@@ -524,16 +524,16 @@ inline bool TESRayHitStatic(RE::bhkWorld* world, RE::NiPoint3 start, RE::NiPoint
 		!niObj->name.contains("shelf");
 }
 
-inline bool HasAnythingBetween(RE::TESObjectREFR* refA, RE::TESObjectREFR* refB)
+inline bool HasAnythingBetween(RE::NiPoint3 start, RE::NiPoint3 end)
 {
-	if (!refA || !refB) return false;
-	auto* cell = refA->GetParentCell();
+	auto player = RE::PlayerCharacter::GetSingleton(); 
+
+	if (!player) return false;
+
+	auto* cell = player->GetParentCell();
 	if (!cell) return false;
 	auto* world = cell->GetbhkWorld();
 	if (!world) return false;
-
-	RE::NiPoint3 start = refA->GetPosition();
-	RE::NiPoint3 end = refB->GetPosition();
 
 	bool hitLow = TESRayHitStatic(world, start + RE::NiPoint3(0, 0, 35.0f), end + RE::NiPoint3(0, 0, 35.0f));
 	bool hitMid = TESRayHitStatic(world, start + RE::NiPoint3(0, 0, 70.0f), end + RE::NiPoint3(0, 0, 70.0f));
@@ -598,7 +598,7 @@ inline void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShader
 				{
 					float threshold = globals::minCandleCoverage;
 					if (triRadius < 325) threshold = globals::minCandleCoverageSM;
-					else if (triRadius > 1000) threshold = globals::minCandleCoverageXL;
+					else if (triRadius > 850) threshold = globals::minCandleCoverageXL;
 					if (distXY2 > threshold * threshold) continue;
 					break;
 				}
@@ -608,7 +608,7 @@ inline void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShader
 				case 3:
 				{
 					float threshold = globals::minFireCoverage;
-					if (triRadius > 900) threshold = globals::minFireCoverageXL;
+					if (triRadius > 850) threshold = globals::minFireCoverageXL;
 					if (distXY2 > threshold * threshold) continue;
 					break;
 				}
@@ -638,11 +638,23 @@ inline void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShader
 inline void ResetTriLightCache()
 {
 	std::lock_guard lock(LightData::triLightCacheMutex);
-	//for (auto& entry : LightData::triLightCache)
-	//	if (entry.lightShaderProp)
-		//	entry.lightShaderProp->forcedDarkness = 0.0f;
-
 	LightData::triLightCache.clear();
+	LightData::triLightCacheGeneration.fetch_add(1);
+}
 
-		//	globals::cellFullyLoaded = true;	
+
+inline float PackFD(uint16_t gen, uint16_t idx)
+{
+	uint32_t packed = ((uint32_t)gen << 16) | idx;
+	float f;
+	memcpy(&f, &packed, sizeof(float));
+	return f;
+}
+
+inline void UnpackFD(float fd, uint16_t& gen, uint16_t& idx)
+{
+	uint32_t packed;
+	memcpy(&packed, &fd, sizeof(float));
+	gen = (uint16_t)(packed >> 16);
+	idx = (uint16_t)(packed & 0xFFFF);
 }

@@ -63,6 +63,7 @@ struct LightData {
 
 	static std::mutex triLightCacheMutex;
 	static std::deque<TriLightCache> triLightCache;
+	static std::atomic<uint16_t> triLightCacheGeneration;
 
 	static NiPointLight masterNiPointLight;
 

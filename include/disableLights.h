@@ -23,16 +23,6 @@ struct BSLightingShaderProperty_IsLightAffectingSurface
     static void Install();
 };
 
-// used to take a guesstamite of bsshaderproperty light list size
-/*struct PendingProperty {
-    RE::NiPointer<RE::BSLightingShaderProperty> prop;
-    std::chrono::steady_clock::time_point registeredAt; 
-   // int lightScoreBonus = 0; 
-
-    static std::vector<PendingProperty> list;
-    static std::mutex mutex;
-};*/
-
 
 inline void clearSSNodeLights() {
     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];

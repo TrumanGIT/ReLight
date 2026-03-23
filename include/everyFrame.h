@@ -84,7 +84,7 @@ inline void handlePendingMerges() {
                     if (!refB) continue;
 
                     // ray cast to ensure no walls in between
-                    if (HasAnythingBetween(refA.get(), refB.get())) {
+                    if (HasAnythingBetween(refA.get()->GetPosition(), refB.get()->GetPosition())) {
                         reprocessQueue.emplace_back(handle);
                         continue;
                     }
@@ -115,7 +115,7 @@ inline void handlePendingMerges() {
 
             auto formID = otherRef->GetFormID();
           
-            if (HasAnythingBetween(retryRefA.get(), otherRef.get())) {
+            if (HasAnythingBetween(retryRefA.get()->GetPosition(), otherRef.get()->GetPosition())) {
                 nextQueue.emplace_back(handle);
             }
             else {

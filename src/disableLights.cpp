@@ -83,20 +83,11 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
             return false;
         }
     }
-
-    // crash on effect materials idk why 
+    // return here or crash on effect shaders 
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
-    if (globals::cellFullyLoaded.load() && !globals::secondAfterCellFullyLoaded.load()) {
-        std::lock_guard lock(LightData::triLightCacheMutex); 
-        p->forcedDarkness = 0.0f; 
-        return true; 
-    }
-
     auto ui = RE::UI::GetSingleton();
-    if (ui && ui->GameIsPaused()) {
-        return true;
-    }
+    if (ui && ui->GameIsPaused()) return true;
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures) return true;
 
@@ -104,38 +95,28 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return true;
-    if (pass->geometry->worldBound.radius > 1800)
-        return true;
+    if (pass->geometry->worldBound.radius > 1800) return true;
 
     std::lock_guard lock(LightData::triLightCacheMutex);
+    uint16_t currentGen = LightData::triLightCacheGeneration.load();
+    uint16_t storedGen = 0, storedIdx = 0;
+    UnpackFD(p->forcedDarkness, storedGen, storedIdx);
 
-    if (p->forcedDarkness == 0.0f)
-    {
+    if (p->forcedDarkness == 0.0f || storedGen != currentGen) {
         LightData::TriLightCache entry{};
         entry.lightShaderProp = p;
         ComputeClosestLights(entry.lights, p);
-        uint32_t index = static_cast<uint32_t>(LightData::triLightCache.size());
+        uint16_t newIdx = static_cast<uint16_t>(LightData::triLightCache.size() + 1);
         LightData::triLightCache.push_back(entry);
-        p->forcedDarkness = static_cast<float>(index + 1);
+        p->forcedDarkness = PackFD(currentGen, newIdx);
+        storedIdx = newIdx;
     }
 
-    float fd = p->forcedDarkness;
-    if (!std::isfinite(fd) || fd < 1.0f)
+    if (storedIdx == 0 || storedIdx > static_cast<uint16_t>(LightData::triLightCache.size()))
         return true;
-    if (fd > static_cast<float>(LightData::triLightCache.size()))
-    {
-        p->forcedDarkness = 0.0f;
-        return true;
-    }
-    uint32_t idx = static_cast<uint32_t>(fd);
-    if (idx == 0 || idx > LightData::triLightCache.size())
-    {
-        p->forcedDarkness = 0.0f;
-        return true;
-    }
-    auto& cache = LightData::triLightCache[idx - 1];
-    for (int i = 0; i < 7; i++)
-    {
+
+    auto& cache = LightData::triLightCache[storedIdx - 1];
+    for (int i = 0; i < 7; i++) {
         if (cache.lights[i] == light)
             return true;
     }
