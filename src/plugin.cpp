@@ -40,12 +40,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     {
         // create master point light. must clone it or crash idk why
         LightData::masterNiPointLight = NiPointLight::NiPointLight();
-        SKSE::AllocTrampoline(1 << 8);
-        TESObjectLIGH_GenDynamic::Install();
-        Load3D::Install();
-        PlayerCharacter_Update::Install();
-        AddonNodes::Install();
-        BSLightingShaderProperty_IsLightAffectingSurface::Install();
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
 //      LightManager::OurEventSink::TESCellFullyLoadedEventInstall(); 
@@ -68,5 +62,11 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     UI::Register();
    hasInverseSquareLighting();
+   SKSE::AllocTrampoline(1 << 8);
+   TESObjectLIGH_GenDynamic::Install();
+   Load3D::Install();
+   PlayerCharacter_Update::Install();
+   AddonNodes::Install();
+   BSLightingShaderProperty_IsLightAffectingSurface::Install();
     return true;
 }

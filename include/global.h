@@ -65,18 +65,12 @@ namespace globals
 
     inline float minFireCoverage = 680.49f;
 
-    inline float minFireCoverageXL = 1200.00f;
-
     // Chandeliers
   //  inline float minChandelierCoverageSM = 314;
 
     inline float minChandelierCoverage = 580;
 
-    inline float ChandelierZCompeteDistance = 314;
-
     inline float globalCoverage = 670; 
-
-    inline float globalCoverageXL = 1200;
 
     // used to reinitialize lights based on this distance as we put lights into object geomatry
     inline float fLODFadeOutMultObjects = 9000;
@@ -102,14 +96,6 @@ namespace globals
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
    // inline std::unordered_set<RE::FormID> wallMeshes{};
 
-    inline const std::vector<std::vector<std::string_view>> keywordLightGroups = {
-        { "sun"},
-        { "window" },
-        { "loadscreen" },
-        { "magic" },
-        { "fog" },
-        { "loadscreen" },
-        {"fungus"}
-    };
+    inline std::vector<std::vector<std::string_view>> keywordLightGroups = {};
 
 }

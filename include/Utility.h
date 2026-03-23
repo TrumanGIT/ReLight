@@ -120,7 +120,7 @@ inline void iniParser()
 	}
 
 	std::string line;
-	enum Section { NONE, exact, partial, priority, refid } section = NONE;
+	enum Section { NONE, lightEdid, exact, partial, priority, refid } section = NONE;
 
 	while (std::getline(iniFile, line))
 	{
@@ -132,6 +132,8 @@ inline void iniParser()
 		{
 			toLower(line);
 
+			if (line.find("exclude by light editorID") != std::string::npos)
+				section = lightEdid;
 			if (line.find("exclude specific nodes") != std::string::npos)
 				section = exact;
 			else if (line.find("exclude partial nodes") != std::string::npos)
@@ -148,6 +150,12 @@ inline void iniParser()
 
 		switch (section)
 		{
+		case lightEdid:
+			toLower(line);
+			globals::keywordLightGroups.emplace_back(1, line);
+			logger::info("Added light editorID Exclusion: {}", line);
+			continue;
+
 		case exact:
 			toLower(line);
 			globals::exclusionList.push_back(line);
@@ -598,7 +606,6 @@ inline void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShader
 				{
 					float threshold = globals::minCandleCoverage;
 					if (triRadius < 325) threshold = globals::minCandleCoverageSM;
-					else if (triRadius > 850) threshold = globals::minCandleCoverageXL;
 					if (distXY2 > threshold * threshold) continue;
 					break;
 				}
@@ -608,15 +615,13 @@ inline void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShader
 				case 3:
 				{
 					float threshold = globals::minFireCoverage;
-					if (triRadius > 850) threshold = globals::minFireCoverageXL;
 					if (distXY2 > threshold * threshold) continue;
 					break;
 				}
 				default:
-					if (light->light->radius.x < 1000) {
-						float threshold = triRadius > 1000 ? globals::globalCoverageXL : globals::globalCoverage;
+
+						float threshold = globals::globalCoverage;
 						if (distXY2 > threshold * threshold) continue;
-					}
 					break;
 				}
 

@@ -113,7 +113,7 @@ inline void handlePendingMerges() {
             auto otherRef = handle.get();
             if (!otherRef) continue;
 
-            auto formID = otherRef->GetFormID();
+            //auto formID = otherRef->GetFormID();
           
             if (HasAnythingBetween(retryRefA.get()->GetPosition(), otherRef.get()->GetPosition())) {
                 nextQueue.emplace_back(handle);

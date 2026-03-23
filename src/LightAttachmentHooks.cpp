@@ -16,7 +16,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	RE::FormID refFormID = a_this->GetFormID();
 
 	// ref already has a light placed, introduced to skip over refs that got a merged light
-
 	{
 		std::lock_guard lock(globals::refsWithAttachedLightsMutex);
 		if (globals::refsWithAttachedLights.count(refFormID) > 0)
@@ -42,7 +41,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-
+	// check file paths first, they will win over loose partial node name matches
 	if (LightManager::processByFilePath(a_this, a_root)) {
 		return niAVObject;
 	 }

@@ -5,7 +5,6 @@
 
 
 //Po3's hook THIS DISABLES ALL LIGHTS TO START WITH A CLEAN BASE TO WORK FROM
-
 RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 	RE::TESObjectLIGH* light,
 	RE::TESObjectREFR* ref,
@@ -66,6 +65,9 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 	return true;
 }
 
+//what I do here is reimplement this func, and collect closest lights once 1 second after cell loaded (otherwise no lights yet)
+// then I store the array index in a shader propertys unused forced darkness member field for fast lookups after that
+
 //meh321 - intellightent
 bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     RE::BSLightingShaderProperty* p,
@@ -87,21 +89,35 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
     auto ui = RE::UI::GetSingleton();
-    if (ui && ui->GameIsPaused()) return true;
+    if (ui && (ui->GameIsPaused() || ui->IsMenuOpen("CraftingMenu"))) return true;
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures) return true;
 
+    // torhces
     if (light->unk060 == 4) return true;
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return true;
+    
+    // dont want to block large tri shapes that might supposed have more then 7 lights (windhelmBridge) 
     if (pass->geometry->worldBound.radius > 1800) return true;
+
+    // probobly a sky light or something we should return
+    if (light->light->radius.x > 1000) return true; 
+
+    //return on actors 
+    auto objectRef = p->renderPassList.head->geometry->GetUserData(); 
+
+    if (objectRef) {
+        if (objectRef->IsActor()) return true;
+    }
 
     std::lock_guard lock(LightData::triLightCacheMutex);
     uint16_t currentGen = LightData::triLightCacheGeneration.load();
     uint16_t storedGen = 0, storedIdx = 0;
     UnpackFD(p->forcedDarkness, storedGen, storedIdx);
 
+    // forced darkness is key to light list, if player switches cells, the pool of cached light lists changes
     if (p->forcedDarkness == 0.0f || storedGen != currentGen) {
         LightData::TriLightCache entry{};
         entry.lightShaderProp = p;
@@ -122,6 +138,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     }
     return false;
 }
+
 //meh321 - intellightent
 void BSLightingShaderProperty_IsLightAffectingSurface::Install()
 {

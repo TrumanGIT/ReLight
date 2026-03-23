@@ -951,7 +951,7 @@ namespace UI {
                 bool inSection = false;
                 while (std::getline(inFile, line))
                 {
-                    if (!inSection && line.find("; priority list (higher = first match)") != std::string::npos)
+                    if (!inSection && line.find("; add esps by name to undisable their lights") != std::string::npos)
                         inSection = true;
                     if (inSection)
                         preservedBlock += line + "\n";
@@ -982,26 +982,11 @@ namespace UI {
         outFile << "light merge distance increased=" << globals::lightMergeSeekingDistance << "\n";
         outFile << "max z diff to merge=" << globals::fMaxZDiffToMerge << "\n";
         outFile << "max z diff to merge increased=" << globals::fMaxZDiffToMergeIncreased << "\n";
-        outFile << "light fade per merge=" << globals::lightFadePerMerge << "\n";
-        outFile << "light radius per merge=" << globals::lightRadiusPerMerge << "\n";
+        outFile << "light fade increase per merge=" << globals::lightFadePerMerge << "\n";
+        outFile << "light radius increase per merge=" << globals::lightRadiusPerMerge << "\n";
         outFile << "light fade max=" << globals::lightFadeMax << "\n";
         outFile << "light radius max=" << globals::lightRadiusMax << "\n";
         outFile << "light merge maxlights=" << globals::lightMergeMaxLights << "\n\n";
-
-        outFile << "; add esps by name to undisable their lights (usually not needed)\n";
-        outFile << "whitelist=";
-        for (size_t i = 0; i < globals::whitelist.size(); i++)
-        {
-            outFile << globals::whitelist[i];
-            if (i + 1 < globals::whitelist.size()) outFile << ",";
-        }
-        outFile << "\n\n";
-        outFile << "; exclude specific nodes\n";
-        for (auto& node : globals::exclusionList)
-            outFile << node.c_str() << "\n";
-        outFile << "\n; exclude partial nodes\n";
-        for (auto& node : globals::exclusionListPartialMatch)
-            outFile << node.c_str() << "\n";
 
         // dump the entire preserved block back verbatim - comments, formids, everything
         if (!preservedBlock.empty())
