@@ -33,7 +33,7 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
     static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light, RE::FormID refFormID);
 
-   static bool processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root);
+   static bool processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root);
 
    static void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this);
 

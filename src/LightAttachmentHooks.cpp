@@ -41,8 +41,17 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
+	const auto baseObject = a_this->GetBaseObject();
+	if (!baseObject) return niAVObject;
+	const auto bm = baseObject->As<RE::TESModel>();
+	if (!bm) return niAVObject;
+
+	auto currentModel = std::string(bm->GetModel());
+
+	auto meshName = extractMeshName(currentModel);
+
 	// check file paths first, they will win over loose partial node name matches
-	if (LightManager::processByFilePath(a_this, a_root)) {
+	if (LightManager::processByFilePath(a_this, meshName, a_root)) {
 		return niAVObject;
 	 }
 
@@ -51,7 +60,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
 
 	if (!nodeNameMatch.empty()) {
-		if (isNodeExclude(a_root->name, a_this)) return niAVObject;
+
+		if (isExclude(meshName, a_this)) return niAVObject;
 
 		LightManager::processByNodeName(a_root, nodeNameMatch, a_this);
 

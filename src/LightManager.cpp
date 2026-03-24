@@ -93,18 +93,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	}
 }
 
-bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_root) {
-
-	if (LightData::meshPathToJsonCfg.empty() && LightData::meshPathToJsonCfgExteriors.empty()) return false;
-
-	const auto baseObject = a_this->GetBaseObject();
-	if (!baseObject) return true;
-	const auto bm = baseObject->As<RE::TESModel>();
-	if (!bm) return true;
-
-	auto currentModel = std::string(bm->GetModel());
-
-	auto meshName = extractMeshName(currentModel);
+bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root) {
 
 	auto cell = a_this->GetParentCell();
 
@@ -115,8 +104,9 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 
 	bool isInterior = cell->IsInteriorCell();
 
-	auto cfgs = findConfigsForMeshPath(meshName, isInterior);
+	const auto cfgs = findConfigsForMeshPath(meshName, isInterior);
 
+	// if no config found then move to node name check
 	if (cfgs.empty()) {
 		//logger::warn("cfgs is empty for ref {:08X}, with name {} ", a_this->GetFormID(), meshName);
 		return false;
@@ -124,10 +114,11 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 	
 	const auto refFormID = a_this->GetFormID();
 
+	const auto baseObject = a_this->GetBaseObject(); 
+
+	if (!baseObject) return true; 
 
 	const auto baseFormID = baseObject->GetFormID();
-
-	if (isMeshExclude(meshName, a_this)) return true;
 
 	globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
@@ -149,7 +140,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 	if (cfgs.size() == 1 && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
 		auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
 		if (!cloneLight) {
-			logger::warn("Failed to clone NiPointLight for ref {:08X} with mesh '{}' )", refFormID, currentModel);
+			logger::warn("Failed to clone NiPointLight for ref {:08X} with mesh '{}' )", refFormID, meshName);
 			return false;
 		}
 
@@ -623,7 +614,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		if (!otherRefNameMatch.empty()) {
 
-			 if (isNodeExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
+			 if (isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
 
 			 if (isExcludedRef(otherRef)) return RE::BSContainer::ForEachResult::kContinue;
 

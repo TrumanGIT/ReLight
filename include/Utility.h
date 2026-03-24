@@ -125,8 +125,8 @@ inline void iniParser()
 	{
 		NONE,
 		lightEdid,
-		nodeNameExact,
-		nodeNamePartial,
+	//	nodeNameExact,
+		//nodeNamePartial,
 		meshPathExact,
 		meshPathPartial,
 		priority,
@@ -145,10 +145,10 @@ inline void iniParser()
 
 			if (line.find("exclude by light editor id") != std::string::npos)
 				section = lightEdid;
-			else if (line.find("exclude specific node names") != std::string::npos)
-				section = nodeNameExact;
-			else if (line.find("exclude partial node names") != std::string::npos)
-				section = nodeNamePartial;
+			//else if (line.find("exclude specific node names") != std::string::npos)
+			//	section = nodeNameExact;
+		//	else if (line.find("exclude partial node names") != std::string::npos)
+			//	section = nodeNamePartial;
 			else if (line.find("exclude specific mesh paths") != std::string::npos)
 				section = meshPathExact;
 			else if (line.find("exclude partial mesh paths") != std::string::npos)
@@ -171,7 +171,7 @@ inline void iniParser()
 			logger::info("Added light editorID Exclusion: {}", line);
 			continue;
 
-		case nodeNameExact:
+		/*case nodeNameExact:
 			toLower(line);
 			globals::nodeNameExclusionList.push_back(line);
 			logger::info("Added exact node name exclude: {}", line);
@@ -181,7 +181,7 @@ inline void iniParser()
 			toLower(line);
 			globals::nodeNameExclusionListPartialMatch.push_back(line);
 			logger::info("Added partial node name exclude: {}", line);
-			continue;
+			continue;*/
 
 		case meshPathExact:
 			toLower(line);
@@ -462,7 +462,7 @@ inline bool isExcludedRef(const RE::TESObjectREFR* ref)
 	return false;
 }
 
-inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::TESObjectREFR* ref)
+/*inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::TESObjectREFR* ref)
 {
 
 	// Exact matches in exclusion list
@@ -489,10 +489,10 @@ inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::TESObjectREFR* 
 	
 
 	return false;
-}
+}*/
 
 
-inline bool isMeshExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
+inline bool isExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
 {
 	// Exact matches in exclusion list
 	for (const auto& exclude : globals::meshPathExclusionList) {
