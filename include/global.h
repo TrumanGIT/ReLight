@@ -84,10 +84,14 @@ namespace globals
     inline std::vector<std::string> meshPathExclusionList{};
     inline std::vector<std::string> meshPathExclusionListPartialMatch{};
     inline std::vector<RE::BSFixedString> priorityList{};
+
     inline std::unordered_set<RE::FormID> excludedRefFormIDs{};
+    inline std::unordered_map<std::string, std::unordered_set<std::uint32_t>> excludedRefLocalFormIDsByMod{};
 
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
+
+
 
     inline std::mutex refsWithAttachedLightsMutex{};
     inline std::unordered_set<RE::FormID> refsWithAttachedLights{};

@@ -152,7 +152,7 @@ inline void handlePendingMerges() {
         uint32_t flags = cfgs[0].flags;
   
         if (cfgs.size() == 1 && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
-            auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
+            auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
             if (!cloneLight) { reprocessQueue = std::move(nextQueue); continue; }
 
             logger::debug("RE processing ref {:08X} with light {}", retryRefA->GetFormID(), match);
@@ -172,7 +172,7 @@ inline void handlePendingMerges() {
         //TODO:: doesent attach debug markers
         else {
             for (const auto& cfg : cfgs) {
-                auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
+                auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
                 if (!cloneLight) continue;
 
                 LightManager::attachLightUsingAttachPath(cfg, rootNode, cloneLight, retryRefA->GetFormID());

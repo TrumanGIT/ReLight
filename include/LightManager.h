@@ -48,6 +48,12 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
   static void AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light);
 
+  static RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight);
+
+  static void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p); 
+
+
+
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;
 

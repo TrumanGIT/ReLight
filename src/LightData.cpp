@@ -31,6 +31,13 @@ std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJ
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
+void LightData::ResetTriLightCache()
+{
+	std::lock_guard lock(LightData::triLightCacheMutex);
+	LightData::triLightCache.clear();
+	LightData::triLightCacheGeneration.fetch_add(1);
+}
+
 // Try to exclude light by editorID.
 bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
 

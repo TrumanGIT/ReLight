@@ -124,9 +124,11 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 	
 	const auto refFormID = a_this->GetFormID();
 
-	if (isMeshExclude(meshName, refFormID)) return true;
 
 	const auto baseFormID = baseObject->GetFormID();
+
+	if (isMeshExclude(meshName, a_this)) return true;
+
 	globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
 	logger::debug("file path match found {}, Processing ref {:08X} ", meshName, refFormID);
@@ -401,7 +403,7 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 
 		globals::secondAfterCellFullyLoaded.store(false);
 
-		ResetTriLightCache();
+		LightData::ResetTriLightCache();
 
 		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
 		globals::cellFullyLoaded.store(true);
@@ -420,7 +422,7 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		// not a second after cell fully laoded so reset
 		globals::secondAfterCellFullyLoaded.store(false);
 
-		ResetTriLightCache();
+		LightData::ResetTriLightCache();
 
 		// start timer and say cell fully loaded is true
 		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
@@ -621,7 +623,9 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		if (!otherRefNameMatch.empty()) {
 
-			 if (isNodeExclude(otherRefName, refBFormID)) return RE::BSContainer::ForEachResult::kContinue;
+			 if (isNodeExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
+
+			 if (isExcludedRef(otherRef)) return RE::BSContainer::ForEachResult::kContinue;
 
 			bool looseMatch = false;
 
@@ -910,4 +914,96 @@ void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 	else {
 		logger::debug("AttachDebugMarker: failed to load marker_light.nif");
 	}
+}
+
+RE::NiPointLight* LightManager::cloneNiPointLight(RE::NiPointLight* niPointLight) {
+
+	if (!niPointLight) {
+		logger::warn("no ni point light to clone!");
+		return nullptr;
+	}
+
+	auto cloneAsNiAv = niPointLight->Clone();
+	if (!cloneAsNiAv) {
+		logger::error("Failed to clone NiNode");
+		return nullptr;
+	}
+
+	auto niPointLightClone = netimmerse_cast<RE::NiPointLight*>(cloneAsNiAv);
+
+	return niPointLightClone;
+}
+
+
+ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p)
+{
+	auto* pass = p->renderPassList.head;
+	if (!pass || !pass->geometry)
+		return;
+	auto& center = pass->geometry->worldBound.center;
+
+	const float triRadius = pass->geometry->worldBound.radius;
+
+	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+	if (!ssNode)
+		return;
+	auto& rt = ssNode->GetRuntimeData();
+	struct Candidate
+	{
+		RE::BSLight* light;
+		float dist;
+	};
+	std::vector<Candidate> candidates;
+	auto gatherLights = [&](auto& container)
+		{
+			for (auto& l : container)
+			{
+				if (!l) continue;
+				auto* light = l.get();
+				if (!light || !light->light) continue;
+
+				auto& pos = light->light->world.translate;
+				float dx = pos.x - center.x;
+				float dy = pos.y - center.y;
+				float dz = pos.z - center.z;
+				float distXY2 = dx * dx + dy * dy + dz * dz;
+
+				switch (light->unk060)
+				{
+				case 1:
+				{
+					float threshold = globals::minCandleCoverage;
+					if (triRadius < 325) threshold = globals::minCandleCoverageSM;
+					if (distXY2 > threshold * threshold) continue;
+					break;
+				}
+				case 2:
+					if (distXY2 > globals::minChandelierCoverage * globals::minChandelierCoverage) continue;
+					break;
+				case 3:
+				{
+					float threshold = globals::minFireCoverage;
+					if (distXY2 > threshold * threshold) continue;
+					break;
+				}
+				default:
+
+					float threshold = globals::globalCoverage;
+					if (distXY2 > threshold * threshold) continue;
+					break;
+				}
+
+				candidates.push_back({ light, distXY2 });
+			}
+		};
+	gatherLights(rt.activeLights);
+	gatherLights(rt.activeShadowLights);
+	std::sort(candidates.begin(), candidates.end(),
+		[](auto& a, auto& b)
+		{
+			return a.dist < b.dist;
+		});
+	int count = std::min(7, (int)candidates.size());
+	for (int i = 0; i < count; i++)
+		outLights[i] = candidates[i].light;
 }

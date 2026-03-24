@@ -80,6 +80,8 @@ struct LightData {
 
 	static std::unordered_map<uint32_t, LightConfig> defaultConfigs;
 
+	static void ResetTriLightCache();
+
 	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
 
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);

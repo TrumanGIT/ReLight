@@ -143,7 +143,7 @@ inline void iniParser()
 		{
 			toLower(line);
 
-			if (line.find("exclude by light editorid") != std::string::npos)
+			if (line.find("exclude by light editor id") != std::string::npos)
 				section = lightEdid;
 			else if (line.find("exclude specific node names") != std::string::npos)
 				section = nodeNameExact;
@@ -207,19 +207,43 @@ inline void iniParser()
 
 		case refid:
 		{
-			try {
-				RE::FormID id =
-					static_cast<RE::FormID>(std::stoul(line, nullptr, 0));
+			toLower(line);
 
-				globals::excludedRefFormIDs.insert(id);
-				logger::info("Added excluded ref FormID: {:08X}", id);
+			auto tildePos = line.find('~');
+			if (tildePos != std::string::npos) {
+				std::string formIDStr = trim(line.substr(0, tildePos));
+				std::string modName = trim(line.substr(tildePos + 1));
+
+				try {
+					RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+					globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
+
+					logger::info(
+						"Added excluded local ref formID: 0x{:X} from mod {}",
+						static_cast<std::uint32_t>(parsedID),
+						modName);
+				}
+				catch (...) {
+					logger::warn("Failed to parse excluded ref local formID entry: {}", line);
+				}
+
+				continue;
+			}
+
+			try {
+				RE::FormID formID = std::stoul(line, nullptr, 16);
+				globals::excludedRefFormIDs.insert(formID);
+
+				logger::info(
+					"Added excluded runtime ref formID: 0x{:08X}",
+					static_cast<std::uint32_t>(formID));
 			}
 			catch (...) {
-				logger::warn("Invalid FormID in exclude-by-ref section: {}", line);
+				logger::warn("Failed to parse excluded ref formID: {}", line);
 			}
+
 			continue;
 		}
-
 		default:
 			break;
 		}
@@ -347,24 +371,6 @@ inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
 	return false;
 }
 
-inline RE::NiPointLight* cloneNiPointLight(RE::NiPointLight* niPointLight) {
-
-	if (!niPointLight) {
-		logger::warn("no ni point light to clone!");
-			return nullptr;
-	}
-
-	auto cloneAsNiAv = niPointLight->Clone();
-	if (!cloneAsNiAv) {
-		logger::error("Failed to clone NiNode");
-		return nullptr;
-	}
-
-	auto niPointLightClone = netimmerse_cast<RE::NiPointLight*>(cloneAsNiAv);
-
-	return niPointLightClone;
-}
-
 //removes unsightly glow orbs from meshes
 inline void glowOrbRemover(RE::NiNode* node)
 {
@@ -400,7 +406,63 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::FormID refFormID)
+inline bool isLightPluginFormID(RE::FormID formID)
+{
+	return (formID & 0xFF000000) == 0xFE000000;
+}
+
+inline std::uint32_t getLocalFormID(RE::FormID formID)
+{
+	if (isLightPluginFormID(formID)) {
+		return formID & 0x00000FFF;  // ESL/light plugin
+	}
+
+	return formID & 0x00FFFFFF;      // normal plugin
+}
+
+inline bool isExcludedRef(const RE::TESObjectREFR* ref)
+{
+	if (!ref) {
+		return false;
+	}
+
+	const RE::FormID runtimeFormID = ref->GetFormID();
+
+	// old behavior still works
+	if (globals::excludedRefFormIDs.contains(runtimeFormID)) {
+		logger::debug("excluded ref runtime formID 0x{:08X} skipping light attachment",
+			static_cast<std::uint32_t>(runtimeFormID));
+		return true;
+	}
+
+	const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+	std::string modName = refOriginFile ? refOriginFile->fileName : "";
+	if (modName.empty()) {
+		return false;
+	}
+
+	toLower(modName);
+
+	auto it = globals::excludedRefLocalFormIDsByMod.find(modName);
+	if (it == globals::excludedRefLocalFormIDsByMod.end()) {
+		return false;
+	}
+
+	const std::uint32_t localFormID = getLocalFormID(runtimeFormID);
+
+	if (it->second.contains(localFormID)) {
+		logger::debug(
+			"excluded ref '{}' local formID 0x{:X} (runtime 0x{:08X}) skipping light attachment",
+			modName,
+			localFormID,
+			static_cast<std::uint32_t>(runtimeFormID));
+		return true;
+	}
+
+	return false;
+}
+
+inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::TESObjectREFR* ref)
 {
 
 	// Exact matches in exclusion list
@@ -421,8 +483,7 @@ inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::FormID refFormI
 			
 	}
 
-	if (globals::excludedRefFormIDs.contains(refFormID)) {
-		logger::debug("excluded ref '{}' skipping light attachment", refFormID);
+	if (isExcludedRef(ref)) {
 		return true;
 	}
 	
@@ -431,16 +492,14 @@ inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::FormID refFormI
 }
 
 
-inline bool isMeshExclude(const std::string& meshPath, RE::FormID refFormID)
+inline bool isMeshExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
 {
-
 	// Exact matches in exclusion list
 	for (const auto& exclude : globals::meshPathExclusionList) {
 		if (meshPath == exclude) {
 			logger::debug("isExclude: '{}' matched exact mesh exclude '{}' skipping light attachment", meshPath, exclude);
 			return true;
 		}
-
 	}
 
 	// Partial matches in exclusion list
@@ -449,14 +508,11 @@ inline bool isMeshExclude(const std::string& meshPath, RE::FormID refFormID)
 			logger::debug("isExclude: '{}' matched partial mesh exclude '{}' skipping light attachment", meshPath, exclude);
 			return true;
 		}
-
 	}
 
-	if (globals::excludedRefFormIDs.contains(refFormID)) {
-		logger::debug("excluded ref '{}' skipping light attachment", refFormID);
+	if (isExcludedRef(ref)) {
 		return true;
 	}
-
 
 	return false;
 }
@@ -626,86 +682,6 @@ inline auto UnpackFloat = [](float packed, float& z, float& coverage) {
 	coverage = (float)(int16_t)(bits & 0xFFFF);
 	};
 
-inline void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p)
-{
-	auto* pass = p->renderPassList.head;
-	if (!pass || !pass->geometry)
-		return;
-	auto& center = pass->geometry->worldBound.center;
-
-	const float triRadius = pass->geometry->worldBound.radius;
-
-	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-	if (!ssNode)
-		return;
-	auto& rt = ssNode->GetRuntimeData();
-	struct Candidate
-	{
-		RE::BSLight* light;
-		float dist;
-	};
-	std::vector<Candidate> candidates;
-	auto gatherLights = [&](auto& container)
-		{
-			for (auto& l : container)
-			{
-				if (!l) continue;
-				auto* light = l.get();
-				if (!light || !light->light) continue;
-
-				auto& pos = light->light->world.translate;
-				float dx = pos.x - center.x;
-				float dy = pos.y - center.y;
-				float dz = pos.z - center.z;
-				float distXY2 = dx * dx + dy * dy + dz * dz;
-
-				switch (light->unk060)
-				{
-				case 1:
-				{
-					float threshold = globals::minCandleCoverage;
-					if (triRadius < 325) threshold = globals::minCandleCoverageSM;
-					if (distXY2 > threshold * threshold) continue;
-					break;
-				}
-				case 2:
-					if (distXY2 > globals::minChandelierCoverage * globals::minChandelierCoverage) continue;
-					break;
-				case 3:
-				{
-					float threshold = globals::minFireCoverage;
-					if (distXY2 > threshold * threshold) continue;
-					break;
-				}
-				default:
-
-						float threshold = globals::globalCoverage;
-						if (distXY2 > threshold * threshold) continue;
-					break;
-				}
-
-				candidates.push_back({ light, distXY2 });
-			}
-		};
-	gatherLights(rt.activeLights);
-	gatherLights(rt.activeShadowLights);
-	std::sort(candidates.begin(), candidates.end(),
-		[](auto& a, auto& b)
-		{
-			return a.dist < b.dist;
-		});
-	int count = std::min(7, (int)candidates.size());
-	for (int i = 0; i < count; i++)
-		outLights[i] = candidates[i].light;
-}
-
-inline void ResetTriLightCache()
-{
-	std::lock_guard lock(LightData::triLightCacheMutex);
-	LightData::triLightCache.clear();
-	LightData::triLightCacheGeneration.fetch_add(1);
-}
-
 
 inline float PackFD(uint16_t gen, uint16_t idx)
 {
@@ -722,3 +698,4 @@ inline void UnpackFD(float fd, uint16_t& gen, uint16_t& idx)
 	gen = (uint16_t)(packed >> 16);
 	idx = (uint16_t)(packed & 0xFFFF);
 }
+

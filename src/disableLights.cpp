@@ -2,6 +2,7 @@
 #include "disableLights.h"
 #include "LightData.h"
 #include "Utility.h"
+#include "LightManager.h"
 
 
 //Po3's hook THIS DISABLES ALL LIGHTS TO START WITH A CLEAN BASE TO WORK FROM
@@ -121,7 +122,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     if (p->forcedDarkness == 0.0f || storedGen != currentGen) {
         LightData::TriLightCache entry{};
         entry.lightShaderProp = p;
-        ComputeClosestLights(entry.lights, p);
+        LightManager::ComputeClosestLights(entry.lights, p);
         uint16_t newIdx = static_cast<uint16_t>(LightData::triLightCache.size() + 1);
         LightData::triLightCache.push_back(entry);
         p->forcedDarkness = PackFD(currentGen, newIdx);
