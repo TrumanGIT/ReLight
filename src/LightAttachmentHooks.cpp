@@ -51,7 +51,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
 
 	if (!nodeNameMatch.empty()) {
-		if (isExclude(a_root->name, refFormID)) return niAVObject;
+		if (isNodeExclude(a_root->name, refFormID)) return niAVObject;
 
 		LightManager::processByNodeName(a_root, nodeNameMatch, a_this);
 

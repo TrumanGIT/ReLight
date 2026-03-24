@@ -241,12 +241,22 @@ namespace UI {
         }
 
         if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Exact)")) {
-            for (auto& entry : globals::exclusionList)
+            for (auto& entry : globals::nodeNameExclusionList)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
 
         if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Partial Match)")) {
-            for (auto& entry : globals::exclusionListPartialMatch)
+            for (auto& entry : globals::nodeNameExclusionListPartialMatch)
+                ImGuiMCP::Text("%s", entry.c_str());
+        }
+
+        if (ImGuiMCP::CollapsingHeader("Excluded Mesh Paths (Exact)")) {
+            for (auto& entry : globals::meshPathExclusionList)
+                ImGuiMCP::Text("%s", entry.c_str());
+        }
+
+        if (ImGuiMCP::CollapsingHeader("Excluded Mesh Paths (Partial Match)")) {
+            for (auto& entry : globals::meshPathExclusionListPartialMatch)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
     }

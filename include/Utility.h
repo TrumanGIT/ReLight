@@ -120,7 +120,18 @@ inline void iniParser()
 	}
 
 	std::string line;
-	enum Section { NONE, lightEdid, exact, partial, priority, refid } section = NONE;
+
+	enum Section
+	{
+		NONE,
+		lightEdid,
+		nodeNameExact,
+		nodeNamePartial,
+		meshPathExact,
+		meshPathPartial,
+		priority,
+		refid
+	} section = NONE;
 
 	while (std::getline(iniFile, line))
 	{
@@ -132,12 +143,16 @@ inline void iniParser()
 		{
 			toLower(line);
 
-			if (line.find("exclude by light editorID") != std::string::npos)
+			if (line.find("exclude by light editorid") != std::string::npos)
 				section = lightEdid;
-			if (line.find("exclude specific nodes") != std::string::npos)
-				section = exact;
-			else if (line.find("exclude partial nodes") != std::string::npos)
-				section = partial;
+			else if (line.find("exclude specific node names") != std::string::npos)
+				section = nodeNameExact;
+			else if (line.find("exclude partial node names") != std::string::npos)
+				section = nodeNamePartial;
+			else if (line.find("exclude specific mesh paths") != std::string::npos)
+				section = meshPathExact;
+			else if (line.find("exclude partial mesh paths") != std::string::npos)
+				section = meshPathPartial;
 			else if (line.find("priority") != std::string::npos)
 				section = priority;
 			else if (line.find("exclude by ref form id") != std::string::npos)
@@ -156,17 +171,30 @@ inline void iniParser()
 			logger::info("Added light editorID Exclusion: {}", line);
 			continue;
 
-		case exact:
+		case nodeNameExact:
 			toLower(line);
-			globals::exclusionList.push_back(line);
-			logger::info("Added exact exclude: {}", line);
+			globals::nodeNameExclusionList.push_back(line);
+			logger::info("Added exact node name exclude: {}", line);
 			continue;
 
-		case partial:
+		case nodeNamePartial:
 			toLower(line);
-			globals::exclusionListPartialMatch.push_back(line);
-			logger::info("Added partial exclude: {}", line);
+			globals::nodeNameExclusionListPartialMatch.push_back(line);
+			logger::info("Added partial node name exclude: {}", line);
 			continue;
+
+		case meshPathExact:
+			toLower(line);
+			globals::meshPathExclusionList.push_back(line);
+			logger::info("Added exact mesh path exclude: {}", line);
+			continue;
+
+		case meshPathPartial:
+			toLower(line);
+			globals::meshPathExclusionListPartialMatch.push_back(line);
+			logger::info("Added partial mesh path exclude: {}", line);
+			continue;
+
 
 		case priority:
 			toLower(line);
@@ -372,11 +400,11 @@ inline void glowOrbRemover(RE::NiNode* node)
 	}
 }
 
-inline bool isExclude(const RE::BSFixedString& nodeName, RE::FormID refFormID)
+inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::FormID refFormID)
 {
 
 	// Exact matches in exclusion list
-	for (const auto& exclude : globals::exclusionList) {
+	for (const auto& exclude : globals::nodeNameExclusionList) {
 		if (nodeName == exclude) {
 			logger::debug("isExclude: '{}' matched exact exclude '{}' skipping light attachment", nodeName.c_str(), exclude);
 			return true;
@@ -385,7 +413,7 @@ inline bool isExclude(const RE::BSFixedString& nodeName, RE::FormID refFormID)
 	}
 
 	// Partial matches in exclusion list
-	for (const auto& exclude : globals::exclusionListPartialMatch) {
+	for (const auto& exclude : globals::nodeNameExclusionListPartialMatch) {
 		if (nodeName.contains(exclude)) {
 			logger::debug("isExclude: '{}' matched partial exclude '{}' skipping light attachment", nodeName.c_str(), exclude);
 			return true;
@@ -398,6 +426,37 @@ inline bool isExclude(const RE::BSFixedString& nodeName, RE::FormID refFormID)
 		return true;
 	}
 	
+
+	return false;
+}
+
+
+inline bool isMeshExclude(const std::string& meshPath, RE::FormID refFormID)
+{
+
+	// Exact matches in exclusion list
+	for (const auto& exclude : globals::meshPathExclusionList) {
+		if (meshPath == exclude) {
+			logger::debug("isExclude: '{}' matched exact mesh exclude '{}' skipping light attachment", meshPath, exclude);
+			return true;
+		}
+
+	}
+
+	// Partial matches in exclusion list
+	for (const auto& exclude : globals::meshPathExclusionListPartialMatch) {
+		if (meshPath.contains(exclude)) {
+			logger::debug("isExclude: '{}' matched partial mesh exclude '{}' skipping light attachment", meshPath, exclude);
+			return true;
+		}
+
+	}
+
+	if (globals::excludedRefFormIDs.contains(refFormID)) {
+		logger::debug("excluded ref '{}' skipping light attachment", refFormID);
+		return true;
+	}
+
 
 	return false;
 }

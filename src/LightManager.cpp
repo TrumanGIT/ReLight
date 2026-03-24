@@ -121,8 +121,11 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, RE::NiNode* a_ro
 		//logger::warn("cfgs is empty for ref {:08X}, with name {} ", a_this->GetFormID(), meshName);
 		return false;
 	}
-
+	
 	const auto refFormID = a_this->GetFormID();
+
+	if (isMeshExclude(meshName, refFormID)) return true;
+
 	const auto baseFormID = baseObject->GetFormID();
 	globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
@@ -618,7 +621,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		if (!otherRefNameMatch.empty()) {
 
-			 if (isExclude(otherRefName, refBFormID)) return RE::BSContainer::ForEachResult::kContinue;
+			 if (isNodeExclude(otherRefName, refBFormID)) return RE::BSContainer::ForEachResult::kContinue;
 
 			bool looseMatch = false;
 
