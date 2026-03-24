@@ -111,6 +111,8 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 		//logger::warn("cfgs is empty for ref {:08X}, with name {} ", a_this->GetFormID(), meshName);
 		return false;
 	}
+
+	if (isExclude(meshName, a_this)) return true; 
 	
 	const auto refFormID = a_this->GetFormID();
 
@@ -614,9 +616,10 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		if (!otherRefNameMatch.empty()) {
 
-			 if (isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
+			//mutable
+			toLower(otherRefNameMatch);
 
-			 if (isExcludedRef(otherRef)) return RE::BSContainer::ForEachResult::kContinue;
+			 if (isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
 
 			bool looseMatch = false;
 

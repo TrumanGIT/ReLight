@@ -50,6 +50,9 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	auto meshName = extractMeshName(currentModel);
 
+	//mutable
+	toLower(meshName);
+
 	// check file paths first, they will win over loose partial node name matches
 	if (LightManager::processByFilePath(a_this, meshName, a_root)) {
 		return niAVObject;
