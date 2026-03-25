@@ -92,7 +92,7 @@ inline void splitString(const std::string& input, char delimiter, std::vector<st
 	}
 }
 
-inline bool containsAll(std::string ID,
+/*inline bool containsAll(std::string ID,
 	const std::vector<std::string_view>& group)
 {
 	toLower(ID);
@@ -101,7 +101,7 @@ inline bool containsAll(std::string ID,
 			return false;
 	}
 	return true;
-}
+}*/
 
 //TODO:: Log set values for debugging (saved me alot of flickerTime with users) 
 inline void iniParser()
@@ -167,7 +167,7 @@ inline void iniParser()
 		{
 		case lightEdid:
 			toLower(line);
-			globals::keywordLightGroups.emplace_back(1, line);
+			globals::keywordLightGroups.push_back(line);
 			logger::info("Added light editorID Exclusion: {}", line);
 			continue;
 

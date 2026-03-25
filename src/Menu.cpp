@@ -104,24 +104,34 @@ namespace UI {
                 ImGuiMCP::SetTooltip("will merge no more then this amount of lights during 1 merge");
             }
 
-            ImGuiMCP::SliderFloat("Max Distance of refs to light merge", &globals::lightMergeDistance, 0, 300);
-
-            ImGuiMCP::SliderFloat("Extended Z distance allowed to merge", &globals::fMaxZDiffToMergeIncreased, 0, 300);
+            ImGuiMCP::SliderFloat("Distance to light merge", &globals::lightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Used for ruin candles, as they need aggressive merging.");
+                ImGuiMCP::SetTooltip("Refs placed further apart will not merge");
             }
 
+            ImGuiMCP::SliderFloat("Merge distance increased", &globals::lightMergeSeekingDistance, 0, 300);
+
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Sets max distance refs must be apart for them to merge into 1 light.");
+                ImGuiMCP::SetTooltip("Used for configs with the IncreasedMergeDistance flag");
             }
 
-            ImGuiMCP::SliderFloat("Max Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
-
-            ImGuiMCP::SliderFloat("Increased Z distance of refs to light merge", &globals::fMaxZDiffToMergeIncreased, 0, 300);
+            ImGuiMCP::SliderFloat("Merge distance shadow light", &globals::shadowLightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Used for ruin candles");
+                ImGuiMCP::SetTooltip("Don't turn this down its for fire meshes stacked on top of each other");
+            }
+
+            ImGuiMCP::SliderFloat("Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("If z distance is greater, will not merge");
+            }
+
+            ImGuiMCP::SliderFloat("Z distance Increased", &globals::fMaxZDiffToMergeIncreased, 0, 300);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("For configs with the IncreasedMergeDistance flag");
             }
 
             ImGuiMCP::NextColumn(); 
@@ -142,12 +152,6 @@ namespace UI {
             ImGuiMCP::SliderFloat("Max Radius Multiplier", &globals::lightRadiusMax, 1.0f, 5.0f);
             if (ImGuiMCP::IsItemHovered())
                 ImGuiMCP::SetTooltip("Max radius mult after merging.");
-
-            ImGuiMCP::SliderFloat("Max distance to merge shadow light", &globals::shadowLightMergeDistance, 0, 300);
-
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Dont turn this down");
-            }
   
             ImGuiMCP::PopItemWidth(); 
         }
@@ -212,7 +216,7 @@ namespace UI {
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
 
         ImGuiMCP::Checkbox("Enable Debugging Light Bulbs", &globals::enableDebugLightBulbs);
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Show Creation Kit");
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Show Creation Kit Style Light Bulbs Where Lights Were Placed");
 
         ImGuiMCP::Separator();
 
@@ -237,16 +241,6 @@ namespace UI {
 
         if (ImGuiMCP::CollapsingHeader("Priority Nodes")) {
             for (auto& entry : globals::priorityList)
-                ImGuiMCP::Text("%s", entry.c_str());
-        }
-
-        if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Exact)")) {
-            for (auto& entry : globals::nodeNameExclusionList)
-                ImGuiMCP::Text("%s", entry.c_str());
-        }
-
-        if (ImGuiMCP::CollapsingHeader("Excluded Nodes (Partial Match)")) {
-            for (auto& entry : globals::nodeNameExclusionListPartialMatch)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
 

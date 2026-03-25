@@ -43,16 +43,22 @@ bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
 
 	std::string edid = clib_util::editorID::get_editorID(light);
 
-	if (!edid.empty()) {
-		for (const auto& group : globals::keywordLightGroups) {
-			if (containsAll(edid, group)) {
+	toLower(edid); 
 
-				//TODO:: should exclude by form id instead here
-				if (edid.contains("SolitudeInnSunlightShadow")) return false;
-				logger::info("Excluding light by editorID: {}", edid);
-				return true;
+	if (!edid.empty()) {
+
+			toLower(edid);
+
+			for (const auto& keyword : globals::keywordLightGroups) {
+				if (edid.contains(keyword)) {
+
+					if (edid.contains("solitudeinnsunlightshadow"))
+						return false;
+
+					logger::info("Excluding light by editorID: {}", edid);
+					return true;
+				}
 			}
-		}
 	}
 	return false;
 }

@@ -87,6 +87,8 @@ inline void menuRefreshLight(uint32_t configID)
         }
         });
 
+    LightData::ResetTriLightCache(); 
+
 }
 
 // not very usefull problem is not # of lights in a cell but # of lights on a bs tri shape

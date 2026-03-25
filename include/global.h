@@ -102,6 +102,6 @@ namespace globals
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
    // inline std::unordered_set<RE::FormID> wallMeshes{};
 
-    inline std::vector<std::vector<std::string_view>> keywordLightGroups = {};
+    inline std::vector<std::string> keywordLightGroups = {};
 
 }
