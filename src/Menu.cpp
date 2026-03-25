@@ -919,7 +919,7 @@ namespace UI {
 
                     if (ImGuiMCP::Button("Refresh Lights")) {
 
-                        clearSSNodeLights();
+                        menuRefreshLight(selectedLight->light->unk138);
 
                         auto player = RE::PlayerCharacter::GetSingleton();
 
@@ -928,7 +928,7 @@ namespace UI {
                             return;
                         }
 
-                        LightManager::reinitializeLightsWithinRange(player);
+                        //LightManager::reinitializeLightsWithinRange(player);
                     }
 
                     if (ImGuiMCP::IsItemHovered()) {
@@ -937,7 +937,6 @@ namespace UI {
 
                     ImGuiMCP::EndChild();
                 }
-
 
                 ImGuiMCP::PopID();
             }

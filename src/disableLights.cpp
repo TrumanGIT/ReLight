@@ -1,6 +1,5 @@
 
 #include "disableLights.h"
-#include "LightData.h"
 #include "Utility.h"
 #include "LightManager.h"
 

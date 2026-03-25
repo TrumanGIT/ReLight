@@ -2,6 +2,7 @@
 
 #include "global.h"
 #include <unordered_set>
+#include "LightData.h"
 //#include <chrono>
 
 //PO3's hook used to disable all lights tot start wiht a clean base
@@ -24,35 +25,68 @@ struct BSLightingShaderProperty_IsLightAffectingSurface
 };
 
 
-inline void clearSSNodeLights() {
+inline void menuRefreshLight(uint32_t configID)
+{
     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
     if (!ssNode) {
         logger::warn("ShadowSceneNode[0] is null cant reinitialize lights");
         return;
     }
 
+    std::vector<RE::NiPointer<RE::BSLight>> lightsToRemove;
+
+    std::vector<RE::NiPointer<RE::NiLight>> lightsToReAdd;
+
+    // regular lights
     for (const auto& l : ssNode->activeLights) {
-        if (!l) continue;
-
-        std::string lightName = l->light->name.c_str();
-
-        if (lightName.empty() || lightName[0] != 'R' || lightName[1] != 'L')
+        if (!l || !l->light)
             continue;
 
-        ssNode->RemoveLight(l);
+        if (l->light->unk138 != configID) continue; 
 
+        lightsToReAdd.push_back(l->light);
+        lightsToRemove.push_back(l);
     }
 
+    // shadow lights
     for (const auto& l : ssNode->activeShadowLights) {
-        if (!l) continue;
-
-        std::string lightName = l->light->name.c_str();
-
-        if (lightName.empty() || lightName[0] != 'R' || lightName[1] != 'L')
+        if (!l || !l->light)
             continue;
 
-        ssNode->RemoveLight(l);
+        if (l->light->unk138 != configID) continue;
+        lightsToReAdd.push_back(l->light); 
+        lightsToRemove.push_back(l);
     }
+
+    // remove using underlying light
+    for (const auto& light : lightsToRemove) {
+        ssNode->RemoveLight(light);
+    }
+
+    SKSE::GetTaskInterface()->AddTask([lightsToReAdd]() {
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null in queued light refresh task");
+            return;
+        }
+
+        for (const auto& light : lightsToReAdd) {
+            if (!light)
+                continue;
+
+            auto it = LightData::configIDToJsonCfg.find(light->unk138);
+            if (it == LightData::configIDToJsonCfg.end()) {
+                logger::warn("no config found to restore defaults from for configID {}", light->unk138);
+                continue;
+            }
+
+            LightData::setNiPointLightDataFromCfg(light.get(), it->second);
+
+            auto params = LightData::makeLightParams(it->second);
+            ssNode->AddLight(light.get(), params);
+        }
+        });
+
 }
 
 // not very usefull problem is not # of lights in a cell but # of lights on a bs tri shape

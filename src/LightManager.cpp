@@ -169,6 +169,8 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 				LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
 
+				cloneLight->name = "RL" + cfg.meshPath; 
+
 				attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
 		}
 	}
@@ -254,7 +256,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 		 logger::debug("dummy node {} with model {}. Processing ref {:08X} and got light from config: {}", modelName, currentModel, refFormID, cfg.nodeName);
 			 LightManager::fillPendingMerges(a_this, cloneLight, cfg, a_root);
 
-	
 		 return true;
 	 }
 
@@ -344,6 +345,8 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
 
+			cloneLight->name = "RL" + cfg.nodeName; 
+
 			attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
 
 			return;
@@ -391,8 +394,6 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 
 	// player changes from interor to exterior or vice versa, must reinitialize lights
 	if (globals::lastCellWasInterior !=	globals::currentCellIsInterior ) {
-
-
 
 		globals::secondAfterCellFullyLoaded.store(false);
 
@@ -448,12 +449,17 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 	// clear this lights list that has merged lights placed into it so tehey can get lights attached again.
 	
-		//std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
+	{
+		std::scoped_lock lock(globals::refsWithAttachedLightsMutex);
 		globals::refsWithAttachedLights.clear();
+	}
 
-		globals::mergedRefs.clear(); 
-	 
-
+	{
+		std::scoped_lock lock(globals::mergedRefsMutex);
+		globals::mergedRefs.clear();
+	}
+	
+	
 	RE::TES::GetSingleton()->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
 
 		if (!ref) return RE::BSContainer::ForEachResult::kContinue;
@@ -514,8 +520,6 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 								for (RE::NiPointer<RE::BSShadowLight> bsLight : ssNode->activeShadowLights) {
 
-									bsLight->worldTranslate;
-
 									if (bsLight->light.get() == light) {
 										logger::debug("shadow light {} with ID {} exists already for ref {:08X} skipping reinitialization", light->name, static_cast<void*>(light), ref->GetFormID());
 										bsLightExists = true;
@@ -526,6 +530,8 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 								if (!bsLightExists) {
 									logger::debug("reintializing light {} for ref {:08X} is shadow = {}", light->name, ref->GetFormID(), config.shadowLight);
 
+									//reset light data incase user had changed them since then
+									LightData::setNiPointLightDataFromCfg(light, config);
 									auto p = LightData::makeLightParams(config);
 									auto reattachedBSLight = ssNode->AddLight(light, p);
 
@@ -533,12 +539,12 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
 										reattachedBSLight->unk060 = 1;
-										return RE::BSContainer::ForEachResult::kContinue;
+										//return RE::BSContainer::ForEachResult::kContinue;
 									}
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
 										reattachedBSLight->unk060 = 2;
-										return RE::BSContainer::ForEachResult::kContinue;
+										//return RE::BSContainer::ForEachResult::kContinue;
 									}
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
@@ -546,23 +552,16 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 									}
 								}
 
-							//}
-							//regular lights can just disable and renable to reinitialize (light dissapears with the mesh)
-							//else {
-							//	ref->Disable();
-							//	ref->Enable(false);
-							//}
 						}
-				//	}
 			}
 		}
-		});
+	});
 	
-		//std::scoped_lock refsLock(globals::refsWithAttachedLightsMutex);
-		globals::refsWithAttachedLights.clear();
+		std::scoped_lock refsLock(globals::refsWithAttachedLightsMutex);
+		{ globals::refsWithAttachedLights.clear(); }
 	
-	//	std::scoped_lock mergedLock(globals::mergedRefsMutex);
-		globals::mergedRefs.clear();
+		std::scoped_lock mergedLock(globals::mergedRefsMutex);
+		{ globals::mergedRefs.clear(); }
 }
 
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 
