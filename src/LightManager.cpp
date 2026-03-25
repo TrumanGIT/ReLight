@@ -976,6 +976,7 @@ RE::NiPointLight* LightManager::cloneNiPointLight(RE::NiPointLight* niPointLight
 				case 3:
 				{
 					float threshold = globals::minFireCoverage;
+					if (triRadius > 850) threshold = globals::minFireCoverageXL;
 					if (distXY2 > threshold * threshold) continue;
 					break;
 				}

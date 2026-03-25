@@ -61,7 +61,7 @@ namespace globals
     inline float minCandleCoverageXL = 1100;
 
     //FireBounds
-   // inline float minFireCoverageSM = 465;
+    inline float minFireCoverageXL = 1200;
 
     inline float minFireCoverage = 680.49f;
 
