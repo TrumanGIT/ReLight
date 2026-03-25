@@ -93,16 +93,64 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	}
 }
 
-bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root) {
+std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref, bool isInterior)
+{
+	if (!ref)
+		return nullptr;
 
-	auto cell = a_this->GetParentCell();
+	RE::FormID formID = ref->GetFormID();
 
-	if (!cell) {
-		logger::warn("no cell cant determine if should use exterior or interior configs");
-		return false;
+	if (isLightPluginFormID(formID)) {
+		const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+		if (!refOriginFile)
+			return nullptr;
+
+		std::string modName = refOriginFile->fileName;
+		toLower(modName);
+
+		std::uint32_t localID = formID & 0x00000FFF;
+
+		if (isInterior) {
+			auto modIt = LightData::lightPluginRefFormIDToJsonCfg.find(modName);
+			if (modIt == LightData::lightPluginRefFormIDToJsonCfg.end())
+				return nullptr;
+
+			auto idIt = modIt->second.find(localID);
+			if (idIt == modIt->second.end())
+				return nullptr;
+
+			return &idIt->second;
+		}
+		else {
+			auto modIt = LightData::lightPluginRefFormIDToJsonCfgExteriors.find(modName);
+			if (modIt == LightData::lightPluginRefFormIDToJsonCfgExteriors.end())
+				return nullptr;
+
+			auto idIt = modIt->second.find(localID);
+			if (idIt == modIt->second.end())
+				return nullptr;
+
+			return &idIt->second;
+		}
 	}
 
-	bool isInterior = cell->IsInteriorCell();
+	if (isInterior) {
+		auto it = LightData::refFormIDToJsonCfg.find(formID);
+		if (it != LightData::refFormIDToJsonCfg.end())
+			return &it->second;
+	}
+	else {
+		auto it = LightData::refFormIDToJsonCfgExteriors.find(formID);
+		if (it != LightData::refFormIDToJsonCfgExteriors.end())
+			return &it->second;
+	}
+
+	return nullptr;
+}
+
+bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior) {
+
+
 
 	const auto cfgs = findConfigsForMeshPath(meshName, isInterior);
 
@@ -264,7 +312,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 }
 
 
- void LightManager::processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this) {
+ void LightManager::processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this, bool isInterior) {
 
 	// matched name with a configs nodename
 	std::string matchStr = match.c_str();
@@ -290,15 +338,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 	if (globals::removeFakeGlowOrbs)
 		glowOrbRemover(a_root);
 
-	auto cell = a_this->GetParentCell(); 
-
-	if (!cell) {
-		logger::warn("no cell cant determine if should use exterior or interior configs");
-		return; 
-	}
-
-	bool isInterior = cell->IsInteriorCell(); 
-
 	auto cfgs = findConfigsForNode(matchStr, isInterior);
 
 	if (cfgs.empty()) {
@@ -309,6 +348,15 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 	logger::debug(" processing ref {:08X} by node name with light {} ", refFormID, matchStr);
 
 	uint32_t flags = cfgs[0].flags; 
+
+	logger::debug(
+		"ref {:08X} node '{}' cfg count = {}, flags = 0x{:X}, noMerging = {}",
+		refFormID,
+		matchStr,
+		cfgs.size(),
+		flags,
+		(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging)) != 0
+	);
 
 	// not a multi light, send off to merging logic
 	if (cfgs.size() == 1 && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
@@ -531,7 +579,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 									logger::debug("reintializing light {} for ref {:08X} is shadow = {}", light->name, ref->GetFormID(), config.shadowLight);
 
 									//reset light data incase user had changed them since then
-									LightData::setNiPointLightDataFromCfg(light, config);
+									//LightData::setNiPointLightDataFromCfg(light, config);
 									auto p = LightData::makeLightParams(config);
 									auto reattachedBSLight = ssNode->AddLight(light, p);
 

@@ -28,6 +28,12 @@ std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJ
 //base lookup used when attaching lights to meshes
 std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJsonCfgExteriors;
 
+std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfg;
+std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfgExteriors;
+
+std::unordered_map<std::string, std::unordered_map<std::uint32_t, std::vector<LightConfig>>> LightData::lightPluginRefFormIDToJsonCfg;
+std::unordered_map<std::string, std::unordered_map<std::uint32_t, std::vector<LightConfig>>> LightData::lightPluginRefFormIDToJsonCfgExteriors;
+
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
@@ -226,11 +232,11 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 		toLower(meshKey);
 
 		if (auto it = meshPathToJsonCfg.find(meshKey); it != meshPathToJsonCfg.end()) {
-			updated |= updateConfigInVector(it->second, updatedCfg);
+			updated |= updateConfigMap(it->second, updatedCfg);
 		}
 
 		if (auto it = meshPathToJsonCfgExteriors.find(meshKey); it != meshPathToJsonCfgExteriors.end()) {
-			updated |= updateConfigInVector(it->second, updatedCfg);
+			updated |= updateConfigMap(it->second, updatedCfg);
 		}
 	}
 
@@ -239,14 +245,81 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 		toLower(nodeKey);
 
 		if (auto it = nodeNameToJsonCfg.find(nodeKey); it != nodeNameToJsonCfg.end()) {
-			updated |= updateConfigInVector(it->second, updatedCfg);
+			updated |= updateConfigMap(it->second, updatedCfg);
 		}
 
 		if (auto it = nodeNameToJsonCfgExteriors.find(nodeKey); it != nodeNameToJsonCfgExteriors.end()) {
-			updated |= updateConfigInVector(it->second, updatedCfg);
+			updated |= updateConfigMap(it->second, updatedCfg);
+		}
+	}
+
+	if (!updatedCfg.refFormIDAndModName.empty()) {
+		auto refKey = updatedCfg.refFormIDAndModName;
+		toLower(refKey);
+
+		auto tildePos = refKey.find('~');
+		if (tildePos != std::string::npos) {
+			std::string formIDStr = trim(refKey.substr(0, tildePos));
+			std::string modName = trim(refKey.substr(tildePos + 1));
+
+			try {
+				auto* dataHandler = RE::TESDataHandler::GetSingleton();
+				if (!dataHandler) {
+					logger::warn("TESDataHandler was null while updating ref config cache");
+					return updated;
+				}
+
+				std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
+
+				const RE::TESFile* file = dataHandler->LookupLoadedModByName(modName);
+				bool isLightMod = false;
+
+				if (!file) {
+					file = dataHandler->LookupLoadedLightModByName(modName);
+					if (file) {
+						isLightMod = true;
+					}
+				}
+
+				if (!file) {
+					logger::warn("Invalid mod name '{}' while updating ref config cache", modName);
+					return updated;
+				}
+
+				if (isLightMod) {
+					std::uint32_t localID = parsedID & 0x00000FFF;
+
+					if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+						auto& vec = lightPluginRefFormIDToJsonCfgExteriors[modName][localID];
+						updated |= updateConfigMap(vec, updatedCfg);
+					}
+					else {
+						auto& vec = lightPluginRefFormIDToJsonCfg[modName][localID];
+						updated |= updateConfigMap(vec, updatedCfg);
+					}
+				}
+				else {
+					RE::FormID resolvedID = dataHandler->LookupFormID(parsedID, modName);
+					if (!resolvedID) {
+						logger::warn("Failed to resolve FormID '{}' for mod '{}' while updating ref config cache", formIDStr, modName);
+						return updated;
+					}
+
+					if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+						auto& vec = refFormIDToJsonCfgExteriors[resolvedID];
+						updated |= updateConfigMap(vec, updatedCfg);
+					}
+					else {
+						auto& vec = refFormIDToJsonCfg[resolvedID];
+						updated |= updateConfigMap(vec, updatedCfg);
+					}
+				}
+			}
+			catch (...) {
+				logger::warn("Failed to parse refFormIDAndModName '{}' while updating runtime config cache", updatedCfg.refFormIDAndModName);
+			}
 		}
 	}
 
 	return updated;
 }
-

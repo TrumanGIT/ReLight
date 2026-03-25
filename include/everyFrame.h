@@ -111,9 +111,7 @@ inline void handlePendingMerges() {
         for (const auto& handle : reprocessQueue) {
 
             auto otherRef = handle.get();
-            if (!otherRef) continue;
-
-            //auto formID = otherRef->GetFormID();
+            if (!otherRef) continue;;
           
             if (HasAnythingBetween(retryRefA.get()->GetPosition(), otherRef.get()->GetPosition())) {
                 nextQueue.emplace_back(handle);

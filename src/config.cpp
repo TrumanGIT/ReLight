@@ -241,6 +241,121 @@ void parseTemplates() {
 
 		for (json json : entries) {
 
+			std::vector<std::string> refFormIDs;
+
+			if (json.contains("refID")) {
+				if (json["refID"].is_string()) {
+					refFormIDs.push_back(json["refID"]);
+				}
+				else if (json["refID"].is_array()) {
+					refFormIDs = json["refID"].get<std::vector<std::string>>();
+				}
+			}
+
+			// create a config for each refID listed
+			for (const auto& refID : refFormIDs) {
+				if (refID.empty()) {
+					continue;
+				}
+
+				LightConfig cfg;
+				loadConfiguration(cfg, json);
+				cfg.configPath = p;
+				cfg.configID = nextID++;
+				cfg.jsonIndex = jsonIndex;
+				cfg.refFormIDAndModName = refID;
+				toLower(cfg.refFormIDAndModName);
+
+				auto tildePos = cfg.refFormIDAndModName.find('~');
+				if (tildePos == std::string::npos) {
+					logger::warn("Invalid refID format '{}', expected FormID~ModName", refID);
+					continue;
+				}
+
+				std::string formIDStr = trim(cfg.refFormIDAndModName.substr(0, tildePos));
+				std::string modName = trim(cfg.refFormIDAndModName.substr(tildePos + 1));
+				toLower(modName);
+
+				try {
+					std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
+
+					auto* dataHandler = RE::TESDataHandler::GetSingleton();
+					if (!dataHandler) {
+						logger::warn("TESDataHandler was null while parsing refID '{}'", refID);
+						continue;
+					}
+
+					const RE::TESFile* file = dataHandler->LookupLoadedModByName(modName);
+					bool isLightMod = false;
+
+					if (!file) {
+						file = dataHandler->LookupLoadedLightModByName(modName);
+						if (file) {
+							isLightMod = true;
+						}
+					}
+
+					if (!file) {
+						logger::warn("Invalid mod name '{}' in refID '{}'", modName, refID);
+						continue;
+					}
+
+					if (isLightMod) {
+						// store local 12-bit ID for light plugins
+						std::uint32_t localID = parsedID & 0x00000FFF;
+
+						if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+							LightData::lightPluginRefFormIDToJsonCfgExteriors[modName][localID].push_back(cfg);
+							LightData::configIDToJsonCfg[cfg.configID] = cfg;
+							LightData::defaultConfigs[cfg.configID] = cfg;
+							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
+							logger::info("adding light plugin ref ID outdoor config");
+							cfg.print(true);
+						}
+						else {
+							LightData::lightPluginRefFormIDToJsonCfg[modName][localID].push_back(cfg);
+							LightData::configIDToJsonCfg[cfg.configID] = cfg;
+							LightData::defaultConfigs[cfg.configID] = cfg;
+							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
+						    logger::info("adding light plugin ref ID outdoor config");
+							cfg.print(false);
+						}
+					}
+					else {
+						// for normal plugins, resolve to runtime FormID once at load time
+						RE::FormID resolvedID = dataHandler->LookupFormID(parsedID, modName);
+						if (!resolvedID) {
+							logger::warn("Failed to resolve FormID '{}' for mod '{}'", formIDStr, modName);
+							continue;
+						}
+
+						if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+							LightData::refFormIDToJsonCfgExteriors[resolvedID].push_back(cfg);
+							LightData::configIDToJsonCfg[cfg.configID] = cfg;
+							LightData::defaultConfigs[cfg.configID] = cfg;
+							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
+							logger::info("adding ref ID outdoor config");
+
+							cfg.print(true);
+						}
+						else {
+							LightData::refFormIDToJsonCfg[resolvedID].push_back(cfg);
+							LightData::configIDToJsonCfg[cfg.configID] = cfg;
+							LightData::defaultConfigs[cfg.configID] = cfg;
+							//must exclude or these refs could get merged
+							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
+							logger::info("adding ref ID config");
+							cfg.print(false);
+						}
+					}
+				}
+				catch (...) {
+					logger::warn("Failed to parse refID '{}' in {}", refID, p);
+					continue;
+				}
+			}
+
+
 			std::vector<std::string> nodeNames;
 
 			if (json.contains("nodeName")) {
@@ -271,13 +386,7 @@ void parseTemplates() {
 
 				auto pathLower = toLowerImmut(p);
 
-				std::string cfgName;
-				auto lastSlash = pathLower.find_last_of("/\\");
-				auto filename = (lastSlash != std::string::npos) ? pathLower.substr(lastSlash + 1) : pathLower;
-				auto dotPos = filename.find_last_of('.');
-				cfgName = (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
-
-				if (cfgName.contains("outdoor")) {
+				if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
 					cfg.print(true);
 					LightData::configIDToJsonCfg[cfg.configID] = cfg;
 					LightData::defaultConfigs[cfg.configID] = cfg;
@@ -320,13 +429,7 @@ void parseTemplates() {
 
 				auto pathLower = toLowerImmut(p);
 
-				std::string cfgName;
-				auto lastSlash = pathLower.find_last_of("/\\");
-				auto filename = (lastSlash != std::string::npos) ? pathLower.substr(lastSlash + 1) : pathLower;
-				auto dotPos = filename.find_last_of('.');
-				cfgName = (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
-
-				if (cfgName.contains("outdoor")) {
+				if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
 					cfg.print(true);
 					LightData::configIDToJsonCfg[cfg.configID] = cfg;
 					LightData::defaultConfigs[cfg.configID] = cfg;

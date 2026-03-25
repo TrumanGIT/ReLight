@@ -92,7 +92,6 @@ namespace globals
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
 
 
-
     inline std::mutex refsWithAttachedLightsMutex{};
     inline std::unordered_set<RE::FormID> refsWithAttachedLights{};
 

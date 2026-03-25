@@ -41,6 +41,46 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
+	auto cell = a_this->GetParentCell();
+
+	if (!cell) {
+		logger::warn("no cell cant determine if should use exterior or interior configs");
+		return niAVObject;
+	}
+
+	bool isInterior = cell->IsInteriorCell();
+
+	// this looks for refs, for performance, we only look up mod name of ref If its a light plugin, otherwise just ref id lookup
+	if (auto* refCfgs = LightManager::findConfigsForRef(a_this, isInterior)) {
+	
+		static bool alreadyAttachedDebugMarker = false;
+
+		for (const auto& cfg : *refCfgs) {
+
+			auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
+
+			if (!cloneLight) {
+				logger::warn("Failed to clone NiPointLight for specific ref {:08X})", refFormID);
+				return niAVObject;
+			}
+
+			if (!alreadyAttachedDebugMarker) {
+				if (globals::enableDebugLightBulbs) LightManager::AttachDebugMarker(a_root, cloneLight);
+				alreadyAttachedDebugMarker = true;
+			}
+
+			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, a_this->GetFormID());
+
+			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+
+			cloneLight->name = "RL" + cfg.nodeName;
+
+			LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
+		}
+
+		return niAVObject;
+	}
+
 	const auto baseObject = a_this->GetBaseObject();
 	if (!baseObject) return niAVObject;
 	const auto bm = baseObject->As<RE::TESModel>();
@@ -54,7 +94,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	toLower(meshName);
 
 	// check file paths first, they will win over loose partial node name matches
-	if (LightManager::processByFilePath(a_this, meshName, a_root)) {
+	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
 		return niAVObject;
 	 }
 
@@ -66,7 +106,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 		if (isExclude(meshName, a_this)) return niAVObject;
 
-		LightManager::processByNodeName(a_root, nodeNameMatch, a_this);
+		LightManager::processByNodeName(a_root, nodeNameMatch, a_this, isInterior);
 
 		return  niAVObject;
 	}

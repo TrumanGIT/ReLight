@@ -38,6 +38,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
+        parseTemplates();
         // create master point light. must clone it or crash idk why
         LightData::masterNiPointLight = NiPointLight::NiPointLight();
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
@@ -58,7 +59,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     setupLog(spdlog::level::info);
     logger::info("Relight Plugin is Loaded");
     iniParser();
-    parseTemplates();
     SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
     UI::Register();
    hasInverseSquareLighting();

@@ -53,19 +53,20 @@ enum class LIGHT_FLAGS : uint32_t
     khandHeld = 1 << 4,
     kIncreasedMergeDistance = 1 << 5,
     kIncreasedMenuXYZScale = 1 << 6,
-    kNoMerging = 1 << 7
+    kNoMerging = 1 << 7,
+    kOutdoor = 1 << 8
 };
 
 inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
-    { LIGHT_FLAGS::kFire, "Fire" },
     { LIGHT_FLAGS::kCandle, "Candle" },
     { LIGHT_FLAGS::kChandelier, "Chandelier" },
+    { LIGHT_FLAGS::kFire, "Fire" },
     { LIGHT_FLAGS::kTorchWall, "TorchWall" },
+    { LIGHT_FLAGS::khandHeld, "Handheld" },
     { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
     { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
     { LIGHT_FLAGS::kNoMerging, "NoMerging" },
-    { LIGHT_FLAGS::khandHeld, "Handheld" }
-
+    { LIGHT_FLAGS::kOutdoor, "Outdoor" }
 };
 
 struct LightConfig {
@@ -75,6 +76,7 @@ struct LightConfig {
     std::string nodeName{};                       //NiPointLightRunflickerTime->data.radius
     std::string meshPath{};
     std::string menuName{};
+    std::string refFormIDAndModName{}; 
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
     uint32_t flags{ 0 };
@@ -99,6 +101,8 @@ struct LightConfig {
     void print(bool exterior) {
         if (exterior) logger::info("loading exterior config:");
         logger::info("Path               : {}", configPath);
+        logger::info(" Mesh Path         : {}", meshPath);
+        logger::info(" RefID and Mod Name : {}", refFormIDAndModName);
         logger::info(" Node name         : {}", nodeName);
         logger::info(" Menu name         : {}", menuName);
         FOREACH_BOOL(BOOL2PRINT);
@@ -178,7 +182,7 @@ inline std::vector<std::string> GetConfigPaths() {
     return paths;
 }
 
-inline bool updateConfigInVector(std::vector<LightConfig>& vec, const LightConfig& updatedCfg)
+inline bool updateConfigMap (std::vector<LightConfig>& vec, const LightConfig& updatedCfg)
 {
     for (auto& existing : vec) {
         if (existing.configID == updatedCfg.configID) {
@@ -198,8 +202,6 @@ bool loadConfiguration(LightConfig& config, const nlohmann::json& data);
 bool saveConfiguration(const LightConfig& config);
 
 void parseTemplates();
-
-//void sortFilePathOrNodeName(const LightConfig& cfg);
 
 std::vector<LightConfig> findConfigsForNode(std::string& nodeName, bool interior);
 

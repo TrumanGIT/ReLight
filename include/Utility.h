@@ -125,8 +125,6 @@ inline void iniParser()
 	{
 		NONE,
 		lightEdid,
-	//	nodeNameExact,
-		//nodeNamePartial,
 		meshPathExact,
 		meshPathPartial,
 		priority,
@@ -145,10 +143,6 @@ inline void iniParser()
 
 			if (line.find("exclude by light editor id") != std::string::npos)
 				section = lightEdid;
-			//else if (line.find("exclude specific node names") != std::string::npos)
-			//	section = nodeNameExact;
-		//	else if (line.find("exclude partial node names") != std::string::npos)
-			//	section = nodeNamePartial;
 			else if (line.find("exclude specific mesh paths") != std::string::npos)
 				section = meshPathExact;
 			else if (line.find("exclude partial mesh paths") != std::string::npos)
@@ -170,18 +164,6 @@ inline void iniParser()
 			globals::keywordLightGroups.push_back(line);
 			logger::info("Added light editorID Exclusion: {}", line);
 			continue;
-
-		/*case nodeNameExact:
-			toLower(line);
-			globals::nodeNameExclusionList.push_back(line);
-			logger::info("Added exact node name exclude: {}", line);
-			continue;
-
-		case nodeNamePartial:
-			toLower(line);
-			globals::nodeNameExclusionListPartialMatch.push_back(line);
-			logger::info("Added partial node name exclude: {}", line);
-			continue;*/
 
 		case meshPathExact:
 			toLower(line);
@@ -411,6 +393,11 @@ inline bool isLightPluginFormID(RE::FormID formID)
 	return (formID & 0xFF000000) == 0xFE000000;
 }
 
+inline std::uint32_t getLightPluginLocalFormID(RE::FormID formID)
+{
+	return formID & 0x00000FFF;
+}
+
 inline std::uint32_t getLocalFormID(RE::FormID formID)
 {
 	if (isLightPluginFormID(formID)) {
@@ -578,7 +565,7 @@ inline void hasInverseSquareLighting()
 }
 
 
-template <class T, std::size_t BYTES>
+/*template <class T, std::size_t BYTES>
 inline void hook_function_prologue(std::uintptr_t a_src)
 {
 	struct Patch : Xbyak::CodeGenerator
@@ -605,7 +592,7 @@ inline void hook_function_prologue(std::uintptr_t a_src)
 	std::memcpy(alloc, p.getCode(), p.getSize());
 
 	T::func = reinterpret_cast<std::uintptr_t>(alloc);
-}
+}*/
 
 inline std::string extractMeshName(const std::string& path) {
 	auto lastSlash = path.find_last_of("/\\");

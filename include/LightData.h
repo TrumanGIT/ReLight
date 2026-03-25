@@ -78,6 +78,12 @@ struct LightData {
 
 	static std::unordered_map<std::string, std::vector<LightConfig>> meshPathToJsonCfgExteriors;
 
+	static std::unordered_map<RE::FormID, std::vector<LightConfig>> refFormIDToJsonCfg;
+	static std::unordered_map<RE::FormID, std::vector<LightConfig>> refFormIDToJsonCfgExteriors;
+
+	static std::unordered_map<std::string, std::unordered_map<std::uint32_t, std::vector<LightConfig>>> lightPluginRefFormIDToJsonCfg;
+	static std::unordered_map<std::string, std::unordered_map<std::uint32_t, std::vector<LightConfig>>> lightPluginRefFormIDToJsonCfgExteriors;
+
 	static std::unordered_map<uint32_t, LightConfig> defaultConfigs;
 
 	static void ResetTriLightCache();

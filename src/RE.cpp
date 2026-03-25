@@ -18,7 +18,7 @@ void BSShaderPropertyLightData_AttachLight::Install() {
     REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(100990, 107777) };
 
     //diauto& trampoline = SKSE::GetTrampoline();
-    hook_function_prologue<BSShaderPropertyLightData_AttachLight, 5>(target.address());
+//    hook_function_prologue<BSShaderPropertyLightData_AttachLight, 5>(target.address());
 
 }
 
@@ -51,6 +51,6 @@ __int64 BSLight_AddFadeNode::thunk(RE::BSLight* light, RE::NiAVObject* root)
 //108283  141509760
 void BSLight_AddFadeNode::Install() {
     REL::Relocation<std::uintptr_t> target{ RELOCATION_ID(101296, 108283) };
-    hook_function_prologue<BSLight_AddFadeNode, 5>(target.address());
+//    hook_function_prologue<BSLight_AddFadeNode, 5>(target.address());
 }
 
