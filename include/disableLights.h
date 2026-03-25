@@ -85,10 +85,10 @@ inline void menuRefreshLight(uint32_t configID)
             auto params = LightData::makeLightParams(it->second);
             ssNode->AddLight(light.get(), params);
         }
+
+        LightData::ResetTriLightCache();
+
         });
-
-    LightData::ResetTriLightCache(); 
-
 }
 
 // not very usefull problem is not # of lights in a cell but # of lights on a bs tri shape

@@ -448,6 +448,11 @@ namespace UI {
                 //TODO:: shouldnet use node name lookups since we use mesh paths as well now.
                 if (LightData::foundConfigForLight(niLight)) {
                     LightData::updateConfigFromLight(cfg, niLight);
+
+                    if (!LightData::updateRuntimeConfigCaches(cfg)) {
+                        logger::warn("Failed to update runtime config caches for '{}'", lightName);
+                    }
+
                     if (!cfg.configPath.empty()) {
                         saveConfiguration(cfg);
                         ok = true;

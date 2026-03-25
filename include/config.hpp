@@ -178,6 +178,17 @@ inline std::vector<std::string> GetConfigPaths() {
     return paths;
 }
 
+inline bool updateConfigInVector(std::vector<LightConfig>& vec, const LightConfig& updatedCfg)
+{
+    for (auto& existing : vec) {
+        if (existing.configID == updatedCfg.configID) {
+            existing = updatedCfg;
+            return true;
+        }
+    }
+    return false;
+}
+
 uint32_t ParseFlags(const nlohmann::json& j);
 
 nlohmann::json FlagsToJson(uint32_t mask);

@@ -213,3 +213,40 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	}
 	cfg.print(false);
 }
+
+bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
+{
+	bool updated = false;
+
+	// keep direct configID lookup in sync
+	configIDToJsonCfg[updatedCfg.configID] = updatedCfg;
+
+	if (!updatedCfg.meshPath.empty()) {
+		auto meshKey = updatedCfg.meshPath;
+		toLower(meshKey);
+
+		if (auto it = meshPathToJsonCfg.find(meshKey); it != meshPathToJsonCfg.end()) {
+			updated |= updateConfigInVector(it->second, updatedCfg);
+		}
+
+		if (auto it = meshPathToJsonCfgExteriors.find(meshKey); it != meshPathToJsonCfgExteriors.end()) {
+			updated |= updateConfigInVector(it->second, updatedCfg);
+		}
+	}
+
+	if (!updatedCfg.nodeName.empty()) {
+		auto nodeKey = updatedCfg.nodeName;
+		toLower(nodeKey);
+
+		if (auto it = nodeNameToJsonCfg.find(nodeKey); it != nodeNameToJsonCfg.end()) {
+			updated |= updateConfigInVector(it->second, updatedCfg);
+		}
+
+		if (auto it = nodeNameToJsonCfgExteriors.find(nodeKey); it != nodeNameToJsonCfgExteriors.end()) {
+			updated |= updateConfigInVector(it->second, updatedCfg);
+		}
+	}
+
+	return updated;
+}
+

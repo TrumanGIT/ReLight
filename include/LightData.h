@@ -96,6 +96,8 @@ struct LightData {
 
 	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);
 
+	static bool updateRuntimeConfigCaches(const LightConfig& updatedCfg);
+
 	static void printLightParams(const RE::ShadowSceneNode::LIGHT_CREATE_PARAMS& params) {
 		logger::debug(" shadowLight	 {}", params.shadowLight);
 		logger::debug(" portalStrict  {}", params.portalStrict);
