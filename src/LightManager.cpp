@@ -238,15 +238,15 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 	 { "RuinsFloorCandleLampSmOn", "ruinsfloorcandlelampsmon" },
 	 { "RuinsFloorCandleLampSmOn02", "ruinsfloorcandlelampsmon" },
 
-	 { "ImpChandellierCandle01", "chandel" },
-	 { "ImpChandellierCandle01USKP", "chandel" },
+	 { "ImpChandellierCandle01", "impchande" },
+	 { "ImpChandellierCandle01USKP", "impchande" },
 
 	 { "CandleLanternwithCandle01", "candle" },
 
 	 { "CandleLanternHandleDown_DynDOLOD_LOD", "candle" },
 	 { "CandleLanternwithCandle01_DynDOLOD_LOD.", "candle" },
 
-	 { "ImpChandellierCandle01_DynDOLOD_LOD", "chandel" },
+	 { "ImpChandellierCandle01_DynDOLOD_LOD", "impchande" },
 
 	 { "RuinsFloorCandleLampSmOn_DynDOLOD_LOD", "ruinsfloorcandlelampsmon" },
 	 { "RuinsFloorCandleLampMidOn_DynDOLOD_LOD", "ruinsfloorcandlelampmidon" },
