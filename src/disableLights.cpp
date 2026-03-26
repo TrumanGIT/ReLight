@@ -49,6 +49,8 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
     std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
+    toLower(modName); 
+
     for (const auto& whitelistedMod : globals::whitelist) {
         if (modName.find(whitelistedMod) != std::string::npos) {
             return false;
