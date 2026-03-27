@@ -58,7 +58,7 @@ namespace globals
 
     inline float minCandleCoverage = 470;
 
-    inline float minCandleCoverageXL = 1100;
+  //  inline float minCandleCoverageXL = 1100;
 
     //FireBounds
     inline float minFireCoverageXL = 1200;
@@ -68,9 +68,9 @@ namespace globals
     // Chandeliers
   //  inline float minChandelierCoverageSM = 314;
 
-    inline float minChandelierCoverage = 580;
+    inline float minChandelierCoverage = 600;
 
-    inline float globalCoverage = 670; 
+    inline float globalCoverage = 700; 
 
     // used to reinitialize lights based on this distance as we put lights into object geomatry
     inline float fLODFadeOutMultObjects = 9000;

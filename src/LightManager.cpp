@@ -164,14 +164,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 	
 	const auto refFormID = a_this->GetFormID();
 
-	const auto baseObject = a_this->GetBaseObject(); 
-
-	if (!baseObject) return true; 
-
-	const auto baseFormID = baseObject->GetFormID();
-
-	globals::baseFormsWithAttachedLights.emplace(baseFormID);
-
 	logger::debug("file path match found {}, Processing ref {:08X} ", meshName, refFormID);
 
 	auto ui = RE::UI::GetSingleton();
@@ -227,65 +219,27 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
  //TODO:: doesent handle multi lights in a single config (idk if it needs to really) 
 // some nodes are called dummy this is to take care of them.
- bool LightManager::dummyHandler(RE::TESObjectREFR* a_this, RE::NiNode* a_root)
+ bool LightManager::dummyHandler(RE::TESObjectREFR* a_this, std::string modelName, RE::NiNode* a_root, bool isInterior)
  {
 
 	 //TODO:: this only works if the node name in the json config is labled exactly as matched below. 
 	 // should probly cover cases where the user changed the node name from chandel to something else 
 	 static const std::unordered_map<std::string, std::string> dummyMeshPaths = {
-	 { "RuinsFloorCandleLampMidOn", "ruinsfloorcandlelampmidon" },
-	 { "RuinsFloorCandleLampMidOn02", "ruinsfloorcandlelampmidon" },
-	 { "RuinsFloorCandleLampSmOn", "ruinsfloorcandlelampsmon" },
-	 { "RuinsFloorCandleLampSmOn02", "ruinsfloorcandlelampsmon" },
+		 { "ruinsfloorcandlelampmidon", "ruinsfloorcandlelampmidon" },
+		 { "ruinsfloorcandlelampmidon02", "ruinsfloorcandlelampmidon" },
+		 { "ruinsfloorcandlelampsmon", "ruinsfloorcandlelampsmon" },
+		 { "ruinsfloorcandlelampsmon02", "ruinsfloorcandlelampsmon" },
 
-	 { "ImpChandellierCandle01", "impchande" },
-	 { "ImpChandellierCandle01USKP", "impchande" },
+		 { "impchandelliercandle01", "impchande" },
+		 { "impchandelliercandle01uskp", "impchande" },
 
-	 { "CandleLanternwithCandle01", "candle" },
-
-	 { "CandleLanternHandleDown_DynDOLOD_LOD", "candle" },
-	 { "CandleLanternwithCandle01_DynDOLOD_LOD.", "candle" },
-
-	 { "ImpChandellierCandle01_DynDOLOD_LOD", "impchande" },
-
-	 { "RuinsFloorCandleLampSmOn_DynDOLOD_LOD", "ruinsfloorcandlelampsmon" },
-	 { "RuinsFloorCandleLampMidOn_DynDOLOD_LOD", "ruinsfloorcandlelampmidon" },
-	 { "RuinsFloorCandleLampMidOn02_DynDOLOD_LOD", "ruinsfloorcandlelampmidon" },
-	 { "RuinsFloorCandleLampSmOn02_DynDOLOD_LOD", "ruinsfloorcandlelampsmon" },
+		 { "candlelanternwithcandle01", "candle" }
 	 };
-
-	 auto baseObject = a_this->GetBaseObject();
-
-	 if (!baseObject) return false;
-
-	 const auto baseFormID = baseObject->GetFormID();
-
-	 const auto bm = baseObject->As<RE::TESModel>();
-	 if (!bm) return false;
-
-	 const auto currentModel = bm->GetModel();
-
-	 if (!currentModel) return false; 
-
-	 const auto modelName = extractMeshName(bm->GetModel());
 
 	 auto it = dummyMeshPaths.find(modelName);
 	 if (it != dummyMeshPaths.end()) {
 
-		 auto refFormID = a_this->GetFormID();
-
-		 globals::baseFormsWithAttachedLights.emplace(baseFormID);
-
 		 std::string match = it->second;
-
-		 auto cell = a_this->GetParentCell();
-
-		 if (!cell) {
-			 logger::warn("no cell cant determine if should use exterior or interior configs");
-			 return false;
-		 }
-
-		 bool isInterior = cell->IsInteriorCell();
 
 		 //cant do multi lights currently, just would have to iterate if wanted to.
 		 auto cfgs = findConfigsForNode(match, isInterior);
@@ -297,11 +251,11 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 		 auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
 
 		 if (!cloneLight) {
-			 logger::warn("Failed to clone NiPointLight for node '{}', for ref{:08X})", modelName, refFormID);
+			 logger::warn("Failed to clone NiPointLight for node '{}', for ref{:08X})", modelName, a_this->GetFormID());
 			 return true;
 		 }
 
-		 logger::debug("dummy node {} with model {}. Processing ref {:08X} and got light from config: {}", modelName, currentModel, refFormID, cfg.nodeName);
+		 logger::debug("dummy node {} with model {}. Processing ref {:08X} and got light from config: {}", modelName, modelName, a_this->GetFormID(), cfg.nodeName);
 			 LightManager::fillPendingMerges(a_this, cloneLight, cfg, a_root);
 
 		 return true;
@@ -324,15 +278,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 	if (ui && ui->IsMenuOpen("InventoryMenu")) {
 		//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
 		return;
-	}
-
-	const auto baseObject = a_this->GetBaseObject();
-
-	const auto baseFormID = baseObject ? baseObject->GetFormID() : 0;
-
-	if (baseFormID != 0) {
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		//logger::debug(" processing ref {:08X} with node name: {} with baseFormID: {} emplaced in set", refFormID, matchStr, baseFormID);
 	}
 
 	if (globals::removeFakeGlowOrbs)
@@ -535,15 +480,15 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 						auto bsFadeNode = root->AsNode();
 
-						if (!bsFadeNode)return RE::BSContainer::ForEachResult::kContinue;
+						if (!bsFadeNode) return RE::BSContainer::ForEachResult::kContinue;
 
 						//surf children for light
 						for (auto& child : bsFadeNode->GetChildren()) {
 							if (!child) continue;
 
 							// exclude non relight lights
-							const char* name = child->name.c_str();
-							if (!name || name[0] != 'R' || name[1] != 'L')
+							auto name = std::string_view(child->name.c_str());
+							if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
 								continue;
 
 							RE::NiPointLight* light = netimmerse_cast<RE::NiPointLight*>(child.get());
@@ -568,6 +513,9 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 								for (RE::NiPointer<RE::BSShadowLight> bsLight : ssNode->activeShadowLights) {
 
+									if (!bsLight)
+										continue;
+
 									if (bsLight->light.get() == light) {
 										logger::debug("shadow light {} with ID {} exists already for ref {:08X} skipping reinitialization", light->name, static_cast<void*>(light), ref->GetFormID());
 										bsLightExists = true;
@@ -582,6 +530,8 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 									//LightData::setNiPointLightDataFromCfg(light, config);
 									auto p = LightData::makeLightParams(config);
 									auto reattachedBSLight = ssNode->AddLight(light, p);
+
+									if (!reattachedBSLight) return RE::BSContainer::ForEachResult::kContinue;
 
 									uint32_t mask = config.flags;
 
@@ -774,7 +724,10 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 	// register for finilazation in update hook otherwise we cant ray cast to stop lights from merging through walls its too early in loading stage
 	p.registeredAt = std::chrono::steady_clock::now();
 
-	LightManager::pendingMerges.push_back(p); 
+	{
+		std::lock_guard lock(LightManager::pendingMergesMutex);
+		LightManager::pendingMerges.push_back(p);
+	}
 }
 
  void LightManager::finalizeMerge(PendingMerge& p, const std::vector<RE::ObjectRefHandle>& validMerges) {
@@ -975,8 +928,7 @@ RE::NiPointLight* LightManager::cloneNiPointLight(RE::NiPointLight* niPointLight
 	return niPointLightClone;
 }
 
-
- void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p)
+void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p)
 {
 	auto* pass = p->renderPassList.head;
 	if (!pass || !pass->geometry)
@@ -1009,32 +961,35 @@ RE::NiPointLight* LightManager::cloneNiPointLight(RE::NiPointLight* niPointLight
 				float dz = pos.z - center.z;
 				float distXY2 = dx * dx + dy * dy + dz * dz;
 
-				switch (light->unk060)
-				{
-				case 1:
-				{
-					float threshold = globals::minCandleCoverage;
-					if (triRadius < 325) threshold = globals::minCandleCoverageSM;
-					if (distXY2 > threshold * threshold) continue;
-					break;
-				}
-				case 2:
-					if (distXY2 > globals::minChandelierCoverage * globals::minChandelierCoverage) continue;
-					break;
-				case 3:
-				{
-					float threshold = globals::minFireCoverage;
-					if (triRadius > 850) threshold = globals::minFireCoverageXL;
-					if (distXY2 > threshold * threshold) continue;
-					break;
-				}
-				default:
 
-					float threshold = globals::globalCoverage;
-					if (distXY2 > threshold * threshold) continue;
-					break;
-				}
+				if (triRadius < 700) {
+					switch (light->unk060)
+					{
+					case 1:
+					{
+						float threshold = globals::minCandleCoverage;
+						if (distXY2 > threshold * threshold) continue;
+						break;
+					}
+					case 2:
+					{
+						if (std::abs(dz) > 350.0f)
+							continue;
 
+						if (distXY2 > globals::minChandelierCoverage * globals::minChandelierCoverage) continue;
+						break;
+					}
+					case 3:
+					{
+						float threshold = globals::minFireCoverage;
+						if (distXY2 > threshold * threshold) continue;
+						break;
+					}
+					default:
+
+						break;
+					}
+				}
 				candidates.push_back({ light, distXY2 });
 			}
 		};

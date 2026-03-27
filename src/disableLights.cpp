@@ -91,12 +91,13 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
     auto ui = RE::UI::GetSingleton();
-    if (ui && (ui->GameIsPaused() || ui->IsMenuOpen("CraftingMenu"))) return true;
+    if (ui && (ui->IsMenuOpen("InventoryMenu") || ui->IsMenuOpen("CraftingMenu"))) return true;
+
+    if (light->unk060 == 4) return true;
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures) return true;
 
     // torhces
-    if (light->unk060 == 4) return true;
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return true;
@@ -107,12 +108,14 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     // probobly a sky light or something we should return
     if (light->light->radius.x > 1000) return true; 
 
-    //return on actors 
-    auto objectRef = p->renderPassList.head->geometry->GetUserData(); 
+    //return on actors and skp invalid references potentially
+    auto objectRef = pass->geometry->GetUserData();
 
-    if (objectRef) {
-        if (objectRef->IsActor()) return true;
+    if (!objectRef) {
+        return true;
     }
+
+    if (objectRef->IsActor()) return true; 
 
     std::lock_guard lock(LightData::triLightCacheMutex);
     uint16_t currentGen = LightData::triLightCacheGeneration.load();
@@ -121,6 +124,13 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
 
     // forced darkness is key to light list, if player switches cells, the pool of cached light lists changes
     if (p->forcedDarkness == 0.0f || storedGen != currentGen) {
+
+        // dont let it go out of bounds (65535)
+        if (LightData::triLightCache.size() >= 60000) {
+            LightData::triLightCache.clear();
+            LightData::triLightCacheGeneration.fetch_add(1);
+        }
+
         LightData::TriLightCache entry{};
         entry.lightShaderProp = p;
         LightManager::ComputeClosestLights(entry.lights, p);

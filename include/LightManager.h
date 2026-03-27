@@ -39,7 +39,7 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
    static void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this, bool isInterior);
 
-   static bool dummyHandler(RE::TESObjectREFR* a_this, RE::NiNode* a_root);
+   static bool dummyHandler(RE::TESObjectREFR* a_this, std::string modelName, RE::NiNode* a_root, bool isInterior);
 
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 

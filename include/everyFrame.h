@@ -32,9 +32,9 @@ static void ApplyLightFlicker(T& lights, float delta)
 		if (!light)
 			continue;
 
-		const char* name = light->light->name.c_str();
-		if (!name || name[0] != 'R' || name[1] != 'L')
-			continue;
+        auto name = std::string_view(light->light->name.c_str());
+        if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
+            continue;
 
 		// free float used as flicker timer
 		auto& scale = light->light->local.scale;

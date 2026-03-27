@@ -8,9 +8,11 @@
 RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 {
 
-	if (!a_this) {
-		//	logger::debug("Load3D called with null a_this or bg loading = true (light were trying to reinitialize) skipping light attachment");
-		return func(a_this, a_backgroundLoading);
+	//logger::info("load3D called");
+	auto niAVObject = func(a_this, a_backgroundLoading);
+	if (!niAVObject || !a_this) {
+		//logger::warn("no ni node casted from niav object from load3d hook");
+		return niAVObject;
 	}
 
 	RE::FormID refFormID = a_this->GetFormID();
@@ -27,17 +29,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 			return func(a_this, a_backgroundLoading);
 	}
 	
-	//logger::info("load3D called");
-	auto niAVObject = func(a_this, a_backgroundLoading);
-	if (!niAVObject) {
-		//logger::warn("no ni node casted from niav object from load3d hook");
-		return niAVObject;
-	}
-
-	//helps filter out a few things we dont want to touch (fog, mist)
-	auto a_root = niAVObject->AsNode();
+	auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
 	if (!a_root) {
-		//logger::warn("no ni node casted from niav object in load3d");
 		return niAVObject;
 	}
 
@@ -83,6 +76,9 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	const auto baseObject = a_this->GetBaseObject();
 	if (!baseObject) return niAVObject;
+
+	const auto baseFormID = baseObject->GetFormID(); 
+
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return niAVObject;
 
@@ -95,6 +91,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	// check file paths first, they will win over loose partial node name matches
 	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		return niAVObject;
 	 }
 
@@ -107,11 +104,12 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		if (isExclude(meshName, a_this)) return niAVObject;
 
 		LightManager::processByNodeName(a_root, nodeNameMatch, a_this, isInterior);
-
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		return  niAVObject;
 	}
 
-	if (LightManager::dummyHandler(a_this, a_root)) {
+	if (LightManager::dummyHandler(a_this, meshName, a_root, isInterior)) {
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		return niAVObject;
 	}
 

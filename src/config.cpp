@@ -454,11 +454,11 @@ std::vector<LightConfig> findConfigsForNode(std::string& nodeName, bool interior
 {
 	std::vector<LightConfig> result;
 
-	//careful mutablitiy here idk if matters that much just marking it. 
-	toLower(nodeName);
-
 	if (nodeName.empty())
 		return result;
+
+	//careful mutablitiy here idk if matters that much just marking it. 
+	toLower(nodeName);
 
 	std::unordered_map<std::string, std::vector<LightConfig>> exteriorOrInteriorConfigs;
 
@@ -490,9 +490,11 @@ std::vector<LightConfig> findConfigsForNode(std::string& nodeName, bool interior
 std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool interior)
 {
 	std::vector<LightConfig> result;
-	toLower(meshPath);
+
 	if (meshPath.empty())
 		return result;
+
+	toLower(meshPath);
 
 	if (!interior) {
 		auto it = LightData::meshPathToJsonCfgExteriors.find(meshPath);
