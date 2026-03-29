@@ -968,16 +968,27 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 				float dx = pos.x - center.x;
 				float dy = pos.y - center.y;
 				float dz = pos.z - center.z;
-				float distXY2 = dx * dx + dy * dy + dz * dz;
+				float distXY2;
+
+				if (light->unk060 == 2) {
+
+					dz *= 0.33; 
+					distXY2 = dx * dx + dy * dy + dz * dz;
+				}
+				else {
+					distXY2 = dx * dx + dy * dy + dz * dz;
+				}
 
 
 				if (triRadius < 700) {
 					switch (light->unk060)
 					{
 					case 1:
+
+						if (dz > 200.0f)
+							continue;
 					{
-						float threshold = globals::minCandleCoverage;
-						if (distXY2 > threshold * threshold) continue;
+						if (distXY2 > globals::minCandleCoverage * globals::minCandleCoverage) continue;
 						break;
 					}
 					case 2:
@@ -990,8 +1001,7 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 					}
 					case 3:
 					{
-						float threshold = globals::minFireCoverage;
-						if (distXY2 > threshold * threshold) continue;
+						if (distXY2 > globals::minFireCoverage * globals::minFireCoverage) continue;
 						break;
 					}
 					default:
@@ -1001,15 +1011,60 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 				}
 				candidates.push_back({ light, distXY2 });
 			}
-		};
+     };
+
 	gatherLights(rt.activeLights);
 	gatherLights(rt.activeShadowLights);
+
 	std::sort(candidates.begin(), candidates.end(),
-		[](auto& a, auto& b)
+		[](const auto& a, const auto& b)
 		{
 			return a.dist < b.dist;
 		});
-	int count = std::min(7, (int)candidates.size());
-	for (int i = 0; i < count; i++)
-		outLights[i] = candidates[i].light;
+
+	int maxCandles = (triRadius < 350.0f) ? 4 : 6;
+
+	int outIndex = 0;
+	int candleCount = 0;
+
+	for (int i = 0; i < static_cast<int>(candidates.size()) && outIndex < 7; i++)
+	{
+		auto* light = candidates[i].light;
+
+		if (light->unk060 == 1) {
+			if (candleCount < maxCandles) {
+				outLights[outIndex++] = light;
+				candleCount++;
+				continue;
+			}
+
+			int farthestCandleIndex = -1;
+			float farthestCandleDist = -1.0f;
+
+			for (int j = 0; j < outIndex; j++) {
+				if (outLights[j] && outLights[j]->unk060 == 1 && outLights[j]->light) {
+					auto& selectedPos = outLights[j]->light->world.translate;
+					float sdx = selectedPos.x - center.x;
+					float sdy = selectedPos.y - center.y;
+					float selectedDist = sdx * sdx + sdy * sdy;
+
+					if (selectedDist > farthestCandleDist) {
+						farthestCandleDist = selectedDist;
+						farthestCandleIndex = j;
+					}
+				}
+			}
+
+			if (farthestCandleIndex != -1 && candidates[i].dist < farthestCandleDist) {
+				outLights[farthestCandleIndex] = light;
+			}
+
+			continue;
+		}
+
+		outLights[outIndex++] = light;
+	}
+
+	for (int i = outIndex; i < 7; i++)
+		outLights[i] = nullptr;
 }

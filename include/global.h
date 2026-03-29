@@ -68,7 +68,7 @@ namespace globals
     // Chandeliers
   //  inline float minChandelierCoverageSM = 314;
 
-    inline float minChandelierCoverage = 600;
+    inline float minChandelierCoverage = 630;
 
     inline float globalCoverage = 700; 
 
