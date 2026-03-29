@@ -49,18 +49,20 @@ enum class LIGHT_FLAGS : uint32_t
     kCandle = 1 << 0,
     kChandelier = 1 << 1,
     kFire = 1 << 2,
-    kTorchWall = 1 << 3,
-    khandHeld = 1 << 4,
-    kIncreasedMergeDistance = 1 << 5,
-    kIncreasedMenuXYZScale = 1 << 6,
-    kNoMerging = 1 << 7,
-    kOutdoor = 1 << 8
+    kGiantCampfire = 1 << 3,
+    kTorchWall = 1 << 4,
+    khandHeld = 1 << 5,
+    kIncreasedMergeDistance = 1 << 6,
+    kIncreasedMenuXYZScale = 1 << 7,
+    kNoMerging = 1 << 8,
+    kOutdoor = 1 << 9
 };
 
 inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kCandle, "Candle" },
     { LIGHT_FLAGS::kChandelier, "Chandelier" },
     { LIGHT_FLAGS::kFire, "Fire" },
+    { LIGHT_FLAGS::kGiantCampfire, "GiantCampfire" },
     { LIGHT_FLAGS::kTorchWall, "TorchWall" },
     { LIGHT_FLAGS::khandHeld, "Handheld" },
     { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },

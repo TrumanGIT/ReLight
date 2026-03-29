@@ -646,9 +646,18 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 					logger::debug("increased distance used");
 				}
 			}
-
 				looseMatch = otherRefNameMatch.find(p.refALightName) != std::string::npos ||
 					p.refALightName.find(otherRefNameMatch) != std::string::npos;
+
+				// giant campfires should merge with fires
+				if ((refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire) &&
+					otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) ||
+
+					(refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kFire) &&
+						otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire)))
+				{
+					looseMatch = true;
+				}
 			
 			//logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {} distance={}",
 			//	refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch, distance);
