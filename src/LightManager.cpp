@@ -100,57 +100,40 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 
 	RE::FormID formID = ref->GetFormID();
 
-	if (isLightPluginFormID(formID)) {
-		const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
-		if (!refOriginFile)
-			return nullptr;
-
-		std::string modName = refOriginFile->fileName;
-		toLower(modName);
-
-		std::uint32_t localID = formID & 0x00000FFF;
-
-		if (isInterior) {
-			auto modIt = LightData::lightPluginRefFormIDToJsonCfg.find(modName);
-			if (modIt == LightData::lightPluginRefFormIDToJsonCfg.end())
-				return nullptr;
-
-			auto idIt = modIt->second.find(localID);
-			if (idIt == modIt->second.end())
-				return nullptr;
-
-			return &idIt->second;
-		}
-		else {
-			auto modIt = LightData::lightPluginRefFormIDToJsonCfgExteriors.find(modName);
-			if (modIt == LightData::lightPluginRefFormIDToJsonCfgExteriors.end())
-				return nullptr;
-
-			auto idIt = modIt->second.find(localID);
-			if (idIt == modIt->second.end())
-				return nullptr;
-
-			return &idIt->second;
-		}
-	}
-
 	if (isInterior) {
 		auto it = LightData::refFormIDToJsonCfg.find(formID);
-		if (it != LightData::refFormIDToJsonCfg.end())
+		if (it != LightData::refFormIDToJsonCfg.end()) {
+			logger::debug("Found interior config for ref 0x{:08X} ({} configs)",
+				static_cast<std::uint32_t>(formID),
+				it->second.size());
 			return &it->second;
+		}
 	}
 	else {
 		auto it = LightData::refFormIDToJsonCfgExteriors.find(formID);
-		if (it != LightData::refFormIDToJsonCfgExteriors.end())
+		if (it != LightData::refFormIDToJsonCfgExteriors.end()) {
+			logger::debug("Found exterior config for ref 0x{:08X} ({} configs)",
+				static_cast<std::uint32_t>(formID),
+				it->second.size());
 			return &it->second;
+		}
+
+		auto it2 = LightData::refFormIDToJsonCfg.find(formID);
+		if (it2 != LightData::refFormIDToJsonCfg.end()) {
+			logger::debug("Fell back to interior config for exterior ref 0x{:08X} ({} configs)",
+				static_cast<std::uint32_t>(formID),
+				it2->second.size());
+			return &it2->second;
+		}
 	}
+
+	// optional: only enable if you need to debug misses
+	// logger::debug("No config found for ref 0x{:08X}", static_cast<std::uint32_t>(formID));
 
 	return nullptr;
 }
 
 bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior) {
-
-
 
 	const auto cfgs = findConfigsForMeshPath(meshName, isInterior);
 
@@ -168,11 +151,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 	auto ui = RE::UI::GetSingleton();
 	if (ui && ui->IsMenuOpen("InventoryMenu")) {
-		return true;
-	}
-
-	if (globals::excludedRefFormIDs.contains(refFormID)) {
-		logger::debug("excluded ref {:08X} found skipping light attachment", refFormID);
 		return true;
 	}
 

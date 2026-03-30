@@ -139,7 +139,7 @@ inline void iniParser()
 
 		if (line.starts_with(";"))
 		{
-			toLower(line);
+		
 
 			if (line.find("exclude by light editor id") != std::string::npos)
 				section = lightEdid;
@@ -179,8 +179,9 @@ inline void iniParser()
 
 
 		case priority:
-			toLower(line);
+		
 			if (!line.starts_with("0")) {
+				toLower(line);
 				globals::priorityList.push_back(line);
 				logger::info("Added priority node: {}", line);
 				continue;
@@ -189,39 +190,72 @@ inline void iniParser()
 
 		case refid:
 		{
-			toLower(line);
-
 			auto tildePos = line.find('~');
 			if (tildePos != std::string::npos) {
 				std::string formIDStr = trim(line.substr(0, tildePos));
 				std::string modName = trim(line.substr(tildePos + 1));
 
 				try {
-					RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
-					globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
+					if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+						formIDStr = formIDStr.substr(2);
+					}
 
-					logger::info(
-						"Added excluded local ref formID: 0x{:X} from mod {}",
-						static_cast<std::uint32_t>(parsedID),
-						modName);
+					RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+
+					auto dataHandler = RE::TESDataHandler::GetSingleton();
+					auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
+
+					if (mod && mod->IsLight()) {
+						auto ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
+
+						if (!ref) {
+							logger::warn(
+								"Failed to resolve light plugin ref localID 0x{:X} from mod {}",
+								static_cast<std::uint32_t>(parsedID),
+								modName);
+							continue;
+						}
+
+						globals::excludedRefFormIDs.insert(ref->GetFormID());
+
+						logger::info(
+							"Added excluded light plugin ref runtime formID: 0x{:08X} from {} (local: 0x{:X})",
+							static_cast<std::uint32_t>(ref->GetFormID()),
+							modName,
+							static_cast<std::uint32_t>(parsedID));
+					}
+					else {
+						globals::excludedRefFormIDs.insert(parsedID);
+
+						logger::info(
+							"Added excluded non-light runtime ref formID: 0x{:08X} from {}",
+							static_cast<std::uint32_t>(parsedID),
+							modName);
+					}
 				}
 				catch (...) {
-					logger::warn("Failed to parse excluded ref local formID entry: {}", line);
+					logger::warn("Failed to parse excluded ref entry: {}", line);
 				}
 
 				continue;
 			}
 
 			try {
-				RE::FormID formID = std::stoul(line, nullptr, 16);
-				globals::excludedRefFormIDs.insert(formID);
+				std::string formIDStr = trim(line);
+
+				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+					formIDStr = formIDStr.substr(2);
+				}
+
+				RE::FormID runtimeID = std::stoul(formIDStr, nullptr, 16);
+				globals::excludedRefFormIDs.insert(runtimeID);
 
 				logger::info(
 					"Added excluded runtime ref formID: 0x{:08X}",
-					static_cast<std::uint32_t>(formID));
+					static_cast<std::uint32_t>(runtimeID));
 			}
 			catch (...) {
-				logger::warn("Failed to parse excluded ref formID: {}", line);
+				logger::warn("Failed to parse excluded runtime ref formID: {}", line);
 			}
 
 			continue;
@@ -415,33 +449,11 @@ inline bool isExcludedRef(const RE::TESObjectREFR* ref)
 
 	const RE::FormID runtimeFormID = ref->GetFormID();
 
+	logger::info("runtimeFormID = 0x{:08X}", static_cast<std::uint32_t>(runtimeFormID));
+
 	// old behavior still works
 	if (globals::excludedRefFormIDs.contains(runtimeFormID)) {
 		logger::debug("excluded ref runtime formID 0x{:08X} skipping light attachment",
-			static_cast<std::uint32_t>(runtimeFormID));
-		return true;
-	}
-
-	const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
-	std::string modName = refOriginFile ? refOriginFile->fileName : "";
-	if (modName.empty()) {
-		return false;
-	}
-
-	toLower(modName);
-
-	auto it = globals::excludedRefLocalFormIDsByMod.find(modName);
-	if (it == globals::excludedRefLocalFormIDsByMod.end()) {
-		return false;
-	}
-
-	const std::uint32_t localFormID = getLocalFormID(runtimeFormID);
-
-	if (it->second.contains(localFormID)) {
-		logger::debug(
-			"excluded ref '{}' local formID 0x{:X} (runtime 0x{:08X}) skipping light attachment",
-			modName,
-			localFormID,
 			static_cast<std::uint32_t>(runtimeFormID));
 		return true;
 	}

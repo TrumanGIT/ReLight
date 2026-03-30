@@ -21,14 +21,15 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	{
 		std::lock_guard lock(globals::refsWithAttachedLightsMutex);
 		if (globals::refsWithAttachedLights.count(refFormID) > 0)
-			return func(a_this, a_backgroundLoading);
+			return niAVObject;
 	}
 	{
 		std::lock_guard lock(globals::mergedRefsMutex);
 		if (globals::mergedRefs.count(refFormID) > 0)
-			return func(a_this, a_backgroundLoading);
+			return niAVObject;
 	}
 	
+	// calling asNode crashed on some dyndolod references for a user so netimmersive cast instead
 	auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
 	if (!a_root) {
 		return niAVObject;
@@ -66,7 +67,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
 
-			cloneLight->name = "RL" + cfg.nodeName;
+			cloneLight->name = "RL" + cfg.menuName;
 
 			LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
 		}

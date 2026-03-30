@@ -36,7 +36,7 @@ namespace globals
 
     inline float lightMergeSeekingDistance = 188;
 
-    inline float lightMergeDistance = 147;
+    inline float lightMergeDistance = 130;
 
     inline float fMaxZDiffToMergeIncreased = 160.70f;
 
@@ -86,7 +86,6 @@ namespace globals
     inline std::vector<RE::BSFixedString> priorityList{};
 
     inline std::unordered_set<RE::FormID> excludedRefFormIDs{};
-    inline std::unordered_map<std::string, std::unordered_set<std::uint32_t>> excludedRefLocalFormIDsByMod{};
 
     inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};

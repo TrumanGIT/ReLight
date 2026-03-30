@@ -110,6 +110,13 @@ bool saveConfiguration(const LightConfig& config) {
 			newEntry["meshPath"] = config.meshPath; // fallback
 		}
 
+		if (originalEntry.contains("refID")) {
+			newEntry["refID"] = originalEntry["refID"];
+		}
+		else if (!config.refFormIDAndModName.empty()) {
+			newEntry["refID"] = config.refFormIDAndModName;
+		}
+
 		newEntry["menuName"] = config.menuName;
 
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
@@ -242,7 +249,6 @@ void parseTemplates() {
 		for (json json : entries) {
 
 			std::vector<std::string> refFormIDs;
-
 			if (json.contains("refID")) {
 				if (json["refID"].is_string()) {
 					refFormIDs.push_back(json["refID"]);
@@ -277,6 +283,10 @@ void parseTemplates() {
 				toLower(modName);
 
 				try {
+					if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+						formIDStr = formIDStr.substr(2);
+					}
+
 					std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
 
 					auto* dataHandler = RE::TESDataHandler::GetSingleton();
@@ -300,54 +310,36 @@ void parseTemplates() {
 						continue;
 					}
 
-					if (isLightMod) {
-						// store local 12-bit ID for light plugins
-						std::uint32_t localID = parsedID & 0x00000FFF;
+					RE::FormID runtimeID = 0;
 
-						if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-							LightData::lightPluginRefFormIDToJsonCfgExteriors[modName][localID].push_back(cfg);
-							LightData::configIDToJsonCfg[cfg.configID] = cfg;
-							LightData::defaultConfigs[cfg.configID] = cfg;
-							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
-							logger::info("adding light plugin ref ID outdoor config");
-							cfg.print(true);
-						}
-						else {
-							LightData::lightPluginRefFormIDToJsonCfg[modName][localID].push_back(cfg);
-							LightData::configIDToJsonCfg[cfg.configID] = cfg;
-							LightData::defaultConfigs[cfg.configID] = cfg;
-							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
-						    logger::info("adding light plugin ref ID outdoor config");
-							cfg.print(false);
-						}
-					}
-					else {
-						// for normal plugins, resolve to runtime FormID once at load time
-						RE::FormID resolvedID = dataHandler->LookupFormID(parsedID, modName);
-						if (!resolvedID) {
-							logger::warn("Failed to resolve FormID '{}' for mod '{}'", formIDStr, modName);
+					if (isLightMod) {
+						auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
+						if (!ref) {
+							logger::warn("Failed to resolve light plugin refID '{}' in {}", refID, p);
 							continue;
 						}
 
-						if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-							LightData::refFormIDToJsonCfgExteriors[resolvedID].push_back(cfg);
-							LightData::configIDToJsonCfg[cfg.configID] = cfg;
-							LightData::defaultConfigs[cfg.configID] = cfg;
-							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
-							logger::info("adding ref ID outdoor config");
-
-							cfg.print(true);
-						}
-						else {
-							LightData::refFormIDToJsonCfg[resolvedID].push_back(cfg);
-							LightData::configIDToJsonCfg[cfg.configID] = cfg;
-							LightData::defaultConfigs[cfg.configID] = cfg;
-							//must exclude or these refs could get merged
-							globals::excludedRefLocalFormIDsByMod[modName].insert(parsedID);
-							logger::info("adding ref ID config");
-							cfg.print(false);
-						}
+						runtimeID = ref->GetFormID();
 					}
+					else {
+						runtimeID = parsedID;
+					}
+
+					if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+						LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
+						globals::excludedRefFormIDs.insert(runtimeID); 
+						logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+						cfg.print(true);
+					}
+					else {
+						LightData::refFormIDToJsonCfg[runtimeID].push_back(cfg);
+						globals::excludedRefFormIDs.insert(runtimeID);
+						logger::info("adding ref ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+						cfg.print(false);
+					}
+
+					LightData::configIDToJsonCfg[cfg.configID] = cfg;
+					LightData::defaultConfigs[cfg.configID] = cfg;
 				}
 				catch (...) {
 					logger::warn("Failed to parse refID '{}' in {}", refID, p);

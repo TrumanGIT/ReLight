@@ -46,6 +46,12 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
 	if (LightData::excludeLightEditorID(light)) return false;
 
+    if (globals::excludedRefFormIDs.contains(ref->GetFormID())) {
+        logger::debug("excluded ref runtime formID 0x{:08X} skipping light attachment",
+            static_cast<std::uint32_t>(ref->GetFormID()));
+        return false;
+    }
+
     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
     std::string modName = refOriginFile ? refOriginFile->fileName : "";
 

@@ -31,9 +31,6 @@ std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJ
 std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfg;
 std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfgExteriors;
 
-std::unordered_map<std::string, std::unordered_map<std::uint32_t, std::vector<LightConfig>>> LightData::lightPluginRefFormIDToJsonCfg;
-std::unordered_map<std::string, std::unordered_map<std::uint32_t, std::vector<LightConfig>>> LightData::lightPluginRefFormIDToJsonCfgExteriors;
-
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
@@ -263,60 +260,55 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 			std::string modName = trim(refKey.substr(tildePos + 1));
 
 			try {
+				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+					formIDStr = formIDStr.substr(2);
+				}
+
 				auto* dataHandler = RE::TESDataHandler::GetSingleton();
 				if (!dataHandler) {
 					logger::warn("TESDataHandler was null while updating ref config cache");
 					return updated;
 				}
 
-				std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
+				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
 
-				const RE::TESFile* file = dataHandler->LookupLoadedModByName(modName);
-				bool isLightMod = false;
-
-				if (!file) {
-					file = dataHandler->LookupLoadedLightModByName(modName);
-					if (file) {
-						isLightMod = true;
-					}
-				}
-
-				if (!file) {
+				auto mod = dataHandler->LookupModByName(modName);
+				if (!mod) {
 					logger::warn("Invalid mod name '{}' while updating ref config cache", modName);
 					return updated;
 				}
 
-				if (isLightMod) {
-					std::uint32_t localID = parsedID & 0x00000FFF;
+				RE::FormID runtimeID = 0;
 
-					if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-						auto& vec = lightPluginRefFormIDToJsonCfgExteriors[modName][localID];
-						updated |= updateConfigMap(vec, updatedCfg);
-					}
-					else {
-						auto& vec = lightPluginRefFormIDToJsonCfg[modName][localID];
-						updated |= updateConfigMap(vec, updatedCfg);
-					}
-				}
-				else {
-					RE::FormID resolvedID = dataHandler->LookupFormID(parsedID, modName);
-					if (!resolvedID) {
-						logger::warn("Failed to resolve FormID '{}' for mod '{}' while updating ref config cache", formIDStr, modName);
+				if (mod->IsLight()) {
+					auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
+					if (!ref) {
+						logger::warn(
+							"Failed to resolve light plugin ref localID 0x{:X} from mod '{}' while updating ref config cache",
+							static_cast<std::uint32_t>(parsedID),
+							modName);
 						return updated;
 					}
 
-					if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-						auto& vec = refFormIDToJsonCfgExteriors[resolvedID];
-						updated |= updateConfigMap(vec, updatedCfg);
-					}
-					else {
-						auto& vec = refFormIDToJsonCfg[resolvedID];
-						updated |= updateConfigMap(vec, updatedCfg);
-					}
+					runtimeID = ref->GetFormID();
+				}
+				else {
+					runtimeID = parsedID;
+				}
+
+				if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+					auto& vec = refFormIDToJsonCfgExteriors[runtimeID];
+					updated |= updateConfigMap(vec, updatedCfg);
+				}
+				else {
+					auto& vec = refFormIDToJsonCfg[runtimeID];
+					updated |= updateConfigMap(vec, updatedCfg);
 				}
 			}
 			catch (...) {
-				logger::warn("Failed to parse refFormIDAndModName '{}' while updating runtime config cache", updatedCfg.refFormIDAndModName);
+				logger::warn(
+					"Failed to parse refFormIDAndModName '{}' while updating runtime config cache",
+					updatedCfg.refFormIDAndModName);
 			}
 		}
 	}
