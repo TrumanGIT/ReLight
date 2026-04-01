@@ -924,10 +924,10 @@ namespace UI {
                     if (ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f")) {
                     }
 
-                    if (ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 180.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f")) {
                     }
 
-                    if (ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 1.0f, "%.2f")) {
+                    if (ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f")) {
                     }
 
                     if (ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight)) {
