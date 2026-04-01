@@ -880,6 +880,17 @@ namespace UI {
 
                     ImGuiMCP::SameLine();
 
+                    if (ImGuiMCP::Button("Refresh Lights")) {
+
+                        menuRefreshLight(selectedLight->light->unk138);
+
+                        //LightManager::reinitializeLightsWithinRange(player);
+                    }
+
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("Changes to these settings require refreshing lights to take effect.");
+                    }
+
                     ImGuiMCP::Separator();
 
                     ImGuiMCP::ImVec2 avail{};
@@ -916,23 +927,9 @@ namespace UI {
                     if (ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 1.0f, "%.2f")) {
                     }
 
-                    if (ImGuiMCP::Button("Refresh Lights")) {
-
-                        menuRefreshLight(selectedLight->light->unk138);
-
-                        auto player = RE::PlayerCharacter::GetSingleton();
-
-                        if (!player) {
-                            logger::warn("no player character, couldent refresh lights");
-                            return;
-                        }
-
-                        //LightManager::reinitializeLightsWithinRange(player);
+                    if (ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight)) {
                     }
 
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("Changes to these settings require refreshing lights to take effect.");
-                    }
 
                     ImGuiMCP::EndChild();
                 }
