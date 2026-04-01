@@ -36,6 +36,8 @@ namespace UI {
 
         SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
 
+        SKSEMenuFramework::AddSectionItem("Attach / Remove lights", UI::RenderAttachRemove);
+
         SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderTestingMenu);
     }
 
@@ -587,6 +589,7 @@ namespace UI {
                 }
                 ImGuiMCP::PopID();
             }
+        }
 
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
@@ -600,7 +603,7 @@ namespace UI {
                 Overlay* selectedIslRt;
 
                 if (globals::islInstalled) {
-                     selectedIslRt = Overlay::Get(selectedLight->light.get());
+                    selectedIslRt = Overlay::Get(selectedLight->light.get());
 
                     if (!selectedIslRt)
                         return;
@@ -610,18 +613,18 @@ namespace UI {
 
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
                 ImGuiMCP::PushItemWidth(150.0f);
-               
+
                 ImGuiMCP::Columns(2, nullptr, false);
                 float boxHeight = globals::islInstalled ? 200.0f : 150.0f;
 
-                
+
                 if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, boxHeight), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
                     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
                         ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
                     FontAwesome::PushSolid();
-      
+
                     ImGuiMCP::Text("%s Illuminance", lightbulbIcon.c_str());
                     ImGuiMCP::PopStyleColor();
                     ImGuiMCP::Separator();
@@ -711,7 +714,7 @@ namespace UI {
                 }
                 ImGuiMCP::EndChild();
                 ImGuiMCP::NextColumn();
-               
+
                 bool isTorch = (selectedLight->light->name == "RLtorch");
 
                 if (ImGuiMCP::BeginChild(
@@ -765,18 +768,18 @@ namespace UI {
                     ImGuiMCP::EndDisabled();
                 }
                 ImGuiMCP::EndChild();
-                
+
 
                 ImGuiMCP::Columns(1);
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
 
-               
+
                 ImGuiMCP::Columns(2, nullptr, false);
 
                 float sliderRange = (config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMenuXYZScale))
                     ? 1250.0f
                     : 250.0f;
-               
+
                 if (ImGuiMCP::BeginChild(
                     "PositionBox",
                     ImGuiMCP::ImVec2(0, 100),
@@ -833,7 +836,7 @@ namespace UI {
 
                 ImGuiMCP::NextColumn();
 
-                
+
                 if (ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, 100), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
@@ -940,7 +943,246 @@ namespace UI {
                 ImGuiMCP::PopID();
             }
 
+    }
+
+    enum class AttachLightStep
+    {
+        SelectTarget,
+        AlreadyHasLight,
+        ChooseTemplateType,
+        ChooseScope,
+        Done
+    };
+
+    inline std::vector<std::string> GetAllConfigKeys()
+    {
+        std::vector<std::string> result;
+        result.reserve(256);
+
+        std::unordered_set<std::string> seen;
+
+        auto collect = [&](const auto& map)
+            {
+                for (const auto& [key, _] : map) {
+                    if (seen.insert(key).second) {
+                        result.push_back(key);
+                    }
+                }
+            };
+
+        collect(LightData::meshPathToJsonCfg);
+        collect(LightData::meshPathToJsonCfgExteriors);
+        collect(LightData::nodeNameToJsonCfg);
+        collect(LightData::nodeNameToJsonCfgExteriors);
+
+        return result;
+    }
+
+    
+
+    void __stdcall RenderAttachRemove() {
+                
+        auto selected = RE::Console::GetSelectedRef().get();
+
+        if (!selected) {
+            ImGuiMCP::Text("Click on something using the console to proceed (Open console with default '`' key.)");
+            return;
         }
+
+
+        static AttachLightStep step = AttachLightStep::SelectTarget;
+        static bool createNewTemplate = false;
+
+        static RE::FormID lastSelected = 0;
+
+        static RE::FormID previewRef = 0;
+        static int previewSelectedIndex = -1;
+
+        if (selected->GetFormID() != lastSelected) {
+            lastSelected = selected->GetFormID();
+            step = AttachLightStep::SelectTarget;
+            previewRef = 0;
+            previewSelectedIndex = -1;
+        }
+
+        switch (step)
+        {
+        case AttachLightStep::SelectTarget:
+            if (HasRelightLight(selected)) {
+                step = AttachLightStep::AlreadyHasLight;
+            }
+            else {
+                step = AttachLightStep::ChooseTemplateType;
+            }
+            break;
+
+        case AttachLightStep::AlreadyHasLight:
+            ImGuiMCP::Text("This object already has a light. Add another?");
+
+            if (ImGuiMCP::Button("Yes")) {
+                step = AttachLightStep::ChooseTemplateType;
+            }
+            if (ImGuiMCP::Button("Cancel")) {
+                step = AttachLightStep::SelectTarget;
+            }
+            break;
+
+        case AttachLightStep::ChooseTemplateType:
+            ImGuiMCP::Text("Choose a template option.");
+
+            if (ImGuiMCP::Button("Reuse an existing template")) {
+                createNewTemplate = false;
+                step = AttachLightStep::ChooseScope;
+            }
+
+            if (ImGuiMCP::Button("Create a new template")) {
+                createNewTemplate = true;
+                step = AttachLightStep::ChooseScope;
+            }
+            break;
+
+        case AttachLightStep::ChooseScope:
+            ImGuiMCP::Text("Attach light to this object only, or all objects like it?");
+
+            if (ImGuiMCP::Button("This object only")) {
+                // do attach logic
+                step = AttachLightStep::Done;
+            }
+
+            if (ImGuiMCP::Button("All like this")) {
+                
+                auto base = selected->GetBaseObject();
+                auto model = base ? base->As<RE::TESModel>() : nullptr;
+              
+                if (!model) {
+                    ImGuiMCP::Text("Error, couldn't retrieve model, cannot attach light");
+                    return; 
+                }
+
+                std::string meshPath = extractMeshName(model->GetModel());
+
+                if (createNewTemplate) {
+                    LightConfig cfg; 
+
+
+                }
+
+                else {
+                
+                    static std::vector<std::string> configKeys;
+                    static int selectedIndex = -1;
+
+                    if (configKeys.empty()) {
+                        configKeys = GetAllConfigKeys();
+                    }
+
+                    ImGuiMCP::Text("Select a config:");
+
+                    for (int i = 0; i < static_cast<int>(configKeys.size()); i++) {
+                        if (ImGuiMCP::Selectable(configKeys[i].c_str(), selectedIndex == i)) {
+                            selectedIndex = i;
+                        }
+                    }
+
+                    if (selectedIndex == -1) {
+                        return;
+                    }
+
+                    const std::string& selectedKey = configKeys[selectedIndex];
+
+                    std::vector<LightConfig> cfgs;
+
+                    if (auto it = LightData::meshPathToJsonCfg.find(selectedKey); it != LightData::meshPathToJsonCfg.end())
+                        cfgs = it->second;
+                    else if (auto it = LightData::meshPathToJsonCfgExteriors.find(selectedKey); it != LightData::meshPathToJsonCfgExteriors.end())
+                        cfgs = it->second;
+                    else if (auto it = LightData::nodeNameToJsonCfg.find(selectedKey); it != LightData::nodeNameToJsonCfg.end())
+                        cfgs = it->second;
+                    else if (auto it = LightData::nodeNameToJsonCfgExteriors.find(selectedKey); it != LightData::nodeNameToJsonCfgExteriors.end())
+                        cfgs = it->second;
+                    
+                    if (cfgs.empty()) {
+                        ImGuiMCP::Text("Error: selected config was empty or not found.");
+                        return;
+                    }
+
+                    auto a_root = selected->Get3D();
+
+                    if (!a_root) {
+                        ImGuiMCP::Text("Error: selected object couldn't load its model.");
+                        return;
+                    }
+
+                    auto attachNode = a_root->AsNode();
+
+                    if (!attachNode) {
+                        ImGuiMCP::Text("Error: selected object couldn't load its model.");
+                        return;
+                    }
+
+                    static bool alreadyAttachedDebugMarker = false; 
+
+                    if (previewRef != selected->GetFormID() || previewSelectedIndex != selectedIndex) {
+                        previewRef = selected->GetFormID();
+                        previewSelectedIndex = selectedIndex;
+
+                        for (const auto& cfg : cfgs) {
+                            auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
+
+                            if (!cloneLight) {
+                                //logger::warn("Failed to clone NiPointLight for specific ref {:08X})", refFormID);
+                                return;
+                            }
+
+                            if (!alreadyAttachedDebugMarker) {
+                                if (globals::enableDebugLightBulbs) LightManager::AttachDebugMarker(attachNode, cloneLight);
+                                alreadyAttachedDebugMarker = true;
+                            }
+
+                            LightManager::attachLightUsingAttachPath(cfg, attachNode, cloneLight, selected->GetFormID());
+
+                            LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+
+                            cloneLight->name = "RL" + cfg.menuName;
+
+                            LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
+
+                        }
+
+                    }
+
+               
+                 
+
+                    if (ImGuiMCP::Button("Confirm")) {
+                        auto filePath = cfgs[0].configPath;
+
+                        if (AddMeshPathToAllEntries(filePath, meshPath)) {
+                            ImGuiMCP::Text("Config updated successfully.");
+                            step = AttachLightStep::Done;
+                        }
+                        else {
+                            ImGuiMCP::Text("Failed to update config file.");
+                        }
+                    }
+
+                   //add mesh name to each json entry 
+                }
+
+
+                step = AttachLightStep::Done;
+            }
+            break;
+
+        case AttachLightStep::Done:
+            ImGuiMCP::Text("Light attached.");
+
+            if (ImGuiMCP::Button("Attach another")) {
+                step = AttachLightStep::SelectTarget;
+            }
+            break;
+        }
+
 
     }
 

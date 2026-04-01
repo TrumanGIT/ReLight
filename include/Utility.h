@@ -577,34 +577,34 @@ inline void hasInverseSquareLighting()
 }
 
 
-/*template <class T, std::size_t BYTES>
-inline void hook_function_prologue(std::uintptr_t a_src)
+inline bool HasRelightLight(RE::TESObjectREFR* ref)
 {
-	struct Patch : Xbyak::CodeGenerator
-	{
-		Patch(std::uintptr_t a_originalFuncAddr, std::size_t a_originalByteLength)
-		{
-			// Hook returns here. Execute the restored bytes and jump back to the original function.
-			for (size_t i = 0; i < a_originalByteLength; ++i) {
-				db(*reinterpret_cast<std::uint8_t*>(a_originalFuncAddr + i));
-			}
+	if (!ref)
+		return false;
 
-			jmp(ptr[rip]);
-			dq(a_originalFuncAddr + a_originalByteLength);
+	auto* root = ref->Get3D();
+	if (!root)
+		return false;
+
+	auto* node = netimmerse_cast<RE::NiNode*>(root);
+	if (!node)
+		return false;
+
+	for (auto& child : node->GetChildren()) {
+		if (!child)
+			continue;
+
+		std::string_view name(child->name.c_str());
+		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
+			continue;
+
+		if (netimmerse_cast<RE::NiPointLight*>(child.get())) {
+			return true;
 		}
-	};
+	}
 
-	Patch p(a_src, BYTES);
-	p.ready();
-
-	auto& trampoline = SKSE::GetTrampoline();
-	trampoline.write_branch<5>(a_src, T::thunk);
-
-	auto alloc = trampoline.allocate(p.getSize());
-	std::memcpy(alloc, p.getCode(), p.getSize());
-
-	T::func = reinterpret_cast<std::uintptr_t>(alloc);
-}*/
+	return false;
+}
 
 inline std::string extractMeshName(const std::string& path) {
 	auto lastSlash = path.find_last_of("/\\");

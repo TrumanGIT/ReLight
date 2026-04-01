@@ -195,6 +195,9 @@ inline bool updateConfigMap (std::vector<LightConfig>& vec, const LightConfig& u
     return false;
 }
 
+//used for in game menu
+bool AddMeshPathToAllEntries(const std::string& filePath, const std::string& meshPath); 
+
 uint32_t ParseFlags(const nlohmann::json& j);
 
 nlohmann::json FlagsToJson(uint32_t mask);

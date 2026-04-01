@@ -562,7 +562,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 	int potentialMergeCount = 0;
 
-	 p.refALightName = cfg.nodeName.empty() ? extractMeshName(cfg.meshPath) : cfg.nodeName;
+	 p.refALightName = cfg.nodeName.empty() ? cfg.meshPath : cfg.nodeName;
 
 	bool increasedMergeDistance = false;
 

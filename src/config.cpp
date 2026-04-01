@@ -161,6 +161,86 @@ bool saveConfiguration(const LightConfig& config) {
 	}
 }
 
+ bool AddMeshPathToAllEntries(const std::string& filePath, const std::string& meshPath)
+{
+	try {
+		std::ifstream inFile(filePath);
+		if (!inFile.is_open()) {
+			logger::error("Failed to open config file for reading: {}", filePath);
+			return false;
+		}
+
+		json data;
+		inFile >> data;
+		inFile.close();
+
+		if (!data.is_array()) {
+			data = json::array({ data });
+		}
+
+		bool changed = false;
+
+		for (auto& entry : data) {
+			if (!entry.is_object()) {
+				continue;
+			}
+
+			if (!entry.contains("meshPath")) {
+				entry["meshPath"] = meshPath;
+				changed = true;
+				continue;
+			}
+
+			auto& meshField = entry["meshPath"];
+
+			if (meshField.is_string()) {
+				std::string existing = meshField.get<std::string>();
+				if (existing != meshPath) {
+					meshField = json::array({ existing, meshPath });
+					changed = true;
+				}
+			}
+			else if (meshField.is_array()) {
+				bool found = false;
+
+				for (const auto& item : meshField) {
+					if (item.is_string() && item.get<std::string>() == meshPath) {
+						found = true;
+						break;
+					}
+				}
+
+				if (!found) {
+					meshField.push_back(meshPath);
+					changed = true;
+				}
+			}
+			else {
+				logger::warn("meshPath in {} was neither string nor array", filePath);
+			}
+		}
+
+		if (!changed) {
+			logger::info("meshPath '{}' already present in all entries of {}", meshPath, filePath);
+			return true;
+		}
+
+		std::ofstream outFile(filePath, std::ios::trunc);
+		if (!outFile.is_open()) {
+			logger::error("Failed to open config file for writing: {}", filePath);
+			return false;
+		}
+
+		outFile << data.dump(4);
+		logger::info("Added meshPath '{}' to config file {}", meshPath, filePath);
+		return true;
+	}
+	catch (const std::exception& e) {
+		logger::error("Failed updating meshPath in {}: {}", filePath, e.what());
+		return false;
+	}
+}
+
 inline uint32_t ParseFlags(const nlohmann::json& j)
 {
 	uint32_t mask = 0;
