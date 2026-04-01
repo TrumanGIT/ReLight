@@ -22,12 +22,6 @@ std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJ
 
 std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJsonCfgExteriors;
 
-//base lookup used when attaching lights to meshes
-std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJsonCfg;
-
-//base lookup used when attaching lights to meshes
-std::unordered_map<std::string, std::vector<LightConfig>> LightData::nodeNameToJsonCfgExteriors;
-
 std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfg;
 std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfgExteriors;
 
@@ -105,7 +99,7 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 
 	if (!niPointLight) {
-		logger::error("light nullptr for node {}", cfg.nodeName);
+		logger::error("light nullptr for mesh {}", cfg.meshPath);
 		return;
 	}
 
@@ -126,12 +120,12 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
 	if (!niPointLight) {
-		logger::error("light nullptr for node {}", cfg.nodeName);
+		logger::error("light nullptr for node {}", cfg.meshPath);
 		return;
 	}
 	auto& data = niPointLight->GetLightRuntimeData();
 
-	auto& nodeNameOrMeshPath = cfg.nodeName.empty() ? cfg.meshPath : cfg.nodeName;
+	auto& nodeNameOrMeshPath = cfg.meshPath.empty() ? cfg.menuName : cfg.meshPath;
 
 	logger::debug(" Setting Light Data for {} from Configs", nodeNameOrMeshPath);
 
@@ -233,19 +227,6 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 		}
 
 		if (auto it = meshPathToJsonCfgExteriors.find(meshKey); it != meshPathToJsonCfgExteriors.end()) {
-			updated |= updateConfigMap(it->second, updatedCfg);
-		}
-	}
-
-	if (!updatedCfg.nodeName.empty()) {
-		auto nodeKey = updatedCfg.nodeName;
-		toLower(nodeKey);
-
-		if (auto it = nodeNameToJsonCfg.find(nodeKey); it != nodeNameToJsonCfg.end()) {
-			updated |= updateConfigMap(it->second, updatedCfg);
-		}
-
-		if (auto it = nodeNameToJsonCfgExteriors.find(nodeKey); it != nodeNameToJsonCfgExteriors.end()) {
 			updated |= updateConfigMap(it->second, updatedCfg);
 		}
 	}

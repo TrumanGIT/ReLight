@@ -75,7 +75,6 @@ struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
     std::string configPath{};                     // save the path from where this config is loaded
-    std::string nodeName{};                       //NiPointLightRunflickerTime->data.radius
     std::string meshPath{};
     std::string menuName{};
     std::string refFormIDAndModName{}; 
@@ -105,7 +104,6 @@ struct LightConfig {
         logger::info("Path               : {}", configPath);
         logger::info(" Mesh Path         : {}", meshPath);
         logger::info(" RefID and Mod Name : {}", refFormIDAndModName);
-        logger::info(" Node name         : {}", nodeName);
         logger::info(" Menu name         : {}", menuName);
         FOREACH_BOOL(BOOL2PRINT);
         FOREACH_FLOAT(FLOAT2PRINT);
@@ -122,7 +120,7 @@ struct LightConfig {
         }
     }
     bool operator<(const LightConfig& other) const {
-        return nodeName < other.nodeName;
+        return meshPath < other.meshPath;
     }
 };
 
@@ -207,7 +205,5 @@ bool loadConfiguration(LightConfig& config, const nlohmann::json& data);
 bool saveConfiguration(const LightConfig& config);
 
 void parseTemplates();
-
-std::vector<LightConfig> findConfigsForNode(std::string& nodeName, bool interior);
 
 std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool interior);

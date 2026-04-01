@@ -96,12 +96,12 @@ bool saveConfiguration(const LightConfig& config) {
 		json& originalEntry = data[0];
 
 		//nodename can be a array but config only hold 1 node name
-		if (originalEntry.contains("nodeName")) {
+	/*	if (originalEntry.contains("nodeName")) {
 			newEntry["nodeName"] = originalEntry["nodeName"];
 		}
 		else {
 			newEntry["nodeName"] = config.nodeName; // fallback
-		}
+		}*/
 
 		if (originalEntry.contains("meshPath")) {
 			newEntry["meshPath"] = originalEntry["meshPath"];
@@ -297,14 +297,11 @@ inline nlohmann::json FlagsToJson(uint32_t mask) {
 // ini parser already filled the users desired, priority nodes, so these ones have no priority
 // doesnet actually sort file path or node name atm.
 void sortInPriorityList(const LightConfig& cfg) {
-
-	RE::BSFixedString nodeNameBS(cfg.nodeName.c_str());
-
 	if (std::find(globals::priorityList.begin(),
 		globals::priorityList.end(),
-		nodeNameBS) == globals::priorityList.end())
+		cfg.meshPath) == globals::priorityList.end())
 	{
-		globals::priorityList.push_back(nodeNameBS);
+		globals::priorityList.push_back(cfg.meshPath);
 	}
 }
 
@@ -441,52 +438,6 @@ void parseTemplates() {
 				}
 			}
 
-
-			std::vector<std::string> nodeNames;
-
-			if (json.contains("nodeName")) {
-				if (json["nodeName"].is_string()) {
-					nodeNames.push_back(json["nodeName"].get<std::string>());
-				}
-				else if (json["nodeName"].is_array()) {
-					nodeNames = json["nodeName"].get<std::vector<std::string>>();
-				}
-			}
-
-			// create a config for each node name listed so 1 json config can work for multuple nodes.
-			for (const auto& nodeName : nodeNames) {
-				if (nodeName.empty()) continue;
-				LightConfig cfg;
-				loadConfiguration(cfg, json);
-				cfg.configPath = p;
-				cfg.configID = nextID++;
-
-				cfg.jsonIndex = jsonIndex;
-
-				//set each cfg name according to the current iteration of all node names read (for multiple node names for 1 config support)
-				cfg.nodeName = nodeName;
-
-				toLower(cfg.nodeName);
-
-				sortInPriorityList(cfg);
-
-				auto pathLower = toLowerImmut(p);
-
-				if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-					cfg.print(true);
-					LightData::configIDToJsonCfg[cfg.configID] = cfg;
-					LightData::defaultConfigs[cfg.configID] = cfg;
-					LightData::nodeNameToJsonCfgExteriors[cfg.nodeName].push_back(cfg);
-				}
-				else {
-					cfg.print(false);
-					LightData::configIDToJsonCfg[cfg.configID] = cfg;
-					LightData::defaultConfigs[cfg.configID] = cfg;
-					LightData::nodeNameToJsonCfg[cfg.nodeName].push_back(cfg);
-				}
-
-			}
-
 			// create a config for each mesh file path
 			std::vector<std::string> meshFilePaths;
 
@@ -513,6 +464,8 @@ void parseTemplates() {
 
 				toLower(cfg.meshPath);
 
+				sortInPriorityList(cfg);
+
 				auto pathLower = toLowerImmut(p);
 
 				if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
@@ -535,43 +488,6 @@ void parseTemplates() {
 	}
 }
 
-
-std::vector<LightConfig> findConfigsForNode(std::string& nodeName, bool interior)
-{
-	std::vector<LightConfig> result;
-
-	if (nodeName.empty())
-		return result;
-
-	//careful mutablitiy here idk if matters that much just marking it. 
-	toLower(nodeName);
-
-	std::unordered_map<std::string, std::vector<LightConfig>> exteriorOrInteriorConfigs;
-
-	if (!interior) {
-		auto it = LightData::nodeNameToJsonCfgExteriors.find(nodeName);
-		if (it != LightData::nodeNameToJsonCfgExteriors.end()) {
-			result = it->second;
-			return result;
-		}
-	
-	}
-
-	//fallback
-	auto fallBackIt = LightData::nodeNameToJsonCfg.find(nodeName);
-	if (fallBackIt != LightData::nodeNameToJsonCfg.end()) {
-		result = fallBackIt->second;
-		return result;
-	}
-
-
-	logger::warn(
-		" found node'{}' but no config exists",
-		nodeName
-	);
-
-	return result;
-}
 
 std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool interior)
 {

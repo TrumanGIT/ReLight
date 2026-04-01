@@ -138,7 +138,7 @@ inline void handlePendingMerges() {
         auto cell = retryRefA->GetParentCell();
         if (!cell) { reprocessQueue = std::move(nextQueue); continue; }
 
-        auto cfgs = findConfigsForNode(match, cell->IsInteriorCell());
+        auto cfgs = findConfigsForMeshPath(match, cell->IsInteriorCell());
         if (cfgs.empty()) {
             logger::warn("Dropping ref {:08X} — no configs found", retryRefA->GetFormID());
             // keep all other refs for retry

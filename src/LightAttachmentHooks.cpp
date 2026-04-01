@@ -96,23 +96,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	 }
 
-	// grab name of NiNode (usually 1:1 with mesh names)
-	// some nodes have 2 config names in their nodename. for example we need to prioritize candlechangdelier01 to use chandelier lights over candle lights.
-	const RE::BSFixedString nodeNameMatch = findPriorityMatch(a_root->name);
-
-	if (!nodeNameMatch.empty()) {
-
-		if (isExclude(meshName, a_this)) return niAVObject;
-
-		LightManager::processByNodeName(a_root, nodeNameMatch, a_this, isInterior);
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		return  niAVObject;
-	}
-
-	if (LightManager::dummyHandler(a_this, meshName, a_root, isInterior)) {
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		return niAVObject;
-	}
 
 	return niAVObject;
 }
@@ -179,7 +162,7 @@ void AddonNodes::thunk(
 
 					bool isInterior = cell->IsInteriorCell();
 
-					auto cfgs = findConfigsForNode(torchName, isInterior);
+					auto cfgs = findConfigsForMeshPath(torchName, isInterior);
 					if (cfgs.empty())
 						continue;
 

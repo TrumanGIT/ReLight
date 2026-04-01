@@ -449,7 +449,7 @@ inline bool isExcludedRef(const RE::TESObjectREFR* ref)
 
 	const RE::FormID runtimeFormID = ref->GetFormID();
 
-	logger::info("runtimeFormID = 0x{:08X}", static_cast<std::uint32_t>(runtimeFormID));
+	//logger::info("runtimeFormID = 0x{:08X}", static_cast<std::uint32_t>(runtimeFormID));
 
 	// old behavior still works
 	if (globals::excludedRefFormIDs.contains(runtimeFormID)) {
@@ -516,12 +516,12 @@ inline bool isExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
 	return false;
 }
 
-inline const RE::BSFixedString findPriorityMatch(const RE::BSFixedString& nodeName)
+inline const std::string findPriorityMatch(const std::string& meshName)
 {
-	for (const auto& nodeNameInPriorityList : globals::priorityList) {
-		if (nodeName.contains(nodeNameInPriorityList)) {
+	for (const auto& meshNameInPriorityList : globals::priorityList) {
+		if (meshName.contains(meshNameInPriorityList)) {
 			//logger::info("priority list item{} ", nodeNameInPriorityList);
-			return nodeNameInPriorityList;
+			return meshNameInPriorityList;
 		}
 	}
 

@@ -69,11 +69,6 @@ struct LightData {
 
 	static std::map<uint32_t, LightConfig> configIDToJsonCfg;
 
-	static std::unordered_map<std::string, std::vector<LightConfig>> nodeNameToJsonCfg;
-
-	//base lookup used when attaching lights to meshes
-	static std::unordered_map<std::string, std::vector<LightConfig>> nodeNameToJsonCfgExteriors;
-
 	static std::unordered_map<std::string, std::vector<LightConfig>> meshPathToJsonCfg;
 
 	static std::unordered_map<std::string, std::vector<LightConfig>> meshPathToJsonCfgExteriors;

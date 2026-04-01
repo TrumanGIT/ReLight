@@ -969,8 +969,6 @@ namespace UI {
 
         collect(LightData::meshPathToJsonCfg);
         collect(LightData::meshPathToJsonCfgExteriors);
-        collect(LightData::nodeNameToJsonCfg);
-        collect(LightData::nodeNameToJsonCfgExteriors);
 
         return result;
     }
@@ -1092,10 +1090,6 @@ namespace UI {
                     if (auto it = LightData::meshPathToJsonCfg.find(selectedKey); it != LightData::meshPathToJsonCfg.end())
                         cfgs = it->second;
                     else if (auto it = LightData::meshPathToJsonCfgExteriors.find(selectedKey); it != LightData::meshPathToJsonCfgExteriors.end())
-                        cfgs = it->second;
-                    else if (auto it = LightData::nodeNameToJsonCfg.find(selectedKey); it != LightData::nodeNameToJsonCfg.end())
-                        cfgs = it->second;
-                    else if (auto it = LightData::nodeNameToJsonCfgExteriors.find(selectedKey); it != LightData::nodeNameToJsonCfgExteriors.end())
                         cfgs = it->second;
                     
                     if (cfgs.empty()) {

@@ -135,17 +135,21 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 
 bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior) {
 
-	const auto cfgs = findConfigsForMeshPath(meshName, isInterior);
 
-	// if no config found then move to node name check
-	if (cfgs.empty()) {
-		//logger::warn("cfgs is empty for ref {:08X}, with name {} ", a_this->GetFormID(), meshName);
-		return false;
-	}
+	 std::string meshNameMatch = findPriorityMatch(meshName);
+
+	 const auto refFormID = a_this->GetFormID();
+
+	if (meshNameMatch.empty()) return false;
 
 	if (isExclude(meshName, a_this)) return true; 
-	
-	const auto refFormID = a_this->GetFormID();
+
+	auto cfgs = findConfigsForMeshPath(meshNameMatch, isInterior);
+
+	if (cfgs.empty()) {
+		logger::warn("cfgs is empty for ref {:08X}, with name {} ", refFormID, meshName);
+		return false;
+	}
 
 	logger::debug("file path match found {}, Processing ref {:08X} ", meshName, refFormID);
 
@@ -195,135 +199,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 	return true;
 }
 
- //TODO:: doesent handle multi lights in a single config (idk if it needs to really) 
-// some nodes are called dummy this is to take care of them.
- bool LightManager::dummyHandler(RE::TESObjectREFR* a_this, std::string modelName, RE::NiNode* a_root, bool isInterior)
- {
-
-	 //TODO:: this only works if the node name in the json config is labled exactly as matched below. 
-	 // should probly cover cases where the user changed the node name from chandel to something else 
-	 static const std::unordered_map<std::string, std::string> dummyMeshPaths = {
-		 { "ruinsfloorcandlelampmidon", "ruinsfloorcandlelampmidon" },
-		 { "ruinsfloorcandlelampmidon02", "ruinsfloorcandlelampmidon" },
-		 { "ruinsfloorcandlelampsmon", "ruinsfloorcandlelampsmon" },
-		 { "ruinsfloorcandlelampsmon02", "ruinsfloorcandlelampsmon" },
-
-		 { "impchandelliercandle01", "impchande" },
-		 { "impchandelliercandle01uskp", "impchande" },
-
-		 { "candlelanternwithcandle01", "candle" }
-	 };
-
-	 auto it = dummyMeshPaths.find(modelName);
-	 if (it != dummyMeshPaths.end()) {
-
-		 std::string match = it->second;
-
-		 //cant do multi lights currently, just would have to iterate if wanted to.
-		 auto cfgs = findConfigsForNode(match, isInterior);
-
-		 if (cfgs.empty()) return false;
-
-		 LightConfig cfg = cfgs[0];
-
-		 auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
-
-		 if (!cloneLight) {
-			 logger::warn("Failed to clone NiPointLight for node '{}', for ref{:08X})", modelName, a_this->GetFormID());
-			 return true;
-		 }
-
-		 logger::debug("dummy node {} with model {}. Processing ref {:08X} and got light from config: {}", modelName, modelName, a_this->GetFormID(), cfg.nodeName);
-			 LightManager::fillPendingMerges(a_this, cloneLight, cfg, a_root);
-
-		 return true;
-	 }
-
-	 // already returned early if not a dummy, therefor might as well skip this object as it wouldent get light anyway
-	 return true;
-}
-
-
- void LightManager::processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this, bool isInterior) {
-
-	// matched name with a configs nodename
-	std::string matchStr = match.c_str();
-
-	auto refFormID = a_this->GetFormID(); 
-
-	auto ui = RE::UI::GetSingleton();
-
-	if (ui && ui->IsMenuOpen("InventoryMenu")) {
-		//logger::info("Inventory menu is open, skipping PostCreate processing"); // do we even need that? 
-		return;
-	}
-
-	if (globals::removeFakeGlowOrbs)
-		glowOrbRemover(a_root);
-
-	auto cfgs = findConfigsForNode(matchStr, isInterior);
-
-	if (cfgs.empty()) {
-		logger::warn("cfgs is empty for ref {:08X}, with name {} ", refFormID, matchStr); 
-		return; 
-	}
-
-	logger::debug(" processing ref {:08X} by node name with light {} ", refFormID, matchStr);
-
-	uint32_t flags = cfgs[0].flags; 
-
-	logger::debug(
-		"ref {:08X} node '{}' cfg count = {}, flags = 0x{:X}, noMerging = {}",
-		refFormID,
-		matchStr,
-		cfgs.size(),
-		flags,
-		(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging)) != 0
-	);
-
-	// not a multi light, send off to merging logic
-	if (cfgs.size() == 1 && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
-		auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
-		if (!cloneLight) {
-			logger::warn("Failed to clone NiPointLight for ref {:08X} with nodeName '{}' )", refFormID, matchStr);
-			return; 
-		}
-
-		LightManager::fillPendingMerges(a_this, cloneLight, cfgs[0], a_root);
-
-	}
-
-	// multi lights cant cleanly merge so just attach right now
-	else {
-
-		static bool alreadyAttachedDebugMarker = false; 
-
-		for (auto& cfg : cfgs) {
-
-			auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
-
-			if (!cloneLight) {
-				logger::warn("Failed to clone NiPointLight for node '{}' for ref {:08X})", matchStr, refFormID);
-				return;
-			}
-
-			if (!alreadyAttachedDebugMarker) {
-				if (globals::enableDebugLightBulbs) AttachDebugMarker(a_root, cloneLight);
-				alreadyAttachedDebugMarker = true; 
-			}
-
-			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, a_this->GetFormID());
-
-			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-
-			cloneLight->name = "RL" + cfg.nodeName; 
-
-			attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
-
-			return;
-		}
-	}
-}
 
 //USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE. USUALLY WHEN GOING FROM INTERIOR TO EXTERIOR, BACK TO INTERIOR AND VICE VERSA
 RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent* event,
@@ -562,7 +437,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 	int potentialMergeCount = 0;
 
-	 p.refALightName = cfg.nodeName.empty() ? cfg.meshPath : cfg.nodeName;
+	 p.refALightName = cfg.meshPath.empty() ? cfg.menuName : cfg.meshPath;
 
 	bool increasedMergeDistance = false;
 
@@ -586,15 +461,14 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		std::string otherRefName = extractMeshName(model->GetModel());
 
+		toLower(otherRefName); 
+
 		//priority grab bc we do partial searches which can bring up false positive matches
 		std::string otherRefNameMatch = std::string(findPriorityMatch(otherRefName));
 
 		if (!otherRefNameMatch.empty()) {
 
-			//mutable
-			toLower(otherRefNameMatch);
-
-			 if (isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
+			if (isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
 
 			bool looseMatch = false;
 
@@ -605,9 +479,12 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 			}
 
 			bool isInterior = cell->IsInteriorCell();
-			auto cfgs = findConfigsForNode(otherRefNameMatch, isInterior);
+			auto cfgs = findConfigsForMeshPath(otherRefNameMatch, isInterior);
 
-			if (cfgs.empty()) return RE::BSContainer::ForEachResult::kContinue;
+			if (cfgs.empty()) {
+				logger::warn("no cfgs found for refB {:08X} with meshPath {} during merge", refBFormID, otherRefName);
+				return RE::BSContainer::ForEachResult::kContinue;
+			}
 
 			LightConfig otherRefCfg = cfgs[0]; 
 
@@ -869,10 +746,11 @@ void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 		logger::debug("AttachDebugMarker: null a_node or light");
 		return;
 	}
-	if (!a_node->parent) {
-		logger::debug("AttachDebugMarker: a_node {} has no parent, skipping", a_node->name.c_str());
-		return;
-	}
+	//if (!a_node->parent) {
+	//	logger::debug("AttachDebugMarker: a_node {} has no parent, skipping");
+	//	return;
+	//}
+
 	RE::NiPointer<RE::NiNode> loadedModel;
 	constexpr RE::BSModelDB::DBTraits::ArgsType args{};
 	if (const auto error = Demand("marker_light.nif", loadedModel, args); error == RE::BSResource::ErrorCode::kNone) {
@@ -885,8 +763,8 @@ void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 			}
 			a_node->AttachChild(clonedModelAsNode);
 			clonedModelAsNode->local.translate = light->local.translate;
-			logger::debug("AttachDebugMarker: attached marker to node {} at translate ({}, {}, {})",
-				a_node->name.c_str(), light->local.translate.x, light->local.translate.y, light->local.translate.z);
+			logger::debug("AttachDebugMarker: attached marker at translate ({}, {}, {})",
+				light->local.translate.x, light->local.translate.y, light->local.translate.z);
 		}
 		else {
 			logger::debug("AttachDebugMarker: clone failed for debug light marker");
