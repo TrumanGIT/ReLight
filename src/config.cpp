@@ -120,10 +120,24 @@ bool saveConfiguration(const LightConfig& config) {
 		newEntry["menuName"] = config.menuName;
 
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
-#define JSON_WRITE_FLOAT(C, I) newEntry[#C] = truncateDecimals(config.C, 2);
 
 		FOREACH_BOOL(JSON_WRITE)
-		FOREACH_FLOAT(JSON_WRITE_FLOAT)
+
+			newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
+		newEntry["radius"] = truncateDecimals(config.radius, 2);
+		newEntry["fov"] = truncateDecimals(config.fov, 2);
+		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
+		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
+		newEntry["depthBias"] = truncateDecimals(config.depthBias, 2);
+		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 2);
+		newEntry["constAttenuation"] = truncateDecimals(config.constAttenuation, 2);
+		newEntry["linearAttenuation"] = truncateDecimals(config.linearAttenuation, 2);
+		newEntry["quadraticAttenuation"] = truncateDecimals(config.quadraticAttenuation, 2);
+		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
+		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
+		//clamp to 0.1f
+		newEntry["size"] = truncateDecimals(std::max(0.1f, config.size), 2);
+		newEntry["cutoffOverride"] = truncateDecimals(config.cutoffOverride, 2);
 
 		newEntry["color"] = { config.diffuseColor[0], config.diffuseColor[1], config.diffuseColor[2] };
 		newEntry["position"] = { 
