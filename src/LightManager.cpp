@@ -81,16 +81,18 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	uint32_t mask = cfg.flags; 
 
 	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
-		bsLight->unk060 = 1; 
+		bsLight->unk060 = 1;
 	}
 
-	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
+	else if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
 		bsLight->unk060 = 2;
 	}
 
-	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
+	else if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
 		bsLight->unk060 = 3;
 	}
+
+	else bsLight->unk060 = 4; 
 }
 
 std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref, bool isInterior)
@@ -746,10 +748,10 @@ void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 		logger::debug("AttachDebugMarker: null a_node or light");
 		return;
 	}
-	//if (!a_node->parent) {
+	if (!a_node->parent) {
 	//	logger::debug("AttachDebugMarker: a_node {} has no parent, skipping");
-	//	return;
-	//}
+		return;
+	}
 
 	RE::NiPointer<RE::NiNode> loadedModel;
 	constexpr RE::BSModelDB::DBTraits::ArgsType args{};
@@ -831,8 +833,14 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 					dz *= 0.33; 
 					distXY2 = dx * dx + dy * dy + dz * dz;
 				}
+
 				else {
 					distXY2 = dx * dx + dy * dy + dz * dz;
+				}
+
+				if (light->light->radius.x >= 900) {
+				
+					distXY2 *= 0.1; 
 				}
 
 
@@ -924,3 +932,60 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 	for (int i = outIndex; i < 7; i++)
 		outLights[i] = nullptr;
 }
+
+ void LightManager::UpdateLightParent(RE::NiLight* light)
+{
+	if (!light) {
+		return;
+	}
+
+	if (auto* parent = light->parent) {
+		RE::NiUpdateData updateData{};
+		updateData.time = 0.0f;
+		updateData.flags = RE::NiUpdateData::Flag::kDirty;
+		parent->UpdateTransformAndBounds(updateData);
+	}
+}
+
+ RE::NiLight* LightManager::AttachLight(
+    RE::TESObjectREFR* selected,
+    const LightConfig& cfg)
+{
+    if (!selected) {
+        logger::warn("AttachPreviewLightToSelected: selected was null");
+        return nullptr;
+    }
+
+    auto a_root = selected->Get3D();
+    if (!a_root) {
+        logger::warn("AttachPreviewLightToSelected: Could not load this object's 3D.");
+        return nullptr;
+    }
+
+    auto attachNode = a_root->AsNode();
+    if (!attachNode) {
+        logger::warn("AttachPreviewLightToSelected: Could not load this object's node.");
+        return nullptr;
+    }
+
+    auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
+    if (!cloneLight) {
+        logger::warn("AttachPreviewLightToSelected: Failed to clone preview light.");
+        return nullptr;
+    }
+
+    if (globals::enableDebugLightBulbs) {
+        LightManager::AttachDebugMarker(attachNode, cloneLight);
+    }
+
+    LightManager::attachLightUsingAttachPath(cfg, attachNode, cloneLight, selected->GetFormID());
+    LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+
+    cloneLight->name = "RL" + (cfg.menuName.empty() ? cfg.meshPath : cfg.menuName);
+
+    LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
+    LightManager::UpdateLightParent(cloneLight);
+
+    return cloneLight;
+}
+

@@ -181,14 +181,13 @@ bool LightData::foundConfigForLight(const RE::NiLight* light) {
 	return LightData::configIDToJsonCfg.contains(light->unk138);
 }
 
-void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
-	auto& rt = niLight->GetLightRuntimeData();
-	auto& dataExt = LightData::configIDToJsonCfg[rt.unk138];
+void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseConfig, RE::NiLight* niLight) {
 
-	cfg = dataExt; 
+	auto& rt = niLight->GetLightRuntimeData();
+	cfg = baseConfig; 
 
 	cfg.radius = rt.radius.x;
-	cfg.brightness = rt.fade;
+	cfg.brightness = cfg.startingFade;
 
 	cfg.position[0] = niLight->local.translate.x;
 	cfg.position[1] = niLight->local.translate.y;
@@ -198,8 +197,8 @@ void LightData::updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight) {
 	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
 	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
 
-	cfg.flickerIntensity = dataExt.flickerIntensity;
-	cfg.flickersPerSecond = dataExt.flickersPerSecond;
+	cfg.flickerIntensity = baseConfig.flickerIntensity;
+	cfg.flickersPerSecond = baseConfig.flickersPerSecond;
 
 	if (globals::islInstalled) {
 
@@ -295,4 +294,45 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 	}
 
 	return updated;
+}
+
+ void LightData::AddConfigToMaps(
+	const LightConfig& cfg,
+	bool isRefLight,
+	RE::FormID refFormID)
+{
+	 auto meshPath = cfg.meshPath; 
+
+	 toLower(meshPath); 
+
+	LightData::configIDToJsonCfg[cfg.configID] = cfg;
+	LightData::defaultConfigs[cfg.configID] = cfg;
+
+	if (isRefLight) {
+		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+			LightData::refFormIDToJsonCfgExteriors[refFormID].push_back(cfg);
+		}
+		else {
+			LightData::refFormIDToJsonCfg[refFormID].push_back(cfg);
+		}
+
+		logger::info(
+			"RegisterConfigInMaps: added ref config '{}' at {} index {}",
+			cfg.menuName, cfg.configPath, cfg.jsonIndex);
+	}
+	else {
+		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+			LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
+		}
+		else {
+		
+			LightData::meshPathToJsonCfg[meshPath].push_back(cfg);
+		}
+
+		globals::priorityList.push_back(meshPath);
+
+		logger::info(
+			"RegisterConfigInMaps: added mesh config '{}' at {} index {}",
+			meshPath, cfg.configPath, cfg.jsonIndex);
+	}
 }

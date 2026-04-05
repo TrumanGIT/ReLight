@@ -37,10 +37,6 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
    static bool processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior);
 
-   static void processByNodeName(RE::NiNode* a_root, const RE::BSFixedString& match, RE::TESObjectREFR* a_this, bool isInterior);
-
-   static bool dummyHandler(RE::TESObjectREFR* a_this, std::string modelName, RE::NiNode* a_root, bool isInterior);
-
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 
   static void fillPendingMerges(RE::TESObjectREFR* a_this,
@@ -54,7 +50,12 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
   static void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p); 
 
+  //used for updating position 
+  static void UpdateLightParent(RE::NiLight* light); 
 
+  static RE::NiLight* AttachLight(
+      RE::TESObjectREFR* selected,
+      const LightConfig& cfg);
 
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;

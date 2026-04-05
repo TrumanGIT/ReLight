@@ -47,6 +47,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	// this looks for refs, for performance, we only look up mod name of ref If its a light plugin, otherwise just ref id lookup
 	if (auto* refCfgs = LightManager::findConfigsForRef(a_this, isInterior)) {
 	
+		if (isExcludedRef(a_this)) return niAVObject;
+
 		static bool alreadyAttachedDebugMarker = false;
 
 		for (const auto& cfg : *refCfgs) {
@@ -63,7 +65,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 				alreadyAttachedDebugMarker = true;
 			}
 
-			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, a_this->GetFormID());
+			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
 
 			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
 
@@ -140,10 +142,18 @@ void AddonNodes::thunk(
 
 					std::string parentName = light->parent->name.c_str(); 
 
+					std::string parentsParentName = light->parent->parent->name.c_str(); 
+
 					if (parentName != "AttachLight") {
 						//logger::warn("users torch node tree does not contain object w name AttachLight, cant attach light");
 						continue; 
 					}	
+
+
+					// catches magic lights and torches and this excludes them in bslightingshaderhook 
+					lightEntry->unk060 = 4;
+
+					if (!parentsParentName.contains("orch")) continue; 
 
 					auto parent = light->parent->AsNode();
 					if (!parent) {
@@ -173,7 +183,7 @@ void AddonNodes::thunk(
 
 					LightData::setNiPointLightDataFromCfg(light, cfg);
 
-					lightEntry->unk060 = 4; 
+				
 
 					logger::debug("Applied torch light data");
                 }

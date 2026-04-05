@@ -95,14 +95,7 @@ bool saveConfiguration(const LightConfig& config) {
 
 		json& originalEntry = data[0];
 
-		//nodename can be a array but config only hold 1 node name
-	/*	if (originalEntry.contains("nodeName")) {
-			newEntry["nodeName"] = originalEntry["nodeName"];
-		}
-		else {
-			newEntry["nodeName"] = config.nodeName; // fallback
-		}*/
-
+		//preserve any mesh paths in there before 
 		if (originalEntry.contains("meshPath")) {
 			newEntry["meshPath"] = originalEntry["meshPath"];
 		}
@@ -123,7 +116,7 @@ bool saveConfiguration(const LightConfig& config) {
 
 		FOREACH_BOOL(JSON_WRITE)
 
-			newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
+		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
 		newEntry["radius"] = truncateDecimals(config.radius, 2);
 		newEntry["fov"] = truncateDecimals(config.fov, 2);
 		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
@@ -171,6 +164,84 @@ bool saveConfiguration(const LightConfig& config) {
 	}
 	catch (const std::exception& e) {
 		logger::error("Failed to write config {}: {}", config.configPath, e.what());
+		return false;
+	}
+}
+
+bool saveNewConfiguration(const LightConfig& config)
+{
+	try {
+		json newEntry;
+
+		newEntry["meshPath"] = config.meshPath;
+
+		if (!config.refFormIDAndModName.empty()) {
+			newEntry["refID"] = config.refFormIDAndModName;
+		}
+
+		newEntry["menuName"] = config.menuName;
+
+#define JSON_WRITE(C, I) newEntry[#C] = config.C;
+		FOREACH_BOOL(JSON_WRITE)
+
+			newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
+		newEntry["radius"] = truncateDecimals(config.radius, 2);
+		newEntry["fov"] = truncateDecimals(config.fov, 2);
+		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
+		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
+		newEntry["depthBias"] = truncateDecimals(config.depthBias, 2);
+		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 2);
+		newEntry["constAttenuation"] = truncateDecimals(config.constAttenuation, 2);
+		newEntry["linearAttenuation"] = truncateDecimals(config.linearAttenuation, 2);
+		newEntry["quadraticAttenuation"] = truncateDecimals(config.quadraticAttenuation, 2);
+		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
+		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
+		newEntry["size"] = truncateDecimals(std::max(0.1f, config.size), 2);
+		newEntry["cutoffOverride"] = truncateDecimals(config.cutoffOverride, 2);
+
+		newEntry["color"] = {
+			config.diffuseColor[0],
+			config.diffuseColor[1],
+			config.diffuseColor[2]
+		};
+
+		newEntry["position"] = {
+			truncateDecimals(config.position[0], 2),
+			truncateDecimals(config.position[1], 2),
+			truncateDecimals(config.position[2], 2)
+		};
+
+		newEntry["flags"] = FlagsToJson(config.flags);
+		newEntry["attachPath"] = config.attachPath;
+
+		std::filesystem::path outPath(config.configPath);
+
+		if (outPath.empty()) {
+			logger::error("saveNewConfiguration: configPath was empty");
+			return false;
+		}
+
+		std::filesystem::create_directories(outPath.parent_path());
+
+		if (std::filesystem::exists(outPath)) {
+			logger::warn("saveNewConfiguration: file already exists at {}", outPath.string());
+			return false;
+		}
+
+		std::ofstream outFile(outPath, std::ios::trunc);
+		if (!outFile.is_open()) {
+			logger::error("Failed to open new config file for writing: {}", outPath.string());
+			return false;
+		}
+
+		outFile << json::array({ newEntry }).dump(4);
+		outFile.close();
+
+		logger::info("Successfully created new light config at {}", outPath.string());
+		return true;
+	}
+	catch (const std::exception& e) {
+		logger::error("Failed to create new config {}: {}", config.configPath, e.what());
 		return false;
 	}
 }
@@ -255,6 +326,102 @@ bool saveConfiguration(const LightConfig& config) {
 	}
 }
 
+ /* bool RemoveMeshPathFromAllEntriesInConfiguration(const std::string& configPath, const std::string& meshPathToRemove)
+ {
+	 try {
+		 if (configPath.empty()) {
+			 logger::error("RemoveMeshPathFromAllEntriesInConfiguration: configPath was empty");
+			 return false;
+		 }
+
+		 if (meshPathToRemove.empty()) {
+			 logger::error("RemoveMeshPathFromAllEntriesInConfiguration: meshPathToRemove was empty");
+			 return false;
+		 }
+
+		 std::ifstream inFile(configPath);
+		 if (!inFile.is_open()) {
+			 logger::error("Failed to open config file for reading: {}", configPath);
+			 return false;
+		 }
+
+		 json data;
+		 inFile >> data;
+		 inFile.close();
+
+		 if (!data.is_array()) {
+			 data = json::array({ data });
+		 }
+
+		 const std::string targetLower = toLowerImmut(meshPathToRemove);
+		 bool removedAny = false;
+
+		 for (auto& entry : data) {
+			 if (!entry.is_object() || !entry.contains("meshPath")) {
+				 continue;
+			 }
+
+			 auto& meshField = entry["meshPath"];
+
+			 if (meshField.is_string()) {
+				 std::string existing = meshField.get<std::string>();
+
+				 if (toLowerImmut(existing) == targetLower) {
+					 entry.erase("meshPath");
+					 removedAny = true;
+				 }
+			 }
+			 else if (meshField.is_array()) {
+				 json newMeshPaths = json::array();
+
+				 for (const auto& item : meshField) {
+					 if (!item.is_string()) {
+						 newMeshPaths.push_back(item);
+						 continue;
+					 }
+
+					 std::string existing = item.get<std::string>();
+					 if (toLowerImmut(existing) == targetLower) {
+						 removedAny = true;
+						 continue;
+					 }
+
+					 newMeshPaths.push_back(existing);
+				 }
+
+				 if (newMeshPaths.empty()) {
+					 entry.erase("meshPath");
+				 }
+				 else if (newMeshPaths.size() == 1) {
+					 entry["meshPath"] = newMeshPaths[0];
+				 }
+				 else {
+					 entry["meshPath"] = newMeshPaths;
+				 }
+			 }
+		 }
+
+		 if (!removedAny) {
+			 logger::info("Mesh path '{}' was not found anywhere in {}", meshPathToRemove, configPath);
+			 return true;
+		 }
+
+		 std::ofstream outFile(configPath, std::ios::trunc);
+		 if (!outFile.is_open()) {
+			 logger::error("Failed to open config file for writing: {}", configPath);
+			 return false;
+		 }
+
+		 outFile << data.dump(4);
+		 logger::info("Removed mesh path '{}' from all entries in {}", meshPathToRemove, configPath);
+		 return true;
+	 }
+	 catch (const std::exception& e) {
+		 logger::error("RemoveMeshPathFromAllEntriesInConfiguration failed for {}: {}", configPath, e.what());
+		 return false;
+	 }
+ }*/
+
 inline uint32_t ParseFlags(const nlohmann::json& j)
 {
 	uint32_t mask = 0;
@@ -308,7 +475,7 @@ void sortInPriorityList(const LightConfig& cfg) {
 void parseTemplates() {
 	logger::info("Parsing light templates..");
 	std::vector<std::string> paths = GetConfigPaths();
-	static uint32_t nextID = 1;
+	
 
 	for (const auto& p : paths) {
 		logger::info(" reading.. {}", p);
@@ -358,7 +525,7 @@ void parseTemplates() {
 				LightConfig cfg;
 				loadConfiguration(cfg, json);
 				cfg.configPath = p;
-				cfg.configID = nextID++;
+				cfg.configID = globals::nextID++;
 				cfg.jsonIndex = jsonIndex;
 				cfg.refFormIDAndModName = refID;
 				toLower(cfg.refFormIDAndModName);
@@ -416,15 +583,18 @@ void parseTemplates() {
 						runtimeID = parsedID;
 					}
 
+					//prevent merging for ref configs
+					cfg.flags |= static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging);
+
 					if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
 						LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
-						globals::excludedRefFormIDs.insert(runtimeID); 
+						//globals::excludedRefFormIDs.insert(runtimeID); 
 						logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
 						cfg.print(true);
 					}
 					else {
 						LightData::refFormIDToJsonCfg[runtimeID].push_back(cfg);
-						globals::excludedRefFormIDs.insert(runtimeID);
+					//	globals::excludedRefFormIDs.insert(runtimeID);
 						logger::info("adding ref ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
 						cfg.print(false);
 					}
@@ -455,7 +625,7 @@ void parseTemplates() {
 				LightConfig cfg;
 				loadConfiguration(cfg, json);
 				cfg.configPath = p;
-				cfg.configID = nextID++;
+				cfg.configID = globals::nextID++;
 
 				cfg.jsonIndex = jsonIndex;
 
@@ -515,3 +685,178 @@ std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool inte
 	return result;
 }
 
+ std::size_t CountJsonEntriesInFile(const std::string& configPath)
+{
+	try {
+		if (configPath.empty()) {
+			logger::warn("CountJsonEntriesInFile: configPath was empty");
+			return 0;
+		}
+
+		std::ifstream inFile(configPath);
+		if (!inFile.is_open()) {
+			logger::warn("CountJsonEntriesInFile: failed to open {}", configPath);
+			return 0;
+		}
+
+		json data;
+		inFile >> data;
+
+		if (data.is_array()) {
+			return data.size();
+		}
+
+		if (data.is_object()) {
+			return 1;
+		}
+
+		logger::warn("CountJsonEntriesInFile: invalid JSON root in {}", configPath);
+		return 0;
+	}
+	catch (const std::exception& e) {
+		logger::error("CountJsonEntriesInFile failed for {}: {}", configPath, e.what());
+		return 0;
+	}
+}
+
+bool AppendNewConfigEntryFromLight(
+	const std::string& configPath,
+	std::uint16_t jsonIndex,
+	const std::string& menuName,
+	RE::NiLight* niLight,
+	const std::string& refIDAndModName,
+	const std::string& meshPath, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID)
+{
+	try {
+		if (configPath.empty()) {
+			logger::error("AppendNewConfigEntryFromLight: configPath was empty");
+			return false;
+		}
+
+		if (!niLight) {
+			logger::error("AppendNewConfigEntryFromLight: niLight was null");
+			return false;
+		}
+
+		LightConfig cfg;
+		LightData::updateConfigFromLight(cfg, baseCfg, niLight);
+
+	// starting fade
+		cfg.configPath = configPath;
+		cfg.jsonIndex = jsonIndex;
+		cfg.configID = globals::nextID++;
+		cfg.menuName = menuName;
+		cfg.refFormIDAndModName = refIDAndModName;
+		cfg.meshPath = meshPath;
+
+		std::ifstream inFile(configPath);
+		if (!inFile.is_open()) {
+			logger::error("AppendNewConfigEntryFromLight: failed to open {}", configPath);
+			return false;
+		}
+
+		json data;
+		inFile >> data;
+		inFile.close();
+
+		if (!data.is_array()) {
+			data = json::array({ data });
+		}
+
+		json newEntry;
+
+		if (!cfg.meshPath.empty()) {
+			newEntry["meshPath"] = cfg.meshPath;
+		}
+
+		if (!cfg.refFormIDAndModName.empty()) {
+			newEntry["refID"] = cfg.refFormIDAndModName;
+		}
+
+		newEntry["menuName"] = cfg.menuName;
+
+#define JSON_WRITE(C, I) newEntry[#C] = cfg.C;
+		FOREACH_BOOL(JSON_WRITE)
+
+			// set brightness to starting fadce so it doesent 0 out bc of flicker calcs
+		newEntry["brightness"] = truncateDecimals(cfg.startingFade, 2);
+		newEntry["radius"] = truncateDecimals(cfg.radius, 2);
+		newEntry["fov"] = truncateDecimals(cfg.fov, 2);
+		newEntry["falloff"] = truncateDecimals(cfg.falloff, 2);
+		newEntry["nearDistance"] = truncateDecimals(cfg.nearDistance, 2);
+		newEntry["depthBias"] = truncateDecimals(cfg.depthBias, 2);
+		newEntry["ambientRatio"] = truncateDecimals(cfg.ambientRatio, 2);
+		newEntry["constAttenuation"] = truncateDecimals(cfg.constAttenuation, 2);
+		newEntry["linearAttenuation"] = truncateDecimals(cfg.linearAttenuation, 2);
+		newEntry["quadraticAttenuation"] = truncateDecimals(cfg.quadraticAttenuation, 2);
+		newEntry["flickerIntensity"] = truncateDecimals(cfg.flickerIntensity, 2);
+		newEntry["flickersPerSecond"] = truncateDecimals(cfg.flickersPerSecond, 2);
+		newEntry["size"] = truncateDecimals(std::max(0.1f, cfg.size), 2);
+		newEntry["cutoffOverride"] = truncateDecimals(cfg.cutoffOverride, 2);
+
+		newEntry["color"] = {
+			cfg.diffuseColor[0],
+			cfg.diffuseColor[1],
+			cfg.diffuseColor[2]
+		};
+
+		newEntry["position"] = {
+			truncateDecimals(cfg.position[0], 2),
+			truncateDecimals(cfg.position[1], 2),
+			truncateDecimals(cfg.position[2], 2)
+		};
+
+		newEntry["flags"] = FlagsToJson(cfg.flags);
+		newEntry["attachPath"] = cfg.attachPath;
+
+		if (jsonIndex > data.size()) {
+			logger::warn("AppendNewConfigEntryFromLight: jsonIndex {} > data.size() {}, appending instead",
+				jsonIndex, data.size());
+			data.push_back(newEntry);
+			cfg.jsonIndex = static_cast<std::uint16_t>(data.size() - 1);
+		}
+		else {
+			data.insert(data.begin() + static_cast<std::ptrdiff_t>(jsonIndex), newEntry);
+		}
+
+		std::ofstream outFile(configPath, std::ios::trunc);
+		if (!outFile.is_open()) {
+			logger::error("AppendNewConfigEntryFromLight: failed to write {}", configPath);
+			return false;
+		}
+
+		outFile << data.dump(4);
+
+		LightData::configIDToJsonCfg[cfg.configID] = cfg;
+		LightData::defaultConfigs[cfg.configID] = cfg;
+
+		if (refLight) {
+			if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				LightData::refFormIDToJsonCfgExteriors[refFormID].push_back(cfg);
+			}
+			else {
+				LightData::refFormIDToJsonCfg[refFormID].push_back(cfg);
+			}
+
+			logger::info("AppendNewConfigEntryFromLight: added ref config '{}' at {} index {}",
+				cfg.menuName, cfg.configPath, cfg.jsonIndex);
+		}
+		else {
+			if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				LightData::meshPathToJsonCfgExteriors[cfg.meshPath].push_back(cfg);
+			}
+			else {
+				LightData::meshPathToJsonCfg[cfg.meshPath].push_back(cfg);
+			}
+
+			logger::info("AppendNewConfigEntryFromLight: added mesh config '{}' at {} index {}",
+				cfg.menuName, cfg.configPath, cfg.jsonIndex);
+		}
+
+		return true;
+	}
+	catch (const std::exception& e) {
+		logger::error("AppendNewConfigEntryFromLight failed: {}", e.what());
+		return false;
+	}
+}

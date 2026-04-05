@@ -99,6 +99,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     auto ui = RE::UI::GetSingleton();
     if (ui && (ui->IsMenuOpen("InventoryMenu") || ui->IsMenuOpen("CraftingMenu"))) return true;
 
+    // 
     if (light->unk060 == 4) return true;
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures) return true;
@@ -112,7 +113,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     if (pass->geometry->worldBound.radius > 1800) return true;
 
     // probobly a sky light or something we should return
-    if (light->light->radius.x > 1000) return true; 
+   // if (!light->light->radius.x > 1000) return true; 
 
     //return on actors and skp invalid references potentially
     auto objectRef = pass->geometry->GetUserData();

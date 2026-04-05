@@ -92,9 +92,14 @@ struct LightData {
 
 	static bool foundConfigForLight(const RE::NiLight* light);
 
-	static void updateConfigFromLight(LightConfig& cfg, RE::NiLight* niLight);
+	static void updateConfigFromLight(LightConfig& cfg, const LightConfig& baseConfig, RE::NiLight* niLight);
 
 	static bool updateRuntimeConfigCaches(const LightConfig& updatedCfg);
+
+    static void AddConfigToMaps(
+		const LightConfig& cfg,
+		bool isRefLight,
+		RE::FormID refFormID);
 
 	static void printLightParams(const RE::ShadowSceneNode::LIGHT_CREATE_PARAMS& params) {
 		logger::debug(" shadowLight	 {}", params.shadowLight);

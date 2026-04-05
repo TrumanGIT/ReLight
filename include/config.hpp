@@ -21,8 +21,8 @@ B(affectWater, true) \
 B(neverFades, true) \
 
 #define FOREACH_FLOAT(F) \
-F(brightness, 0.f) \
-F(radius, 0.f) \
+F(brightness, 3.0f) \
+F(radius, 100.f) \
 F(fov, 90.f) \
 F(falloff, 1.f) \
 F(nearDistance, 5.f) \
@@ -31,12 +31,12 @@ F(ambientRatio, 0.1f) \
 F(constAttenuation, 0.f) \
 F(linearAttenuation, 0.f) \
 F(quadraticAttenuation, 0.f) \
-F(flickerIntensity, 0.2f) \
-F(flickersPerSecond, 3.f) \
+F(flickerIntensity, 0.1f) \
+F(flickersPerSecond, 0.1f) \
 F(flickerTime, 0.0f) \
 F(startingFade, 0.f) \
-F(size, 1.f) \
-F(cutoffOverride , 0.5f) \
+F(size, 2.0f) \
+F(cutoffOverride , 0.05f) \
 
 
 #define BOOL2DEF(B, I) bool B{I};
@@ -79,7 +79,7 @@ struct LightConfig {
     std::string menuName{};
     std::string refFormIDAndModName{}; 
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
-    std::array<float, POS_SIZE> position{};       // RE::NiPointLight->local.translate.x, y z
+    std::array<float, POS_SIZE> position{0, 0, 30};       // RE::NiPointLight->local.translate.x, y z
     uint32_t flags{ 0 };
     std::vector<int> attachPath;
     uint32_t configID = 0;
@@ -196,6 +196,10 @@ inline bool updateConfigMap (std::vector<LightConfig>& vec, const LightConfig& u
 //used for in game menu
 bool AddMeshPathToAllEntries(const std::string& filePath, const std::string& meshPath); 
 
+std::size_t CountJsonEntriesInFile(const std::string& configPath); 
+
+//bool RemoveMeshPathFromAllEntriesInConfiguration(const std::string& configPath, const std::string& meshPathToRemove);
+
 uint32_t ParseFlags(const nlohmann::json& j);
 
 nlohmann::json FlagsToJson(uint32_t mask);
@@ -203,6 +207,16 @@ nlohmann::json FlagsToJson(uint32_t mask);
 bool loadConfiguration(LightConfig& config, const nlohmann::json& data);
 
 bool saveConfiguration(const LightConfig& config);
+
+bool saveNewConfiguration(const LightConfig& config);
+
+bool AppendNewConfigEntryFromLight(
+    const std::string& configPath,
+    std::uint16_t jsonIndex,
+    const std::string& menuName,
+    RE::NiLight* niLight,
+    const std::string& refIDAndModName,
+    const std::string& meshPath, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID);
 
 void parseTemplates();
 

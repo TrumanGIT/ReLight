@@ -36,7 +36,7 @@ namespace UI {
 
         SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
 
-        SKSEMenuFramework::AddSectionItem("Attach or Remove lights", UI::RenderAttachRemove);
+        SKSEMenuFramework::AddSectionItem("Attach Lights", UI::RenderAttachRemove);
 
         SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderTestingMenu);
     }
@@ -447,9 +447,13 @@ namespace UI {
 
                 LightConfig cfg;
 
-                //TODO:: shouldnet use node name lookups since we use mesh paths as well now.
                 if (LightData::foundConfigForLight(niLight)) {
-                    LightData::updateConfigFromLight(cfg, niLight);
+
+                    // not using runtime here i dont really know the diff 
+                    // here we grab the config itself from the config to json ID map
+                    auto& baseConfig = LightData::configIDToJsonCfg[niLight->unk138];
+
+                    LightData::updateConfigFromLight(cfg, baseConfig, niLight);
 
                     if (!LightData::updateRuntimeConfigCaches(cfg)) {
                         logger::warn("Failed to update runtime config caches for '{}'", lightName);
@@ -942,6 +946,7 @@ namespace UI {
 
     }
 
+
     enum class AttachLightStep
     {
         SelectTarget,
@@ -949,7 +954,8 @@ namespace UI {
         ChooseTemplateType,
         ChooseTemplate,
         ChooseScope,
-        Done
+        Done,
+        LightRemoved
     };
 
     inline std::vector<std::string> GetAllConfigKeys()
@@ -974,11 +980,67 @@ namespace UI {
         return result;
     }
 
+    inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
+    {
+        if (!selected) {
+            return;
+        }
+
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        auto* tes = RE::TES::GetSingleton();
+
+        if (!player || !tes) {
+            return;
+        }
+
+        tes->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects,
+            [selected, extractedMeshName](RE::TESObjectREFR* ref)
+            {
+                if (!ref || ref == selected) {
+                    return RE::BSContainer::ForEachResult::kContinue;
+                }
+
+                const auto base = ref->GetBaseObject(); 
+              
+                auto model = base ? base->As<RE::TESModel>() : nullptr;
+                if (!model) {
+                  //  logger::warn(" coldent get model in refresh Nearby objects");
+                    return RE::BSContainer::ForEachResult::kContinue;
+                }
+
+              auto  refBMeshPath = extractMeshName(model->GetModel());
+
+                if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
+
+                logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
+
+                RE::ObjectRefHandle handle{ ref };
+                SKSE::GetTaskInterface()->AddTask([handle]() {
+                    if (auto resolvedRef = handle.get()) {
+                        resolvedRef->Disable();
+                        resolvedRef->Enable(false);
+                    }
+                    });
+
+                return RE::BSContainer::ForEachResult::kContinue;
+            });
+    }
+
     void __stdcall RenderAttachRemove()
     {
+
+        auto centerNextItem = [&](float estimatedWidth) {
+            float startX = ImGuiMCP::GetCursorPosX();
+            ImGuiMCP::ImVec2 avail{};
+            ImGuiMCP::GetContentRegionAvail(&avail);
+            ImGuiMCP::SetCursorPosX(startX + (avail.x - estimatedWidth) * 0.5f);
+            };
+
         auto selected = RE::Console::GetSelectedRef().get();
 
         if (!selected) {
+
+            centerNextItem(330.0f);
             ImGuiMCP::Text("Click on an object in the console to continue.");
             return;
         }
@@ -986,156 +1048,406 @@ namespace UI {
         static AttachLightStep step = AttachLightStep::SelectTarget;
         static bool createNewTemplate = false;
         static bool multiLight = false;
-        static std::string meshPath{};
+        static bool refLight = false;
+        static bool alreadyAttachedDebugMarker = false;
 
+        static RE::FormID formID = 0x0;
+        static RE::FormID baseFormID = 0x0;
+        static std::string meshPath{};
+        static std::string jsonFilePath{};
+        static std::string menuName{};
+        static RE::NiLight* niLight = nullptr;
         static RE::FormID lastSelected = 0;
         static RE::FormID previewRef = 0;
         static int previewSelectedIndex = -1;
-
-        static std::vector<std::string> configKeys;
+        static std::vector<std::pair<std::string, LightConfig>> configDisplay;
+        static std::unordered_set<std::string> seenMenuNames;
         static int selectedIndex = -1;
         static std::vector<LightConfig> selectedCfgs;
-        static bool alreadyAttachedDebugMarker = false;
+        static std::size_t entryCount = 0;
 
-        if (selected->GetFormID() != lastSelected) {
-            lastSelected = selected->GetFormID();
-            step = AttachLightStep::SelectTarget;
+        static LightConfig newCfg;
+
+        auto resetState = [&]() {
             createNewTemplate = false;
             multiLight = false;
+            refLight = false;
+            alreadyAttachedDebugMarker = false;
+
             meshPath.clear();
+            jsonFilePath.clear();
+            menuName.clear();
+
+            niLight = nullptr;
 
             previewRef = 0;
             previewSelectedIndex = -1;
 
-            configKeys.clear();
+            configDisplay.clear();
+            seenMenuNames.clear();
             selectedIndex = -1;
             selectedCfgs.clear();
-            alreadyAttachedDebugMarker = false;
+
+            entryCount = 0;
+            formID = 0x0;
+            baseFormID = 0x0;
+            newCfg = LightConfig{};
+            step = AttachLightStep::SelectTarget;
+            };
+
+        // Call this immediately before the widget or button row you want centered.
+
+
+        if (selected->GetFormID() != lastSelected) {
+            lastSelected = selected->GetFormID();
+            resetState();
+        }
+
+        const auto baseObject = selected->GetBaseObject();
+        if (baseObject) {
+            baseFormID = baseObject->GetFormID();
         }
 
         switch (step)
         {
         case AttachLightStep::SelectTarget:
+        {
             step = HasRelightLight(selected) ?
                 AttachLightStep::AlreadyHasLight :
                 AttachLightStep::ChooseTemplateType;
             break;
+        }
 
         case AttachLightStep::AlreadyHasLight:
-            ImGuiMCP::Text("This object already has a ReLight light. Add another?");
+        {
+            centerNextItem(350.0f);
+            ImGuiMCP::Text("This object already has a ReLight light.");
+      
 
-            if (ImGuiMCP::Button("Yes")) {
-                multiLight = true;
-                step = AttachLightStep::ChooseTemplateType;
+            centerNextItem(500.0f);
+
+            if (ImGuiMCP::Button("Add another Light")) {
+
+                auto multiLightCfg = FindRefIDConfigForAttachAnother(selected);
+
+                if (!multiLightCfg.configPath.empty()) {
+                    logger::info("Add another light: found existing ref ID config {:08X}", selected->GetFormID());
+
+                    entryCount = CountJsonEntriesInFile(multiLightCfg.configPath);
+                    jsonFilePath = multiLightCfg.configPath;
+                    menuName = multiLightCfg.menuName;
+
+                    niLight = LightManager::AttachLight(selected, multiLightCfg);
+
+                    newCfg = multiLightCfg;
+                    newCfg.configID = globals::nextID++;
+
+                    multiLight = true;
+                    refLight = true;
+                    formID = selected->GetFormID();
+                }
+                else {
+                    auto base = selected->GetBaseObject();
+                    auto model = base ? base->As<RE::TESModel>() : nullptr;
+                    if (!model) {
+                        logger::warn("attach another light: no model '{}'", meshPath);
+                        break;
+                    }
+
+                    auto cell = selected->GetParentCell();
+
+                    meshPath = extractMeshName(model->GetModel());
+                    toLower(meshPath);
+
+                    std::string matched = std::string(findPriorityMatch(meshPath));
+                    if (matched.empty()) {
+                        logger::warn("attach another light: no priority match for mesh '{}'", meshPath);
+                        break;
+                    }
+
+                    selectedCfgs = findConfigsForMeshPath(matched, cell->IsInteriorCell());
+
+                    if (selectedCfgs.empty()) {
+                        logger::warn("during attach another light, cfgs is empty for ref {:08X}, with name {} ", selected->GetFormID(), meshPath);
+                        break;
+                    }
+
+                    menuName = selectedCfgs[0].menuName;
+                    jsonFilePath = selectedCfgs[0].configPath;
+                    entryCount = CountJsonEntriesInFile(selectedCfgs[0].configPath);
+
+                    multiLight = true;
+                    refLight = false;
+
+                    newCfg = selectedCfgs[0];
+                    newCfg.configID = globals::nextID++;
+
+                    formID = selected->GetFormID();
+                }
+
+                step = AttachLightStep::Done;
+                break;
             }
 
-            if (ImGuiMCP::Button("Cancel")) {
-                step = AttachLightStep::SelectTarget;
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("You can edit new light in Light Editor as Torch 1, Torch 2 ect.");
             }
+
+            ImGuiMCP::SameLine();
+
+            if (ImGuiMCP::Button("Add Object To Light Exclusion List")) {
+
+                std::string refIDandModName = BuildRefIDAndModName(selected);
+
+                if (!AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
+                    logger::error("Failed to append excluded ref {}", refIDandModName);
+                }
+
+                RE::ObjectRefHandle handle = selected->GetHandle();
+
+                SKSE::GetTaskInterface()->AddTask([handle]() {
+                    if (auto ref = handle.get()) {
+                        globals::excludedRefFormIDs.insert(ref->GetFormID());
+                        ref->Disable();
+                        ref->Enable(false);
+                    }
+                    });
+
+                step = AttachLightStep::LightRemoved;
+                break;
+            }
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Adds Object to exclude by refID section in RELight.ini file preventing lights from being attached.");
+            }
+
             break;
+        }
 
         case AttachLightStep::ChooseTemplateType:
-            ImGuiMCP::Text("Create new or add to existing template.");
+        {
+            centerNextItem(430.0f);
+            ImGuiMCP::Text("Create new Light Template or add to existing template.");
+
+            centerNextItem(430.0f);
 
             if (ImGuiMCP::Button("Reuse an existing template")) {
                 createNewTemplate = false;
                 step = AttachLightStep::ChooseTemplate;
             }
+
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Reusing templates keeps your config folder uncluttered.");
             }
 
+            ImGuiMCP::SameLine();
+
             if (ImGuiMCP::Button("Create a new template")) {
                 createNewTemplate = true;
+                newCfg = LightConfig{};
                 step = AttachLightStep::ChooseScope;
             }
+
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Creates a separate template for this light.");
+                ImGuiMCP::SetTooltip("Better if you want to control this light seperatly.");
             }
+
             break;
+        }
 
         case AttachLightStep::ChooseTemplate:
         {
+            centerNextItem(120.0f);
             ImGuiMCP::Text("Select a template.");
 
-            if (configKeys.empty()) {
-                configKeys = GetAllConfigKeys();
-            }
+            if (configDisplay.empty()) {
+                configDisplay.clear();
+                seenMenuNames.clear();
 
-            if (configKeys.empty()) {
-                ImGuiMCP::Text("No templates found.");
-                if (ImGuiMCP::Button("Back")) {
-                    step = AttachLightStep::ChooseTemplateType;
+                auto tryAdd = [&](const std::string& key, const std::vector<LightConfig>& cfgVec) {
+                    if (cfgVec.empty()) {
+                        return;
+                    }
+
+                    const auto& cfg = cfgVec[0];
+
+                    std::string name = cfg.menuName.empty() ? key : cfg.menuName;
+                    std::string nameLower = toLowerImmut(name);
+
+                    if (seenMenuNames.insert(nameLower).second) {
+                        configDisplay.emplace_back(key, cfg);
+                    }
+                    };
+
+                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfg) {
+                    tryAdd(key, cfgVec);
                 }
-                break;
+
+                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfgExteriors) {
+                    tryAdd(key, cfgVec);
+                }
             }
 
-            for (int i = 0; i < static_cast<int>(configKeys.size()); i++) {
-                if (ImGuiMCP::Selectable(configKeys[i].c_str(), selectedIndex == i)) {
+            for (int i = 0; i < static_cast<int>(configDisplay.size()); i++) {
+                const auto& [key, cfg] = configDisplay[i];
+
+                if (ImGuiMCP::Selectable(cfg.menuName.c_str(), selectedIndex == i)) {
                     selectedIndex = i;
                 }
             }
 
             if (selectedIndex == -1) {
-                if (ImGuiMCP::Button("Back")) {
-                    step = AttachLightStep::ChooseTemplateType;
+                centerNextItem(60.0f);
+                if (ImGuiMCP::Button("Cancel")) {
+                    resetState();
                 }
                 break;
             }
 
-            const std::string& selectedKey = configKeys[selectedIndex];
+            const std::string& selectedKey = configDisplay[selectedIndex].first;
             selectedCfgs.clear();
 
-            if (auto it = LightData::meshPathToJsonCfg.find(selectedKey); it != LightData::meshPathToJsonCfg.end()) {
-                selectedCfgs = it->second;
+            if (auto itCfg = LightData::meshPathToJsonCfg.find(selectedKey);
+                itCfg != LightData::meshPathToJsonCfg.end()) {
+                selectedCfgs = itCfg->second;
             }
-            else if (auto it = LightData::meshPathToJsonCfgExteriors.find(selectedKey); it != LightData::meshPathToJsonCfgExteriors.end()) {
-                selectedCfgs = it->second;
+            else if (auto itExt = LightData::meshPathToJsonCfgExteriors.find(selectedKey);
+                itExt != LightData::meshPathToJsonCfgExteriors.end()) {
+                selectedCfgs = itExt->second;
             }
 
             if (selectedCfgs.empty()) {
+                centerNextItem(220.0f);
                 ImGuiMCP::Text("Selected config was empty or not found.");
                 step = AttachLightStep::ChooseTemplateType;
-                    selectedIndex = -1;
-         
+                selectedIndex = -1;
                 break;
             }
 
-          
+            centerNextItem(170.0f);
+
             if (ImGuiMCP::Button("Confirm")) {
                 step = AttachLightStep::ChooseScope;
             }
 
-            if (ImGuiMCP::Button("Back")) {
-                selectedIndex = -1;
-                selectedCfgs.clear();
-                previewRef = 0;
-                previewSelectedIndex = -1;
-                step = AttachLightStep::ChooseTemplateType;
+            ImGuiMCP::SameLine();
+
+            if (ImGuiMCP::Button("Cancel")) {
+                resetState();
             }
+
             break;
         }
 
         case AttachLightStep::ChooseScope:
         {
-            ImGuiMCP::Text("Attach light to this object only, or all objects like it?");
+            centerNextItem(260.0f);
+            ImGuiMCP::Text("This object only, or all objects like it?");
 
             auto base = selected->GetBaseObject();
             auto model = base ? base->As<RE::TESModel>() : nullptr;
 
             if (!model) {
+                centerNextItem(240.0f);
                 ImGuiMCP::Text("Could not retrieve this object's model.");
                 break;
             }
 
             meshPath = extractMeshName(model->GetModel());
 
+            centerNextItem(300.0f);
+
             if (ImGuiMCP::Button("This object only")) {
-                // TODO: put single-object attach logic here
+
+                refLight = true;
+
+                if (createNewTemplate) {
+
+                    newCfg.refFormIDAndModName = BuildRefIDAndModName(selected);
+                    newCfg.menuName = newCfg.refFormIDAndModName;
+                    newCfg.configPath = BuildConfigPath(newCfg.refFormIDAndModName);
+                    newCfg.jsonIndex = 0;
+                    newCfg.configID = globals::nextID++;
+                    newCfg.diffuseColor = { 255, 162, 61 };
+                    newCfg.startingFade = 3.0f;
+
+                    niLight = LightManager::AttachLight(selected, newCfg);
+                    LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
+
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        LightData::ResetTriLightCache();
+                        });
+                }
+                else {
+                    auto a_root = selected->Get3D();
+                    if (!a_root) {
+                        logger::warn("Could not load this object's 3D cannnot attach light.");
+                        break;
+                    }
+
+                    auto attachNode = a_root->AsNode();
+                    if (!attachNode) {
+                        logger::warn("Could not load this object's node cannnot attach light.");
+                        break;
+                    }
+
+                    for (const auto& cfg : selectedCfgs) {
+                        auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
+                        if (!cloneLight) {
+                            logger::warn("Failed to clone preview light.");
+                            break;
+                        }
+
+                        niLight = cloneLight;
+
+                        if (globals::enableDebugLightBulbs && !alreadyAttachedDebugMarker) {
+                            LightManager::AttachDebugMarker(attachNode, cloneLight);
+                            alreadyAttachedDebugMarker = true;
+                        }
+
+                        LightManager::attachLightUsingAttachPath(cfg, attachNode, cloneLight, selected->GetFormID());
+                        LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+                        cloneLight->name = "RL" + meshPath;
+                        LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
+                    }
+
+                    UpdateRefRootTransforms(selected);
+
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        LightData::ResetTriLightCache();
+                        });
+                }
+
                 step = AttachLightStep::Done;
+                break;
             }
 
+            ImGuiMCP::SameLine();
+
             if (ImGuiMCP::Button("All like this")) {
+                refLight = false;
+
+                if (createNewTemplate) {
+
+                    newCfg.meshPath = meshPath;
+                    newCfg.menuName = meshPath;
+                    newCfg.configPath = "Data/SKSE/Plugins/RELight/Configs/" + meshPath + ".json";
+                    newCfg.jsonIndex = 0;
+                    newCfg.configID = globals::nextID++;
+                    newCfg.diffuseColor = { 255, 162, 61 };
+                    newCfg.startingFade = 3.0f;
+
+                    niLight = LightManager::AttachLight(selected, newCfg);
+                    LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
+
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        LightData::ResetTriLightCache();
+                        });
+
+                    step = AttachLightStep::Done;
+                    break;
+                }
+
                 auto a_root = selected->Get3D();
                 if (!a_root) {
                     ImGuiMCP::Text("Could not load this object's 3D.");
@@ -1170,56 +1482,205 @@ namespace UI {
                         LightManager::attachLightUsingAttachPath(cfg, attachNode, cloneLight, selected->GetFormID());
                         LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
                         cloneLight->name = "RL" + cfg.meshPath;
-                        SKSE::GetTaskInterface()->AddTask([cloneLight, cfg, selected]() {
-                            LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
-                            });
+                        LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
                     }
+
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        LightData::ResetTriLightCache();
+                        });
+
+                    UpdateRefRootTransforms(selected);
                 }
+
+                std::string refIDandModName = BuildRefIDAndModName(selected);
+
+                if (!refIDandModName.empty()) {
+                    if (!RemoveMenuExcludedRefFromINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
+                        logger::info("No Ref Found in Ini Excludes to Remove", refIDandModName);
+                    }
+
+                    globals::excludedRefFormIDs.erase(selected->GetFormID());
+                }
+
                 step = AttachLightStep::Done;
             }
 
-            if (ImGuiMCP::Button("Back")) {
-                step = createNewTemplate ? AttachLightStep::ChooseTemplateType : AttachLightStep::ChooseTemplate;
+            ImGuiMCP::SameLine();
+
+            if (ImGuiMCP::Button("Cancel")) {
+                resetState();
             }
+
             break;
         }
 
         case AttachLightStep::Done:
+        {
+            centerNextItem(120.0f);
             ImGuiMCP::Text("Lights attached.");
 
+            centerNextItem(170.0f);
+
             if (ImGuiMCP::Button("Confirm")) {
-                if (meshPath.empty()) {
-                    ImGuiMCP::Text("Mesh path was empty. Could not attach light.");
+
+                if (multiLight) {
+                    std::string finalMenuName = menuName + " " + std::to_string(entryCount + 1);
+
+                    if (refLight) {
+                        if (!AppendNewConfigEntryFromLight(
+                            jsonFilePath,
+                            static_cast<std::uint16_t>(entryCount),
+                            finalMenuName,
+                            niLight,
+                            BuildRefIDAndModName(selected),
+                            "",
+                            newCfg,
+                            true,
+                            formID)) {
+                            logger::error("Failed to append ref multi-light config");
+                        }
+                    }
+                    else {
+                        if (!AppendNewConfigEntryFromLight(
+                            jsonFilePath,
+                            static_cast<std::uint16_t>(entryCount),
+                            finalMenuName,
+                            niLight,
+                            "",
+                            meshPath,
+                            newCfg,
+                            false,
+                            formID)) {
+                            logger::error("Failed to append mesh multi-light config");
+                        }
+
+                        selectedCfgs.push_back(newCfg);
+
+                        const auto base = selected->GetBaseObject();
+                        auto model = base ? base->As<RE::TESModel>() : nullptr;
+                        if (!model) {
+                            break;
+                        }
+
+                        meshPath = extractMeshName(model->GetModel());
+                        RefreshNearbyObjects(selected, meshPath);
+                    }
+
+                    globals::baseFormsWithAttachedLights.emplace(baseFormID);
                     step = AttachLightStep::SelectTarget;
                     break;
                 }
 
                 if (!createNewTemplate) {
+
                     if (selectedCfgs.empty()) {
-                        ImGuiMCP::Text("No selected config available.");
+                        logger::warn("Failed to update config file because no template was selected.");
+                        resetState();
                         step = AttachLightStep::SelectTarget;
                         break;
                     }
 
                     const auto& filePath = selectedCfgs[0].configPath;
 
-                    if (AddMeshPathToAllEntries(filePath, meshPath)) {
-                        step = AttachLightStep::SelectTarget;
+                    if (!refLight) {
+                        if (AddMeshPathToAllEntries(filePath, meshPath)) {
+                            logger::info("Added mesh path to existing template successfully");
+                        }
+                        else {
+                            logger::warn("Failed to update config file.");
+                        }
+
+                        newCfg = selectedCfgs[0];
+                        newCfg.meshPath = meshPath;
+                        LightData::AddConfigToMaps(newCfg, refLight, selected->GetFormID());
+                        globals::baseFormsWithAttachedLights.emplace(baseFormID);
+                        RefreshNearbyObjects(selected, meshPath);
+                        resetState();
+                        break;
                     }
-                    else {
-                        ImGuiMCP::Text("Failed to update config file.");
+
+                    LightConfig refCfg = selectedCfgs[0];
+                    refCfg.configPath = filePath;
+                    refCfg.jsonIndex = static_cast<std::uint16_t>(CountJsonEntriesInFile(filePath));
+                    refCfg.menuName = selectedCfgs[0].menuName;
+                    refCfg.refFormIDAndModName = BuildRefIDAndModName(selected);
+                    refCfg.meshPath.clear();
+
+                    if (refCfg.refFormIDAndModName.empty()) {
+                        logger::error("Failed to build ref ID for selected object");
+                        resetState();
+                        break;
                     }
+
+                    if (!AppendNewConfigEntryFromLight(
+                        refCfg.configPath,
+                        refCfg.jsonIndex,
+                        refCfg.menuName,
+                        niLight,
+                        refCfg.refFormIDAndModName,
+                        "",
+                        refCfg,
+                        true,
+                        selected->GetFormID())) {
+                        logger::error("Failed to append ref-only config entry");
+                        resetState();
+                        break;
+                    }
+
+                    globals::baseFormsWithAttachedLights.emplace(baseFormID);
+                    resetState();
+                    break;
                 }
                 else {
-                    // TODO: save new template here
-                    step = AttachLightStep::SelectTarget;
+                    if (!saveNewConfiguration(newCfg)) {
+                        logger::error("Failed to save new template");
+                    }
+
+                    LightData::AddConfigToMaps(newCfg, refLight, selected->GetFormID());
+                    globals::baseFormsWithAttachedLights.emplace(baseFormID);
+
+                    if (!refLight) {
+                        RefreshNearbyObjects(selected, meshPath);
+                    }
                 }
+
+                step = AttachLightStep::SelectTarget;
+                break;
             }
 
-            if (ImGuiMCP::Button("Attach another")) {
+            ImGuiMCP::SameLine();
+
+            if (ImGuiMCP::Button("Cancel")) {
+                RE::ObjectRefHandle handle = selected->GetHandle();
+
+                SKSE::GetTaskInterface()->AddTask([handle]() {
+                    if (auto ref = handle.get()) {
+                        ref->Disable();
+                        ref->Enable(false);
+                    }
+                    });
+
+                resetState();
                 step = AttachLightStep::SelectTarget;
+                break;
             }
+
             break;
+        }
+
+        case AttachLightStep::LightRemoved:
+        {
+            centerNextItem(120.0f);
+            ImGuiMCP::Text("Lights removed.");
+
+            centerNextItem(50.0f);
+            if (ImGuiMCP::Button("Okay")) {
+                step = AttachLightStep::SelectTarget;
+                break;
+            }
+
+            break;
+        }
         }
     }
 

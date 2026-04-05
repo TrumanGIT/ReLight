@@ -180,7 +180,7 @@ inline void iniParser()
 
 		case priority:
 		
-			if (!line.starts_with("0")) {
+			if (!line.starts_with("0") && !line.starts_with("[")) {
 				toLower(line);
 				globals::priorityList.push_back(line);
 				logger::info("Added priority node: {}", line);
@@ -698,3 +698,325 @@ inline void UnpackFD(float fd, uint16_t& gen, uint16_t& idx)
 	idx = (uint16_t)(packed & 0xFFFF);
 }
 
+inline std::string BuildRefIDAndModName(RE::TESObjectREFR* ref)
+{
+	if (!ref) {
+		return "";
+	}
+
+	const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+	std::string modName = refOriginFile ? refOriginFile->fileName : "";
+
+	if (modName.empty()) {
+		logger::warn("BuildRefIDAndModName: ref {:08X} has no owning file", ref->GetFormID());
+		return "";
+	}
+
+	const auto runtimeID = ref->GetFormID();
+
+	if (refOriginFile->IsLight()) {
+		// Best option if available in your CommonLib version
+		const auto localID = ref->GetLocalFormID();
+
+		logger::info(
+			"Built light plugin ref string: 0x{:X}~{} (runtime: 0x{:08X})",
+			static_cast<std::uint32_t>(localID),
+			modName,
+			static_cast<std::uint32_t>(runtimeID));
+
+		return std::format("0x{:X}~{}", static_cast<std::uint32_t>(localID), modName);
+	}
+
+	logger::info(
+		"Built non-light plugin ref string: 0x{:X}~{}",
+		static_cast<std::uint32_t>(runtimeID),
+		modName);
+
+	return std::format("0x{:X}~{}", static_cast<std::uint32_t>(runtimeID), modName);
+}
+
+
+inline std::string BuildConfigPath(const std::string& refIDStr)
+{
+	if (refIDStr.empty()) {
+		return "";
+	}
+
+	std::string safeName = refIDStr;
+
+	// Replace characters that are annoying for file paths
+	std::replace(safeName.begin(), safeName.end(), '~', '_');
+	std::replace(safeName.begin(), safeName.end(), ':', '_');
+	std::replace(safeName.begin(), safeName.end(), '\\', '_');
+	std::replace(safeName.begin(), safeName.end(), '/', '_');
+
+	return "Data/SKSE/Plugins/ReLight/Configs/" + safeName + ".json";
+}
+
+inline bool AppendMenuExcludedRefToINI(const std::string& iniPath, const std::string& refIDAndModName)
+{
+	if (iniPath.empty()) {
+		logger::error("AppendMenuExcludedRefToINI: iniPath was empty");
+		return false;
+	}
+
+	if (refIDAndModName.empty()) {
+		logger::error("AppendMenuExcludedRefToINI: refIDAndModName was empty");
+		return false;
+	}
+
+	try {
+		std::ifstream inFile(iniPath);
+		if (!inFile.is_open()) {
+			logger::error("AppendMenuExcludedRefToINI: failed to open {}", iniPath);
+			return false;
+		}
+
+		std::vector<std::string> lines;
+		std::string line;
+		while (std::getline(inFile, line)) {
+			lines.push_back(line);
+		}
+		inFile.close();
+
+		const std::string targetSection = "[Refs Excluded Using in Game Menu]";
+		const std::string legacyComment = "; exclude refs from receiving relights";
+
+		bool inTargetSection = false;
+		bool sectionFound = false;
+		bool alreadyExists = false;
+		std::size_t insertPos = lines.size();
+		std::size_t legacyInsertPos = lines.size();
+		bool legacyBlockFound = false;
+
+		for (std::size_t i = 0; i < lines.size(); ++i) {
+			std::string trimmed = trim(lines[i]);
+
+			if (trimmed == targetSection) {
+				inTargetSection = true;
+				sectionFound = true;
+				insertPos = i + 1;
+				continue;
+			}
+
+			if (!sectionFound && trimmed == legacyComment) {
+				legacyBlockFound = true;
+				legacyInsertPos = i + 1;
+				continue;
+			}
+
+			if (inTargetSection) {
+				if (!trimmed.empty() && trimmed.front() == '[' && trimmed.back() == ']') {
+					insertPos = i;
+					break;
+				}
+
+				if (trimmed.empty() || trimmed.starts_with(";")) {
+					continue;
+				}
+
+				if (trimmed == refIDAndModName) {
+					alreadyExists = true;
+					break;
+				}
+
+				insertPos = i + 1;
+			}
+			else if (legacyBlockFound) {
+				if (!trimmed.empty() && trimmed.front() == '[' && trimmed.back() == ']') {
+					legacyInsertPos = i;
+					legacyBlockFound = false;
+					continue;
+				}
+
+				if (!trimmed.empty() && !trimmed.starts_with(";")) {
+					legacyInsertPos = i + 1;
+				}
+			}
+		}
+
+		if (alreadyExists) {
+			logger::info("AppendMenuExcludedRefToINI: entry already exists: {}", refIDAndModName);
+			return true;
+		}
+
+		if (sectionFound) {
+			lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(insertPos), refIDAndModName);
+		}
+		else {
+			std::size_t sectionPos = lines.size();
+
+			if (legacyInsertPos < lines.size()) {
+				sectionPos = legacyInsertPos;
+			}
+			else if (!lines.empty() && !lines.back().empty()) {
+				lines.push_back("");
+			}
+
+			if (sectionPos != lines.size()) {
+				lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(sectionPos), "");
+				++sectionPos;
+				lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(sectionPos), targetSection);
+				++sectionPos;
+				lines.insert(lines.begin() + static_cast<std::ptrdiff_t>(sectionPos), refIDAndModName);
+			}
+			else {
+				lines.push_back(targetSection);
+				lines.push_back(refIDAndModName);
+			}
+		}
+
+		std::ofstream outFile(iniPath, std::ios::trunc);
+		if (!outFile.is_open()) {
+			logger::error("AppendMenuExcludedRefToINI: failed to write {}", iniPath);
+			return false;
+		}
+
+		for (const auto& outLine : lines) {
+			outFile << outLine << '\n';
+		}
+
+		logger::info("AppendMenuExcludedRefToINI: added {}", refIDAndModName);
+		return true;
+	}
+	catch (const std::exception& e) {
+		logger::error("AppendMenuExcludedRefToINI failed: {}", e.what());
+		return false;
+	}
+}
+
+
+inline bool RemoveMenuExcludedRefFromINI(const std::string& iniPath, const std::string& refIDAndModName)
+{
+	if (iniPath.empty()) {
+		logger::error("RemoveMenuExcludedRefFromINI: iniPath was empty");
+		return false;
+	}
+
+	if (refIDAndModName.empty()) {
+		logger::error("RemoveMenuExcludedRefFromINI: refIDAndModName was empty");
+		return false;
+	}
+
+	try {
+		std::ifstream inFile(iniPath);
+		if (!inFile.is_open()) {
+			logger::error("RemoveMenuExcludedRefFromINI: failed to open {}", iniPath);
+			return false;
+		}
+
+		std::vector<std::string> lines;
+		std::string line;
+		while (std::getline(inFile, line)) {
+			lines.push_back(line);
+		}
+		inFile.close();
+
+		const std::string targetSection = "[Refs Excluded Using in Game Menu]";
+
+		bool inTargetSection = false;
+		bool sectionFound = false;
+		bool removed = false;
+
+		std::vector<std::string> output;
+		output.reserve(lines.size());
+
+		for (std::size_t i = 0; i < lines.size(); ++i) {
+			std::string trimmed = trim(lines[i]);
+
+			if (trimmed == targetSection) {
+				inTargetSection = true;
+				sectionFound = true;
+				output.push_back(lines[i]);
+				continue;
+			}
+
+			if (inTargetSection) {
+				if (!trimmed.empty() && trimmed.front() == '[' && trimmed.back() == ']') {
+					inTargetSection = false;
+					output.push_back(lines[i]);
+					continue;
+				}
+
+				if (trimmed == refIDAndModName) {
+					removed = true;
+					logger::info("RemoveMenuExcludedRefFromINI: removed {}", refIDAndModName);
+					continue;
+				}
+			}
+
+			output.push_back(lines[i]);
+		}
+
+		if (!sectionFound) {
+			logger::info("RemoveMenuExcludedRefFromINI: section not found, nothing to remove");
+			return true;
+		}
+
+		if (!removed) {
+			logger::info("RemoveMenuExcludedRefFromINI: entry not present: {}", refIDAndModName);
+			return true;
+		}
+
+		std::ofstream outFile(iniPath, std::ios::trunc);
+		if (!outFile.is_open()) {
+			logger::error("RemoveMenuExcludedRefFromINI: failed to write {}", iniPath);
+			return false;
+		}
+
+		for (const auto& outLine : output) {
+			outFile << outLine << '\n';
+		}
+
+		return true;
+	}
+	catch (const std::exception& e) {
+		logger::error("RemoveMenuExcludedRefFromINI failed: {}", e.what());
+		return false;
+	}
+}
+
+inline LightConfig FindRefIDConfigForAttachAnother(RE::TESObjectREFR* selected)
+{
+
+	LightConfig cfg = {};
+
+	if (!selected) {
+		return cfg;
+	}
+
+	RE::FormID formID = selected->GetFormID();
+
+	if (auto it = LightData::refFormIDToJsonCfg.find(formID);
+		it != LightData::refFormIDToJsonCfg.end() && !it->second.empty()) {
+		logger::info("FindSourceConfigForAttachAnother: found ref config for {:08X}", formID);
+		return it->second[0];
+	}
+
+	if (auto it = LightData::refFormIDToJsonCfgExteriors.find(formID);
+		it != LightData::refFormIDToJsonCfgExteriors.end() && !it->second.empty()) {
+		logger::info("FindSourceConfigForAttachAnother: found exterior ref config for {:08X}", formID);
+		return it->second[0];
+	}
+
+	logger::warn("FindSourceConfigForAttachAnother: no config found for {:08X}", formID);
+	return cfg;
+}
+
+inline void UpdateRefRootTransforms(RE::TESObjectREFR* selected)
+{
+	if (!selected) {
+		return;
+	}
+
+	RE::NiUpdateData updateData{};
+	updateData.time = 0.0f;
+	updateData.flags = RE::NiUpdateData::Flag::kDirty;
+
+	auto a_root = selected->Get3D();
+	if (!a_root) {
+		return;
+	}
+
+	a_root->UpdateTransformAndBounds(updateData);
+}
