@@ -659,12 +659,14 @@ void parseTemplates() {
 }
 
 
-std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool interior)
+std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior)
 {
-	std::vector<LightConfig> result;
+	static std::vector<LightConfig> empty;
 
-	if (meshPath.empty())
-		return result;
+	if (meshPath.empty()) {
+		logger::error("meshPath was empty in find configs for mesh path");
+		return empty;
+	}
 
 	toLower(meshPath);
 
@@ -675,14 +677,13 @@ std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool inte
 		}
 	}
 
-	// fallback to interior
 	auto fallbackIt = LightData::meshPathToJsonCfg.find(meshPath);
 	if (fallbackIt != LightData::meshPathToJsonCfg.end()) {
 		return fallbackIt->second;
 	}
 
-	//logger::warn("found meshPath '{}' but no config exists", meshPath);
-	return result;
+	logger::warn("found meshPath '{}' but no config exists", meshPath);
+	return empty;
 }
 
  std::size_t CountJsonEntriesInFile(const std::string& configPath)
@@ -725,7 +726,7 @@ bool AppendNewConfigEntryFromLight(
 	const std::string& menuName,
 	RE::NiLight* niLight,
 	const std::string& refIDAndModName,
-	const std::string& meshPath, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID)
+	const std::string& matched, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID)
 {
 	try {
 		if (configPath.empty()) {
@@ -747,7 +748,7 @@ bool AppendNewConfigEntryFromLight(
 		cfg.configID = globals::nextID++;
 		cfg.menuName = menuName;
 		cfg.refFormIDAndModName = refIDAndModName;
-		cfg.meshPath = meshPath;
+		cfg.meshPath = matched;
 
 		std::ifstream inFile(configPath);
 		if (!inFile.is_open()) {

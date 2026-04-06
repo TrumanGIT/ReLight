@@ -216,8 +216,8 @@ bool AppendNewConfigEntryFromLight(
     const std::string& menuName,
     RE::NiLight* niLight,
     const std::string& refIDAndModName,
-    const std::string& meshPath, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID);
+    const std::string& matched, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID);
 
 void parseTemplates();
 
-std::vector<LightConfig> findConfigsForMeshPath(std::string& meshPath, bool interior);
+std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior);

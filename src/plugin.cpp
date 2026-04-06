@@ -39,6 +39,9 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     case SKSE::MessagingInterface::kDataLoaded:
     {
         iniParser();
+
+        if (globals::islInstalled) globals::enableLightFlickerPreventionMeasures = false;
+
         parseTemplates();
         // create master point light. must clone it or crash idk why
         LightData::masterNiPointLight = NiPointLight::NiPointLight();

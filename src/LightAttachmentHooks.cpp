@@ -137,8 +137,12 @@ void AddonNodes::thunk(
                         continue;
 
                     auto* light = lightEntry->light.get();
+
                     if (!light || !light->parent || !light->parent->name.c_str())
                         continue;
+
+					if (!light->parent->parent || !light->parent->parent->name.c_str())
+						continue;
 
 					std::string parentName = light->parent->name.c_str(); 
 
@@ -148,7 +152,6 @@ void AddonNodes::thunk(
 						//logger::warn("users torch node tree does not contain object w name AttachLight, cant attach light");
 						continue; 
 					}	
-
 
 					// catches magic lights and torches and this excludes them in bslightingshaderhook 
 					lightEntry->unk060 = 4;
@@ -182,8 +185,6 @@ void AddonNodes::thunk(
 					light->unk138 = cfg.configID;
 
 					LightData::setNiPointLightDataFromCfg(light, cfg);
-
-				
 
 					logger::debug("Applied torch light data");
                 }

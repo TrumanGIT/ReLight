@@ -980,16 +980,95 @@ namespace UI {
         return result;
     }
 
+ inline void RemoveRelightLightsFromRef(RE::TESObjectREFR* ref)
+    {
+        if (!ref) {
+            return;
+        }
+
+        auto* root = ref->Get3D();
+        if (!root) {
+            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} has no 3D", ref->GetFormID());
+            return;
+        }
+
+        auto* node = root->AsNode();
+        if (!node) {
+            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} 3D is not a node", ref->GetFormID());
+            return;
+        }
+
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null!");
+            return;
+        }
+
+        std::vector<RE::NiPointLight*> relightLights;
+
+        for (auto& child : node->GetChildren()) {
+            if (!child) {
+                continue;
+            }
+
+            auto name = std::string_view(child->name.c_str());
+            if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') {
+                continue;
+            }
+
+            if (auto* light = netimmerse_cast<RE::NiPointLight*>(child.get())) {
+                relightLights.push_back(light);
+                logger::debug("Found ReLight light {} on ref {:08X}", light->name, ref->GetFormID());
+            }
+        }
+
+        if (relightLights.empty()) {
+            logger::debug("RemoveRelightShadowLightsFromRef: no ReLight lights found on ref {:08X}", ref->GetFormID());
+            return;
+        }
+
+        for (auto* light : relightLights) {
+            if (!light) {
+                continue;
+            }
+
+            for (auto it = ssNode->activeShadowLights.begin(); it != ssNode->activeShadowLights.end();) {
+                auto& bsLight = *it;
+
+                if (!bsLight || !bsLight->light) {
+                    ++it;
+                    continue;
+                }
+
+                if (bsLight->light.get() == light) {
+                    logger::debug(
+                        "Removing BSShadowLight for {} from shadow scene node on ref {:08X}",
+                        light->name,
+                        ref->GetFormID());
+
+                    it = ssNode->activeShadowLights.erase(it);
+                }
+                else {
+                    ++it;
+                }
+            }
+        }
+    }
+
     inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
     {
         if (!selected) {
+            logger::error("no selected ref, cannot refresh nearby objects"); 
             return;
         }
+
+        logger::debug("refresh lights called with mesh name, {}", extractedMeshName);
 
         auto* player = RE::PlayerCharacter::GetSingleton();
         auto* tes = RE::TES::GetSingleton();
 
         if (!player || !tes) {
+            logger::error("No Player or TES in refresh nearby objects, cant refresh");
             return;
         }
 
@@ -1010,9 +1089,13 @@ namespace UI {
 
               auto  refBMeshPath = extractMeshName(model->GetModel());
 
+              toLower(refBMeshPath);
+
                 if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
 
                 logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
+
+                RemoveRelightLightsFromRef(ref); 
 
                 RE::ObjectRefHandle handle{ ref };
                 SKSE::GetTaskInterface()->AddTask([handle]() {
@@ -1056,6 +1139,7 @@ namespace UI {
         static std::string meshPath{};
         static std::string jsonFilePath{};
         static std::string menuName{};
+        static std::string matched{};
         static RE::NiLight* niLight = nullptr;
         static RE::FormID lastSelected = 0;
         static RE::FormID previewRef = 0;
@@ -1087,15 +1171,14 @@ namespace UI {
             seenMenuNames.clear();
             selectedIndex = -1;
             selectedCfgs.clear();
+            matched.clear();
 
             entryCount = 0;
             formID = 0x0;
             baseFormID = 0x0;
             newCfg = LightConfig{};
             step = AttachLightStep::SelectTarget;
-            };
-
-        // Call this immediately before the widget or button row you want centered.
+        };
 
 
         if (selected->GetFormID() != lastSelected) {
@@ -1104,9 +1187,22 @@ namespace UI {
         }
 
         const auto baseObject = selected->GetBaseObject();
-        if (baseObject) {
-            baseFormID = baseObject->GetFormID();
+
+        if (!baseObject) {
+            return; 
         }
+
+        baseFormID = baseObject->GetFormID();
+
+        auto model = baseObject->As<RE::TESModel>();
+
+        if (!model) {
+            return;
+        }
+
+        meshPath = extractMeshName(model->GetModel());
+
+        toLower(meshPath);
 
         switch (step)
         {
@@ -1123,10 +1219,13 @@ namespace UI {
             centerNextItem(350.0f);
             ImGuiMCP::Text("This object already has a ReLight light.");
       
+            ImGuiMCP::Spacing(); 
 
             centerNextItem(500.0f);
 
             if (ImGuiMCP::Button("Add another Light")) {
+
+                multiLight = true;
 
                 auto multiLightCfg = FindRefIDConfigForAttachAnother(selected);
 
@@ -1142,28 +1241,23 @@ namespace UI {
                     newCfg = multiLightCfg;
                     newCfg.configID = globals::nextID++;
 
-                    multiLight = true;
+                 
                     refLight = true;
                     formID = selected->GetFormID();
                 }
                 else {
-                    auto base = selected->GetBaseObject();
-                    auto model = base ? base->As<RE::TESModel>() : nullptr;
-                    if (!model) {
-                        logger::warn("attach another light: no model '{}'", meshPath);
-                        break;
-                    }
+                  
+                    refLight = false;
 
-                    auto cell = selected->GetParentCell();
-
-                    meshPath = extractMeshName(model->GetModel());
-                    toLower(meshPath);
-
-                    std::string matched = std::string(findPriorityMatch(meshPath));
+                     matched = std::string(findPriorityMatch(meshPath));
                     if (matched.empty()) {
                         logger::warn("attach another light: no priority match for mesh '{}'", meshPath);
                         break;
                     }
+
+                    logger::debug("attach another light matched = {}", matched);
+
+                    auto cell = selected->GetParentCell();
 
                     selectedCfgs = findConfigsForMeshPath(matched, cell->IsInteriorCell());
 
@@ -1173,16 +1267,19 @@ namespace UI {
                     }
 
                     menuName = selectedCfgs[0].menuName;
-                    jsonFilePath = selectedCfgs[0].configPath;
+                    jsonFilePath = selectedCfgs[0].configPath;        
                     entryCount = CountJsonEntriesInFile(selectedCfgs[0].configPath);
 
-                    multiLight = true;
-                    refLight = false;
+                    std::string finalMenuName = menuName + " " + std::to_string(entryCount + 1);
 
                     newCfg = selectedCfgs[0];
+
+                    newCfg.menuName = finalMenuName; 
                     newCfg.configID = globals::nextID++;
 
-                    formID = selected->GetFormID();
+                    niLight = LightManager::AttachLight(selected, newCfg);
+            
+                    LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
                 }
 
                 step = AttachLightStep::Done;
@@ -1205,6 +1302,8 @@ namespace UI {
 
                 RE::ObjectRefHandle handle = selected->GetHandle();
 
+                RemoveRelightLightsFromRef(selected); 
+
                 SKSE::GetTaskInterface()->AddTask([handle]() {
                     if (auto ref = handle.get()) {
                         globals::excludedRefFormIDs.insert(ref->GetFormID());
@@ -1216,9 +1315,11 @@ namespace UI {
                 step = AttachLightStep::LightRemoved;
                 break;
             }
-
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Adds Object to exclude by refID section in RELight.ini file preventing lights from being attached.");
+                ImGuiMCP::SetTooltip(
+                    "Adds to exclude by refID section in RELight.ini file\n"
+                    "(To change to single light, click this then 'this object only' when attaching a new light)"
+                );
             }
 
             break;
@@ -1228,6 +1329,9 @@ namespace UI {
         {
             centerNextItem(430.0f);
             ImGuiMCP::Text("Create new Light Template or add to existing template.");
+
+
+            ImGuiMCP::Spacing();
 
             centerNextItem(430.0f);
 
@@ -1259,6 +1363,8 @@ namespace UI {
         {
             centerNextItem(120.0f);
             ImGuiMCP::Text("Select a template.");
+
+            ImGuiMCP::Spacing();
 
             if (configDisplay.empty()) {
                 configDisplay.clear();
@@ -1343,17 +1449,8 @@ namespace UI {
         {
             centerNextItem(260.0f);
             ImGuiMCP::Text("This object only, or all objects like it?");
-
-            auto base = selected->GetBaseObject();
-            auto model = base ? base->As<RE::TESModel>() : nullptr;
-
-            if (!model) {
-                centerNextItem(240.0f);
-                ImGuiMCP::Text("Could not retrieve this object's model.");
-                break;
-            }
-
-            meshPath = extractMeshName(model->GetModel());
+     
+            ImGuiMCP::Spacing();
 
             centerNextItem(300.0f);
 
@@ -1519,6 +1616,8 @@ namespace UI {
             centerNextItem(120.0f);
             ImGuiMCP::Text("Lights attached.");
 
+            ImGuiMCP::Spacing();
+
             centerNextItem(170.0f);
 
             if (ImGuiMCP::Button("Confirm")) {
@@ -1547,22 +1646,14 @@ namespace UI {
                             finalMenuName,
                             niLight,
                             "",
-                            meshPath,
+                            matched,
                             newCfg,
                             false,
                             formID)) {
                             logger::error("Failed to append mesh multi-light config");
                         }
+                       // selectedCfgs.push_back(newCfg);
 
-                        selectedCfgs.push_back(newCfg);
-
-                        const auto base = selected->GetBaseObject();
-                        auto model = base ? base->As<RE::TESModel>() : nullptr;
-                        if (!model) {
-                            break;
-                        }
-
-                        meshPath = extractMeshName(model->GetModel());
                         RefreshNearbyObjects(selected, meshPath);
                     }
 
@@ -1653,6 +1744,12 @@ namespace UI {
             if (ImGuiMCP::Button("Cancel")) {
                 RE::ObjectRefHandle handle = selected->GetHandle();
 
+                if (!selectedCfgs.empty()) {
+                    LightData::configIDToJsonCfg.erase(newCfg.configID);
+                }
+
+                RemoveRelightLightsFromRef(selected); 
+
                 SKSE::GetTaskInterface()->AddTask([handle]() {
                     if (auto ref = handle.get()) {
                         ref->Disable();
@@ -1672,6 +1769,9 @@ namespace UI {
         {
             centerNextItem(120.0f);
             ImGuiMCP::Text("Lights removed.");
+
+
+            ImGuiMCP::Spacing();
 
             centerNextItem(50.0f);
             if (ImGuiMCP::Button("Okay")) {
