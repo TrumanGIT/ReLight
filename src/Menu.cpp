@@ -163,19 +163,6 @@ namespace UI {
             debugLogAllLights(); 
         }
 
-      /*  if (ImGuiMCP::Button("clear ref with attached lights set")) {
-            globals::refsWithAttachedLights.clear();
-        }
-
-        if (ImGuiMCP::Button("clear tri shape lights cache")) {
-            ResetTriLightCache();
-        }
-
-        if (ImGuiMCP::Button("log atomic bools")) {
-            logger::info("cell fully loaded = {}, 1 second after fully loaded = {}", globals::cellFullyLoaded, globals::secondAfterCellFullyLoaded);
-        }
-        */
-
     }
 
     void __stdcall RenderSettings() {

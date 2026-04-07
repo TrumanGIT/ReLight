@@ -92,16 +92,6 @@ inline void splitString(const std::string& input, char delimiter, std::vector<st
 	}
 }
 
-/*inline bool containsAll(std::string ID,
-	const std::vector<std::string_view>& group)
-{
-	toLower(ID);
-	for (auto& g : group) {
-		if (ID.find(g) == std::string::npos)
-			return false;
-	}
-	return true;
-}*/
 
 //TODO:: Log set values for debugging (saved me alot of flickerTime with users) 
 inline void iniParser()
