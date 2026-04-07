@@ -3,6 +3,7 @@
 #include "global.h"
 #include "LightManager.h"
 #include "utility.h"
+#include <algorithm>
 
 using json = nlohmann::json;
 
@@ -115,9 +116,10 @@ bool saveConfiguration(const LightConfig& config) {
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
 
 		FOREACH_BOOL(JSON_WRITE)
-
+			// brighness useses in game slider copy value for a more stable value
 		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
-		newEntry["radius"] = truncateDecimals(config.radius, 2);
+		// clamp radius as community shaders can send brighntess / radius values to infinity
+		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, 500.0f), 2);
 		newEntry["fov"] = truncateDecimals(config.fov, 2);
 		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
 		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
@@ -129,8 +131,8 @@ bool saveConfiguration(const LightConfig& config) {
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
 		//clamp to 0.1f
-		newEntry["size"] = truncateDecimals(std::max(0.1f, config.size), 2);
-		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.1f, config.cutoffOverride), 2);
+		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
+		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
 
 		newEntry["color"] = { config.diffuseColor[0], config.diffuseColor[1], config.diffuseColor[2] };
 		newEntry["position"] = { 
@@ -185,7 +187,7 @@ bool saveNewConfiguration(const LightConfig& config)
 		FOREACH_BOOL(JSON_WRITE)
 
 			newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
-		newEntry["radius"] = truncateDecimals(config.radius, 2);
+		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, 500.0f), 2);
 		newEntry["fov"] = truncateDecimals(config.fov, 2);
 		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
 		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
@@ -196,8 +198,8 @@ bool saveNewConfiguration(const LightConfig& config)
 		newEntry["quadraticAttenuation"] = truncateDecimals(config.quadraticAttenuation, 2);
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
-		newEntry["size"] = truncateDecimals(std::max(0.1f, config.size), 2);
-		newEntry["cutoffOverride"] = truncateDecimals(config.cutoffOverride, 2);
+		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
+		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
 
 		newEntry["color"] = {
 			config.diffuseColor[0],
@@ -324,103 +326,7 @@ bool saveNewConfiguration(const LightConfig& config)
 		logger::error("Failed updating meshPath in {}: {}", filePath, e.what());
 		return false;
 	}
-}
-
- /* bool RemoveMeshPathFromAllEntriesInConfiguration(const std::string& configPath, const std::string& meshPathToRemove)
- {
-	 try {
-		 if (configPath.empty()) {
-			 logger::error("RemoveMeshPathFromAllEntriesInConfiguration: configPath was empty");
-			 return false;
-		 }
-
-		 if (meshPathToRemove.empty()) {
-			 logger::error("RemoveMeshPathFromAllEntriesInConfiguration: meshPathToRemove was empty");
-			 return false;
-		 }
-
-		 std::ifstream inFile(configPath);
-		 if (!inFile.is_open()) {
-			 logger::error("Failed to open config file for reading: {}", configPath);
-			 return false;
-		 }
-
-		 json data;
-		 inFile >> data;
-		 inFile.close();
-
-		 if (!data.is_array()) {
-			 data = json::array({ data });
-		 }
-
-		 const std::string targetLower = toLowerImmut(meshPathToRemove);
-		 bool removedAny = false;
-
-		 for (auto& entry : data) {
-			 if (!entry.is_object() || !entry.contains("meshPath")) {
-				 continue;
-			 }
-
-			 auto& meshField = entry["meshPath"];
-
-			 if (meshField.is_string()) {
-				 std::string existing = meshField.get<std::string>();
-
-				 if (toLowerImmut(existing) == targetLower) {
-					 entry.erase("meshPath");
-					 removedAny = true;
-				 }
-			 }
-			 else if (meshField.is_array()) {
-				 json newMeshPaths = json::array();
-
-				 for (const auto& item : meshField) {
-					 if (!item.is_string()) {
-						 newMeshPaths.push_back(item);
-						 continue;
-					 }
-
-					 std::string existing = item.get<std::string>();
-					 if (toLowerImmut(existing) == targetLower) {
-						 removedAny = true;
-						 continue;
-					 }
-
-					 newMeshPaths.push_back(existing);
-				 }
-
-				 if (newMeshPaths.empty()) {
-					 entry.erase("meshPath");
-				 }
-				 else if (newMeshPaths.size() == 1) {
-					 entry["meshPath"] = newMeshPaths[0];
-				 }
-				 else {
-					 entry["meshPath"] = newMeshPaths;
-				 }
-			 }
-		 }
-
-		 if (!removedAny) {
-			 logger::info("Mesh path '{}' was not found anywhere in {}", meshPathToRemove, configPath);
-			 return true;
-		 }
-
-		 std::ofstream outFile(configPath, std::ios::trunc);
-		 if (!outFile.is_open()) {
-			 logger::error("Failed to open config file for writing: {}", configPath);
-			 return false;
-		 }
-
-		 outFile << data.dump(4);
-		 logger::info("Removed mesh path '{}' from all entries in {}", meshPathToRemove, configPath);
-		 return true;
-	 }
-	 catch (const std::exception& e) {
-		 logger::error("RemoveMeshPathFromAllEntriesInConfiguration failed for {}: {}", configPath, e.what());
-		 return false;
-	 }
- }*/
+ }
 
 inline uint32_t ParseFlags(const nlohmann::json& j)
 {
@@ -588,13 +494,11 @@ void parseTemplates() {
 
 					if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
 						LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
-						//globals::excludedRefFormIDs.insert(runtimeID); 
 						logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
 						cfg.print(true);
 					}
 					else {
 						LightData::refFormIDToJsonCfg[runtimeID].push_back(cfg);
-					//	globals::excludedRefFormIDs.insert(runtimeID);
 						logger::info("adding ref ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
 						cfg.print(false);
 					}
@@ -742,7 +646,6 @@ bool AppendNewConfigEntryFromLight(
 		LightConfig cfg;
 		LightData::updateConfigFromLight(cfg, baseCfg, niLight);
 
-	// starting fade
 		cfg.configPath = configPath;
 		cfg.jsonIndex = jsonIndex;
 		cfg.configID = globals::nextID++;

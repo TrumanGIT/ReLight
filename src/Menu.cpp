@@ -41,6 +41,135 @@ namespace UI {
         SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderTestingMenu);
     }
 
+    inline void RemoveRelightLightsFromRef(RE::TESObjectREFR* ref)
+    {
+        if (!ref) {
+            return;
+        }
+
+        auto* root = ref->Get3D();
+        if (!root) {
+            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} has no 3D", ref->GetFormID());
+            return;
+        }
+
+        auto* node = root->AsNode();
+        if (!node) {
+            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} 3D is not a node", ref->GetFormID());
+            return;
+        }
+
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null!");
+            return;
+        }
+
+        std::vector<RE::NiPointLight*> relightLights;
+
+        for (auto& child : node->GetChildren()) {
+            if (!child) {
+                continue;
+            }
+
+            auto name = std::string_view(child->name.c_str());
+            if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') {
+                continue;
+            }
+
+            if (auto* light = netimmerse_cast<RE::NiPointLight*>(child.get())) {
+                relightLights.push_back(light);
+                logger::debug("Found ReLight light {} on ref {:08X}", light->name, ref->GetFormID());
+            }
+        }
+
+        if (relightLights.empty()) {
+            logger::debug("RemoveRelightShadowLightsFromRef: no ReLight lights found on ref {:08X}", ref->GetFormID());
+            return;
+        }
+
+        for (auto* light : relightLights) {
+            if (!light) {
+                continue;
+            }
+
+            for (auto it = ssNode->activeShadowLights.begin(); it != ssNode->activeShadowLights.end();) {
+                auto& bsLight = *it;
+
+                if (!bsLight || !bsLight->light) {
+                    ++it;
+                    continue;
+                }
+
+                if (bsLight->light.get() == light) {
+                    logger::debug(
+                        "Removing BSShadowLight for {} from shadow scene node on ref {:08X}",
+                        light->name,
+                        ref->GetFormID());
+
+                    it = ssNode->activeShadowLights.erase(it);
+                }
+                else {
+                    ++it;
+                }
+            }
+        }
+    }
+
+    inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
+    {
+        if (!selected) {
+            logger::error("no selected ref, cannot refresh nearby objects"); 
+            return;
+        }
+
+        logger::debug("refresh lights called with mesh name, {}", extractedMeshName);
+
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        auto* tes = RE::TES::GetSingleton();
+
+        if (!player || !tes) {
+            logger::error("No Player or TES in refresh nearby objects, cant refresh");
+            return;
+        }
+
+        tes->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects,
+            [selected, extractedMeshName](RE::TESObjectREFR* ref)
+            {
+                if (!ref || ref == selected) {
+                    return RE::BSContainer::ForEachResult::kContinue;
+                }
+
+                const auto base = ref->GetBaseObject(); 
+              
+                auto model = base ? base->As<RE::TESModel>() : nullptr;
+                if (!model) {
+                  //  logger::warn(" coldent get model in refresh Nearby objects");
+                    return RE::BSContainer::ForEachResult::kContinue;
+                }
+
+              auto  refBMeshPath = extractMeshName(model->GetModel());
+
+              toLower(refBMeshPath);
+
+                if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
+
+                logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
+
+                RemoveRelightLightsFromRef(ref); 
+
+                RE::ObjectRefHandle handle{ ref };
+                SKSE::GetTaskInterface()->AddTask([handle]() {
+                    if (auto resolvedRef = handle.get()) {
+                        resolvedRef->Disable();
+                        resolvedRef->Enable(false);
+                    }
+                    });
+
+                return RE::BSContainer::ForEachResult::kContinue;
+            });
+    }
+
     void __stdcall RenderTestingMenu() {
 
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
@@ -876,9 +1005,35 @@ namespace UI {
 
                     if (ImGuiMCP::Button("Refresh Lights")) {
 
-                        menuRefreshLight(selectedLight->light->unk138);
+                        if (!selectedLight->light) return; 
 
-                        //LightManager::reinitializeLightsWithinRange(player);
+                            auto ref = selectedLight->light->GetUserData();
+
+                        removeActiveShadowLightsForConfig(selectedLight->light->unk138);
+
+                        const auto base = ref->GetBaseObject();
+
+                        auto model = base ? base->As<RE::TESModel>() : nullptr;
+                        if (!model) {
+                            return; 
+                        }
+
+                        auto  meshName = extractMeshName(model->GetModel());
+
+                        toLower(meshName);
+
+                        //doesent refresh ref itself
+                        RefreshNearbyObjects(ref, meshName);
+
+                        //must refresh this ref
+                        RE::ObjectRefHandle handle{ ref };
+                        SKSE::GetTaskInterface()->AddTask([handle]() {
+                            if (auto resolvedRef = handle.get()) {
+                                resolvedRef->Disable();
+                                resolvedRef->Enable(false);
+                            }
+                            });
+
                     }
 
                     if (ImGuiMCP::IsItemHovered()) {
@@ -965,135 +1120,6 @@ namespace UI {
         collect(LightData::meshPathToJsonCfgExteriors);
 
         return result;
-    }
-
- inline void RemoveRelightLightsFromRef(RE::TESObjectREFR* ref)
-    {
-        if (!ref) {
-            return;
-        }
-
-        auto* root = ref->Get3D();
-        if (!root) {
-            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} has no 3D", ref->GetFormID());
-            return;
-        }
-
-        auto* node = root->AsNode();
-        if (!node) {
-            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} 3D is not a node", ref->GetFormID());
-            return;
-        }
-
-        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-        if (!ssNode) {
-            logger::warn("ShadowSceneNode[0] is null!");
-            return;
-        }
-
-        std::vector<RE::NiPointLight*> relightLights;
-
-        for (auto& child : node->GetChildren()) {
-            if (!child) {
-                continue;
-            }
-
-            auto name = std::string_view(child->name.c_str());
-            if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') {
-                continue;
-            }
-
-            if (auto* light = netimmerse_cast<RE::NiPointLight*>(child.get())) {
-                relightLights.push_back(light);
-                logger::debug("Found ReLight light {} on ref {:08X}", light->name, ref->GetFormID());
-            }
-        }
-
-        if (relightLights.empty()) {
-            logger::debug("RemoveRelightShadowLightsFromRef: no ReLight lights found on ref {:08X}", ref->GetFormID());
-            return;
-        }
-
-        for (auto* light : relightLights) {
-            if (!light) {
-                continue;
-            }
-
-            for (auto it = ssNode->activeShadowLights.begin(); it != ssNode->activeShadowLights.end();) {
-                auto& bsLight = *it;
-
-                if (!bsLight || !bsLight->light) {
-                    ++it;
-                    continue;
-                }
-
-                if (bsLight->light.get() == light) {
-                    logger::debug(
-                        "Removing BSShadowLight for {} from shadow scene node on ref {:08X}",
-                        light->name,
-                        ref->GetFormID());
-
-                    it = ssNode->activeShadowLights.erase(it);
-                }
-                else {
-                    ++it;
-                }
-            }
-        }
-    }
-
-    inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
-    {
-        if (!selected) {
-            logger::error("no selected ref, cannot refresh nearby objects"); 
-            return;
-        }
-
-        logger::debug("refresh lights called with mesh name, {}", extractedMeshName);
-
-        auto* player = RE::PlayerCharacter::GetSingleton();
-        auto* tes = RE::TES::GetSingleton();
-
-        if (!player || !tes) {
-            logger::error("No Player or TES in refresh nearby objects, cant refresh");
-            return;
-        }
-
-        tes->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects,
-            [selected, extractedMeshName](RE::TESObjectREFR* ref)
-            {
-                if (!ref || ref == selected) {
-                    return RE::BSContainer::ForEachResult::kContinue;
-                }
-
-                const auto base = ref->GetBaseObject(); 
-              
-                auto model = base ? base->As<RE::TESModel>() : nullptr;
-                if (!model) {
-                  //  logger::warn(" coldent get model in refresh Nearby objects");
-                    return RE::BSContainer::ForEachResult::kContinue;
-                }
-
-              auto  refBMeshPath = extractMeshName(model->GetModel());
-
-              toLower(refBMeshPath);
-
-                if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
-
-                logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
-
-                RemoveRelightLightsFromRef(ref); 
-
-                RE::ObjectRefHandle handle{ ref };
-                SKSE::GetTaskInterface()->AddTask([handle]() {
-                    if (auto resolvedRef = handle.get()) {
-                        resolvedRef->Disable();
-                        resolvedRef->Enable(false);
-                    }
-                    });
-
-                return RE::BSContainer::ForEachResult::kContinue;
-            });
     }
 
     void __stdcall RenderAttachRemove()
