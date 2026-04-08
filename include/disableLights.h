@@ -24,8 +24,7 @@ struct BSLightingShaderProperty_IsLightAffectingSurface
     static void Install();
 };
 
-
-inline void removeActiveShadowLightsForConfig(uint32_t configID)
+inline void menuRefreshLight(uint32_t configID)
 {
     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
     if (!ssNode) {
@@ -35,12 +34,26 @@ inline void removeActiveShadowLightsForConfig(uint32_t configID)
 
     std::vector<RE::NiPointer<RE::BSLight>> lightsToRemove;
 
-    // shadow lights are persistant so must remove them first.
+    std::vector<RE::NiPointer<RE::NiLight>> lightsToReAdd;
+
+    // regular lights
+    for (const auto& l : ssNode->activeLights) {
+        if (!l || !l->light)
+            continue;
+
+        if (l->light->unk138 != configID) continue;
+
+        lightsToReAdd.push_back(l->light);
+        lightsToRemove.push_back(l);
+    }
+
+    // shadow lights
     for (const auto& l : ssNode->activeShadowLights) {
         if (!l || !l->light)
             continue;
 
         if (l->light->unk138 != configID) continue;
+        lightsToReAdd.push_back(l->light);
         lightsToRemove.push_back(l);
     }
 
@@ -49,4 +62,30 @@ inline void removeActiveShadowLightsForConfig(uint32_t configID)
         ssNode->RemoveLight(light);
     }
 
+    SKSE::GetTaskInterface()->AddTask([lightsToReAdd]() {
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null in queued light refresh task");
+            return;
+        }
+
+        for (const auto& light : lightsToReAdd) {
+            if (!light)
+                continue;
+
+            auto it = LightData::configIDToJsonCfg.find(light->unk138);
+            if (it == LightData::configIDToJsonCfg.end()) {
+                logger::warn("no config found to restore defaults from for configID {}", light->unk138);
+                continue;
+            }
+
+            LightData::setNiPointLightDataFromCfg(light.get(), it->second);
+
+            auto params = LightData::makeLightParams(it->second);
+            ssNode->AddLight(light.get(), params);
+        }
+
+        LightData::ResetTriLightCache();
+
+        });
 }

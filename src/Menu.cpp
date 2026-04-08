@@ -1005,35 +1005,8 @@ namespace UI {
 
                     if (ImGuiMCP::Button("Refresh Lights")) {
 
-                        if (!selectedLight->light) return; 
-
-                            auto ref = selectedLight->light->GetUserData();
-
-                        removeActiveShadowLightsForConfig(selectedLight->light->unk138);
-
-                        const auto base = ref->GetBaseObject();
-
-                        auto model = base ? base->As<RE::TESModel>() : nullptr;
-                        if (!model) {
-                            return; 
-                        }
-
-                        auto  meshName = extractMeshName(model->GetModel());
-
-                        toLower(meshName);
-
-                        //doesent refresh ref itself
-                        RefreshNearbyObjects(ref, meshName);
-
-                        //must refresh this ref
-                        RE::ObjectRefHandle handle{ ref };
-                        SKSE::GetTaskInterface()->AddTask([handle]() {
-                            if (auto resolvedRef = handle.get()) {
-                                resolvedRef->Disable();
-                                resolvedRef->Enable(false);
-                            }
-                            });
-
+                        menuRefreshLight(selectedLight->light->unk138);
+             
                     }
 
                     if (ImGuiMCP::IsItemHovered()) {
@@ -1665,7 +1638,6 @@ namespace UI {
                             formID)) {
                             logger::error("Failed to append mesh multi-light config");
                         }
-                       // selectedCfgs.push_back(newCfg);
 
                         RefreshNearbyObjects(selected, meshPath);
                     }
@@ -1768,7 +1740,7 @@ namespace UI {
                         ref->Disable();
                         ref->Enable(false);
                     }
-                    });
+                });
 
                 resetState();
                 step = AttachLightStep::SelectTarget;

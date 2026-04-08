@@ -233,6 +233,9 @@ inline void iniParser()
 			try {
 				std::string formIDStr = trim(line);
 
+				//lines added by the in game menu apply this header that should be skipped to prevent error
+				if (line.starts_with("[")) continue; 
+
 				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
 					formIDStr = formIDStr.substr(2);
 				}
