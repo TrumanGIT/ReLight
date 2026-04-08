@@ -245,12 +245,8 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 
 		globals::secondAfterCellFullyLoaded.store(false);
 
-		LightData::ResetTriLightCache();
-
 		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
 		globals::cellFullyLoaded.store(true);
-
-	
 
 		logger::debug(" new cell detected.. islightaffectingsurface hook stopped");
 
@@ -264,12 +260,9 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		// not a second after cell fully laoded so reset
 		globals::secondAfterCellFullyLoaded.store(false);
 
-		LightData::ResetTriLightCache();
-
 		// start timer and say cell fully loaded is true
 		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
 		globals::cellFullyLoaded.store(true);
-
 
 		logger::debug("new cell detected.. islightaffectingsurface hook stopped");
 
@@ -308,7 +301,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 	}
 	
 	
-	RE::TES::GetSingleton()->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects, [](RE::TESObjectREFR* ref) {
+	RE::TES::GetSingleton()->ForEachReferenceInRange(player, 15000, [](RE::TESObjectREFR* ref) {
 
 		if (!ref) return RE::BSContainer::ForEachResult::kContinue;
 

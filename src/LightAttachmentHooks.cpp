@@ -44,7 +44,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	bool isInterior = cell->IsInteriorCell();
 
-	// this looks for refs, for performance, we only look up mod name of ref If its a light plugin, otherwise just ref id lookup
+	// this looks for refs
 	if (auto* refCfgs = LightManager::findConfigsForRef(a_this, isInterior)) {
 	
 		if (isExcludedRef(a_this)) return niAVObject;

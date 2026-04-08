@@ -18,11 +18,12 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 	if (globals::cellFullyLoaded.load() && !globals::secondAfterCellFullyLoaded.load()) {
 		if (OneSecondPassed(globals::cellFullyLoadedTimerStart)) {
 			globals::secondAfterCellFullyLoaded.store(true); 
+			//reset tri light cache so objects can select closest 7 lights again.
+			LightData::ResetTriLightCache();
 		}
 		return; 
 	}
 
-	//used to clean light props forced darkness to 0.0f for 1 second
 	if (globals::secondAfterCellFullyLoaded.load()) {
 		// clear so ref can be reprocessed again. for mods like dynamic candles
 		std::lock_guard lock(globals::refsWithAttachedLightsMutex);

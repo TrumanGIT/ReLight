@@ -57,6 +57,15 @@ inline void menuRefreshLight(uint32_t configID)
         lightsToRemove.push_back(l);
     }
 
+    for (const auto& l : ssNode->activeLights) {
+        if (!l || !l->light)
+            continue;
+
+        if (l->light->unk138 != configID) continue;
+        lightsToReAdd.push_back(l->light);
+        lightsToRemove.push_back(l);
+    }
+
     // remove using underlying light
     for (const auto& light : lightsToRemove) {
         ssNode->RemoveLight(light);
@@ -85,7 +94,9 @@ inline void menuRefreshLight(uint32_t configID)
             ssNode->AddLight(light.get(), params);
         }
 
-        LightData::ResetTriLightCache();
+        // reset tri light cache
+        globals::cellFullyLoaded.store(true);
+        globals::secondAfterCellFullyLoaded.store(false);
 
         });
 }

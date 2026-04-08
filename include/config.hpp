@@ -208,7 +208,7 @@ bool loadConfiguration(LightConfig& config, const nlohmann::json& data);
 
 bool saveConfiguration(const LightConfig& config);
 
-bool saveNewConfiguration(const LightConfig& config);
+bool saveNewConfiguration(LightConfig& config);
 
 bool AppendNewConfigEntryFromLight(
     const std::string& configPath,

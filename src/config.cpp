@@ -170,7 +170,7 @@ bool saveConfiguration(const LightConfig& config) {
 	}
 }
 
-bool saveNewConfiguration(const LightConfig& config)
+bool saveNewConfiguration(LightConfig& config)
 {
 	try {
 		json newEntry;
@@ -489,9 +489,6 @@ void parseTemplates() {
 						runtimeID = parsedID;
 					}
 
-					//prevent merging for ref configs
-					cfg.flags |= static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging);
-
 					if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
 						LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
 						logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
@@ -675,6 +672,8 @@ bool AppendNewConfigEntryFromLight(
 
 		if (!cfg.refFormIDAndModName.empty()) {
 			newEntry["refID"] = cfg.refFormIDAndModName;
+			//prevent merging for ref configs
+			cfg.flags |= static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging);
 		}
 
 		newEntry["menuName"] = cfg.menuName;

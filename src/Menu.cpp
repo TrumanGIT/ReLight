@@ -1304,7 +1304,8 @@ namespace UI {
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip(
                     "Adds to exclude by refID section in RELight.ini file\n"
-                    "(To change to single light, click this then 'this object only' when attaching a new light)"
+                    "TIP: Can also use to change a automated light into a seperate light you can edit by itself in the light editor.\n"
+                    "Just push this button, then when attaching a new light select 'this object only'"
                 );
             }
 

@@ -635,7 +635,7 @@ inline bool TESRayHitStatic(RE::bhkWorld* world, RE::NiPoint3 start, RE::NiPoint
 	if (!niObj || niObj->name.empty())
 		return false;
 	logger::debug("TES::Pick hit node: {}", niObj->name.c_str());
-	return (niObj->name.contains("wall") || niObj->name.contains("floor") || niObj->name.contains("intcor") || niObj->name.contains("farmintend") ) &&
+	return (niObj->name.contains("wall") || niObj->name.contains("floor") || niObj->name.contains("intcor") || niObj->name.contains("farmintinnend") ) &&
 		!niObj->name.contains("shelf");
 }
 
