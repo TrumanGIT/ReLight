@@ -502,6 +502,83 @@ namespace UI {
         }
     }
 
+    inline void RefreshNonRuntimeSettings(uint32_t configID)
+    {
+        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+        if (!ssNode) {
+            logger::warn("ShadowSceneNode[0] is null cant reinitialize lights");
+            return;
+        }
+
+        std::vector<RE::NiPointer<RE::BSLight>> lightsToRemove;
+
+        std::vector<RE::NiPointer<RE::NiLight>> lightsToReAdd;
+
+        // regular lights
+        for (const auto& l : ssNode->activeLights) {
+            if (!l || !l->light)
+                continue;
+
+            if (l->light->unk138 != configID) continue;
+
+            lightsToReAdd.push_back(l->light);
+            lightsToRemove.push_back(l);
+        }
+
+        // shadow lights
+        for (const auto& l : ssNode->activeShadowLights) {
+            if (!l || !l->light)
+                continue;
+
+            if (l->light->unk138 != configID) continue;
+            lightsToReAdd.push_back(l->light);
+            lightsToRemove.push_back(l);
+        }
+
+        for (const auto& l : ssNode->activeLights) {
+            if (!l || !l->light)
+                continue;
+
+            if (l->light->unk138 != configID) continue;
+            lightsToReAdd.push_back(l->light);
+            lightsToRemove.push_back(l);
+        }
+
+        // remove using underlying light
+        for (const auto& light : lightsToRemove) {
+            ssNode->RemoveLight(light);
+        }
+
+        SKSE::GetTaskInterface()->AddTask([lightsToReAdd]() {
+            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+            if (!ssNode) {
+                logger::warn("ShadowSceneNode[0] is null in queued light refresh task");
+                return;
+            }
+
+            for (const auto& light : lightsToReAdd) {
+                if (!light)
+                    continue;
+
+                auto it = LightData::configIDToJsonCfg.find(light->unk138);
+                if (it == LightData::configIDToJsonCfg.end()) {
+                    logger::warn("no config found to restore defaults from for configID {}", light->unk138);
+                    continue;
+                }
+
+                LightData::setNiPointLightDataFromCfg(light.get(), it->second);
+
+                auto params = LightData::makeLightParams(it->second);
+                ssNode->AddLight(light.get(), params);
+            }
+
+            // reset tri light cache
+            globals::cellFullyLoaded.store(true);
+            globals::secondAfterCellFullyLoaded.store(false);
+
+            });
+    }
+
     bool didRefreshThisFrame = false;
 
     void __stdcall RenderLightEditor() {
@@ -1005,7 +1082,7 @@ namespace UI {
 
                     if (ImGuiMCP::Button("Refresh Lights")) {
 
-                        menuRefreshLight(selectedLight->light->unk138);
+                        RefreshNonRuntimeSettings(selectedLight->light->unk138);
              
                     }
 
@@ -1136,6 +1213,9 @@ namespace UI {
         static std::vector<LightConfig> selectedCfgs;
         static std::size_t entryCount = 0;
 
+        static RE::TESObject* baseObject = nullptr;
+        static RE::TESModel* model = nullptr;
+
         static LightConfig newCfg;
 
         auto resetState = [&]() {
@@ -1149,6 +1229,8 @@ namespace UI {
             menuName.clear();
 
             niLight = nullptr;
+            baseObject = nullptr;
+            
 
             previewRef = 0;
             previewSelectedIndex = -1;
@@ -1168,27 +1250,30 @@ namespace UI {
 
 
         if (selected->GetFormID() != lastSelected) {
-            lastSelected = selected->GetFormID();
+        
             resetState();
+
+            baseObject = selected->GetBaseObject();
+            if (!baseObject) {
+                return;
+            }
+
+            baseFormID = baseObject->GetFormID();
+
+            model = baseObject->As<RE::TESModel>();
+            if (!model) {
+                return;
+            }
+
+            meshPath = extractMeshName(model->GetModel());
+            toLower(meshPath);
+
+            lastSelected = selected->GetFormID();
         }
 
-        const auto baseObject = selected->GetBaseObject();
-
-        if (!baseObject) {
-            return; 
-        }
-
-        baseFormID = baseObject->GetFormID();
-
-        auto model = baseObject->As<RE::TESModel>();
-
-        if (!model) {
+        if (!baseObject || !model) {
             return;
         }
-
-        meshPath = extractMeshName(model->GetModel());
-
-        toLower(meshPath);
 
         switch (step)
         {
