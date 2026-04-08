@@ -63,13 +63,6 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
         }
     }
 
-	auto player = RE::PlayerCharacter::GetSingleton();
-
-	if (IsInSoulCairnOrApocrypha(player)) {
-		logger::debug("player is in apocrypha or soul cairn so we should not disable light");
-		return false;
-	}
-
 	return true;
 }
 
