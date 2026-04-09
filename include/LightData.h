@@ -112,6 +112,28 @@ struct LightData {
 		logger::debug(" nearDistance  {}", params.nearDistance);
 		logger::debug(" depthBias	 {}", params.depthBias);
 	}
+
+
+static	bool HasLightFlag(uint32_t flags, LIGHT_FLAGS flag)
+	{
+		return (flags & static_cast<uint32_t>(flag)) != 0;
+	}
+
+static bool ShouldLooseMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
+	{
+		// same-type merges
+		if (HasLightFlag(refAflags, LIGHT_FLAGS::kCandle) &&
+			HasLightFlag(otherRefFlags, LIGHT_FLAGS::kCandle)) {
+			return true;
+		}
+
+		if (HasLightFlag(refAflags, LIGHT_FLAGS::kFire) &&
+			HasLightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) {
+			return true;
+		}
+
+		return false;
+	}
 	// void initialize();
 };
 

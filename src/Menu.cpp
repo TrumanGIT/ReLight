@@ -1172,6 +1172,21 @@ namespace UI {
         return result;
     }
 
+    inline void RemoveFromIniExcludeRefID(RE::TESObjectREFR* ref, std::string& refIDandModName)
+    {
+
+       if (refIDandModName.empty()) {
+            logger::warn("RemoveFromIniExcludeRefID: Failed to build refID string.");
+            return;
+        }
+
+        if (!RemoveMenuExcludedRefFromINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
+            logger::info("No Ref {} Found in Ini Excludes to Remove", refIDandModName);
+        }
+
+        globals::excludedRefFormIDs.erase(ref->GetFormID());
+    }
+
     void __stdcall RenderAttachRemove()
     {
 
@@ -1182,14 +1197,7 @@ namespace UI {
             ImGuiMCP::SetCursorPosX(startX + (avail.x - estimatedWidth) * 0.5f);
             };
 
-        auto selected = RE::Console::GetSelectedRef().get();
-
-        if (!selected) {
-
-            centerNextItem(330.0f);
-            ImGuiMCP::Text("Click on an object in the console to continue.");
-            return;
-        }
+      
 
         static AttachLightStep step = AttachLightStep::SelectTarget;
         static bool createNewTemplate = false;
@@ -1249,6 +1257,15 @@ namespace UI {
         };
 
 
+        auto selected = RE::Console::GetSelectedRef().get();
+
+        if (!selected) {
+            resetState();
+            centerNextItem(330.0f);
+            ImGuiMCP::Text("Click on an object in the console to continue.");
+            return;
+        }
+
         if (selected->GetFormID() != lastSelected) {
         
             resetState();
@@ -1272,6 +1289,23 @@ namespace UI {
         }
 
         if (!baseObject || !model) {
+
+            baseObject = selected->GetBaseObject();
+            if (!baseObject) {
+                return;
+            }
+
+            baseFormID = baseObject->GetFormID();
+
+            model = baseObject->As<RE::TESModel>();
+            if (!model) {
+                return;
+            }
+
+            meshPath = extractMeshName(model->GetModel());
+            toLower(meshPath);
+
+            lastSelected = selected->GetFormID();
             return;
         }
 
@@ -1587,6 +1621,12 @@ namespace UI {
                         });
                 }
 
+                std::string refIDandModName = BuildRefIDAndModName(selected);
+
+                RemoveFromIniExcludeRefID(selected, refIDandModName);
+
+                refIDandModName.clear();
+
                 step = AttachLightStep::Done;
                 break;
             }
@@ -1663,13 +1703,7 @@ namespace UI {
 
                 std::string refIDandModName = BuildRefIDAndModName(selected);
 
-                if (!refIDandModName.empty()) {
-                    if (!RemoveMenuExcludedRefFromINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
-                        logger::info("No Ref Found in Ini Excludes to Remove", refIDandModName);
-                    }
-
-                    globals::excludedRefFormIDs.erase(selected->GetFormID());
-                }
+                RemoveFromIniExcludeRefID(selected, refIDandModName);
 
                 step = AttachLightStep::Done;
             }

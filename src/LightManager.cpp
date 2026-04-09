@@ -489,15 +489,13 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 			if (refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
 
-				p.refALightName = "candle";
-
 				if (!increasedMergeDistance && (refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance) || otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance))) {
 					increasedMergeDistance = true;
 					logger::debug("increased distance used");
 				}
 			}
-				looseMatch = otherRefNameMatch.find(p.refALightName) != std::string::npos ||
-					p.refALightName.find(otherRefNameMatch) != std::string::npos;
+
+			looseMatch = LightData::ShouldLooseMergeByFlags(refAflags, otherRefFlags);
 
 				// giant campfires should merge with fires
 				if ((refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire) &&
