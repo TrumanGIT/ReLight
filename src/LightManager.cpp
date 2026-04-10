@@ -92,7 +92,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		bsLight->unk060 = 3;
 	}
 
-	else bsLight->unk060 = 4; 
+	//else bsLight->unk060 = 4; 
 }
 
 std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref, bool isInterior)
@@ -308,7 +308,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 			//logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
 
 			if (baseFormID == formID) {
-				logger::debug("baseForm ref that needs reinitializing found");
+				//logger::debug("baseForm ref that needs reinitializing found");
 
 			//	RE::ObjectRefHandle handle(ref);
 
@@ -377,12 +377,12 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
 										reattachedBSLight->unk060 = 1;
-										//return RE::BSContainer::ForEachResult::kContinue;
+										continue;
 									}
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
 										reattachedBSLight->unk060 = 2;
-										//return RE::BSContainer::ForEachResult::kContinue;
+										continue; 
 									}
 
 									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
@@ -732,7 +732,7 @@ void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 		return;
 	}
 	if (!a_node->parent) {
-	//	logger::debug("AttachDebugMarker: a_node {} has no parent, skipping");
+	logger::debug("AttachDebugMarker: a_node has no parent, skipping debug marker attach");
 		return;
 	}
 
@@ -778,6 +778,9 @@ RE::NiPointLight* LightManager::cloneNiPointLight(RE::NiPointLight* niPointLight
 	return niPointLightClone;
 }
 
+// take the 7 cloeset lights that pass first switch distance checks that I personally, tested myself 
+// for exacmple, switch doesent allow a candle on ato a surfcae closest 7 light list IF the surface is below a defined threshold of the light 
+// (Candles generally dont light objects below it)
 void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p)
 {
 	auto* pass = p->renderPassList.head;
@@ -813,7 +816,7 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 
 				if (light->unk060 == 2) {
 
-					dz *= 0.33; 
+					dz *= 0.33f; 
 					distXY2 = dx * dx + dy * dy + dz * dz;
 				}
 
@@ -821,9 +824,10 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 					distXY2 = dx * dx + dy * dy + dz * dz;
 				}
 
+				//only a sky lightor something equivalent would have such a large radius and should just make it on the list
 				if (light->light->radius.x >= 900) {
 				
-					distXY2 *= 0.1; 
+					distXY2 *= 0.1f; 
 				}
 
 

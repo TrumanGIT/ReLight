@@ -41,81 +41,6 @@ namespace UI {
         SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderTestingMenu);
     }
 
-    inline void RemoveRelightLightsFromRef(RE::TESObjectREFR* ref)
-    {
-        if (!ref) {
-            return;
-        }
-
-        auto* root = ref->Get3D();
-        if (!root) {
-            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} has no 3D", ref->GetFormID());
-            return;
-        }
-
-        auto* node = root->AsNode();
-        if (!node) {
-            logger::debug("RemoveRelightShadowLightsFromRef: ref {:08X} 3D is not a node", ref->GetFormID());
-            return;
-        }
-
-        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-        if (!ssNode) {
-            logger::warn("ShadowSceneNode[0] is null!");
-            return;
-        }
-
-        std::vector<RE::NiPointLight*> relightLights;
-
-        for (auto& child : node->GetChildren()) {
-            if (!child) {
-                continue;
-            }
-
-            auto name = std::string_view(child->name.c_str());
-            if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') {
-                continue;
-            }
-
-            if (auto* light = netimmerse_cast<RE::NiPointLight*>(child.get())) {
-                relightLights.push_back(light);
-                logger::debug("Found ReLight light {} on ref {:08X}", light->name, ref->GetFormID());
-            }
-        }
-
-        if (relightLights.empty()) {
-            logger::debug("RemoveRelightShadowLightsFromRef: no ReLight lights found on ref {:08X}", ref->GetFormID());
-            return;
-        }
-
-        for (auto* light : relightLights) {
-            if (!light) {
-                continue;
-            }
-
-            for (auto it = ssNode->activeShadowLights.begin(); it != ssNode->activeShadowLights.end();) {
-                auto& bsLight = *it;
-
-                if (!bsLight || !bsLight->light) {
-                    ++it;
-                    continue;
-                }
-
-                if (bsLight->light.get() == light) {
-                    logger::debug(
-                        "Removing BSShadowLight for {} from shadow scene node on ref {:08X}",
-                        light->name,
-                        ref->GetFormID());
-
-                    it = ssNode->activeShadowLights.erase(it);
-                }
-                else {
-                    ++it;
-                }
-            }
-        }
-    }
-
     inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
     {
         if (!selected) {
@@ -155,8 +80,6 @@ namespace UI {
                 if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
 
                 logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
-
-                RemoveRelightLightsFromRef(ref); 
 
                 RE::ObjectRefHandle handle{ ref };
                 SKSE::GetTaskInterface()->AddTask([handle]() {
@@ -573,8 +496,7 @@ namespace UI {
             }
 
             // reset tri light cache
-            globals::cellFullyLoaded.store(true);
-            globals::secondAfterCellFullyLoaded.store(false);
+            LightData::ResetTriLightCache(); 
 
             });
     }
@@ -1195,9 +1117,7 @@ namespace UI {
             ImGuiMCP::ImVec2 avail{};
             ImGuiMCP::GetContentRegionAvail(&avail);
             ImGuiMCP::SetCursorPosX(startX + (avail.x - estimatedWidth) * 0.5f);
-            };
-
-      
+         };
 
         static AttachLightStep step = AttachLightStep::SelectTarget;
         static bool createNewTemplate = false;
@@ -1357,6 +1277,10 @@ namespace UI {
                  
                     refLight = true;
                     formID = selected->GetFormID();
+
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        LightData::ResetTriLightCache();
+                        });
                 }
                 else {
                   
@@ -1399,6 +1323,10 @@ namespace UI {
                     niLight = LightManager::AttachLight(newCfg, rootAsNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
             
                     LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
+
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        LightData::ResetTriLightCache();
+                        });
                 }
 
                 step = AttachLightStep::Done;
@@ -1421,10 +1349,9 @@ namespace UI {
 
                 RE::ObjectRefHandle handle = selected->GetHandle();
 
-                RemoveRelightLightsFromRef(selected); 
-
                 SKSE::GetTaskInterface()->AddTask([handle]() {
                     if (auto ref = handle.get()) {
+
                         globals::excludedRefFormIDs.insert(ref->GetFormID());
                         ref->Disable();
                         ref->Enable(false);
@@ -1601,6 +1528,9 @@ namespace UI {
                     SKSE::GetTaskInterface()->AddTask([]() {
                         LightData::ResetTriLightCache();
                         });
+
+
+                    RemoveFromIniExcludeRefID(selected, newCfg.refFormIDAndModName);
                 }
                 else {
                     auto a_root = selected->Get3D();
@@ -1632,9 +1562,11 @@ namespace UI {
 
                     refIDandModName.clear();
 
-                    step = AttachLightStep::Done;
-                    break;
+                
                 }
+                step = AttachLightStep::Done;
+                break;
+            }
 
                 ImGuiMCP::SameLine();
 
@@ -1712,11 +1644,12 @@ namespace UI {
 
                 if (ImGuiMCP::Button("Cancel")) {
                     resetState();
+                    step = AttachLightStep::SelectTarget;
                 }
 
                 break;
-            }
-        }
+         }
+        
         case AttachLightStep::Done:
         {
             centerNextItem(120.0f);
@@ -1852,8 +1785,6 @@ namespace UI {
                 if (!selectedCfgs.empty()) {
                     LightData::configIDToJsonCfg.erase(newCfg.configID);
                 }
-
-                RemoveRelightLightsFromRef(selected); 
 
                 SKSE::GetTaskInterface()->AddTask([handle]() {
                     if (auto ref = handle.get()) {

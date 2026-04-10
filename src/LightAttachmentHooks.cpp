@@ -157,16 +157,7 @@ void AddonNodes::thunk(
 					
 					std::string torchName = "torch";
 
-					auto cell = a_actor->GetParentCell();
-
-					if (!cell) {
-						logger::warn("no cell cant determine if should use exterior or interior configs");
-						return;
-					}
-
-					bool isInterior = cell->IsInteriorCell();
-
-					auto cfgs = findConfigsForMeshPath(torchName, isInterior);
+					auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
 					if (cfgs.empty())
 						continue;
 
