@@ -154,10 +154,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 	logger::debug("file path match found {}, Processing ref {:08X} ", meshName, refFormID);
 
-	if (globals::inventoryMenuOpen) {
-		return true;
-	}
-
 	uint32_t flags = cfgs[0].flags;
 
 	// not a multi light, send off to merging logic
