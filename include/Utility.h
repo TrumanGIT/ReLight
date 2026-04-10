@@ -532,7 +532,7 @@ inline void getObjectFadeMult() {
 }
 
 // this was made for debugging 
-inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
+/*inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
 {
 	if (!obj) return;
 
@@ -557,7 +557,7 @@ inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
 			DumpFullTree(child.get(), depth + 1);
 		}
 	}
-}
+}*/
 
 inline void hasInverseSquareLighting()
 {

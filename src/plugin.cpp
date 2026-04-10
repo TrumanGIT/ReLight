@@ -10,6 +10,7 @@
 #include "everyFrame.h"
 #include "disableLights.h"
 #include "LightAttachmentHooks.h"
+#include "vanillaMenus.h"
 
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
@@ -63,8 +64,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     setupLog(spdlog::level::info);
     logger::info("Relight Plugin is Loaded");
 
-    SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
-    UI::Register();
+   SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
+   UI::Register();
    hasInverseSquareLighting();
    SKSE::AllocTrampoline(1 << 8);
    TESObjectLIGH_GenDynamic::Install();
@@ -72,5 +73,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    PlayerCharacter_Update::Install();
    AddonNodes::Install();
    BSLightingShaderProperty_IsLightAffectingSurface::Install();
+   InventoryMenu::Install(); 
+   CraftingMenu::Install();
     return true;
 }

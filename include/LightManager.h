@@ -54,8 +54,12 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
   static void UpdateLightParent(RE::NiLight* light); 
 
   static RE::NiLight* AttachLight(
-      RE::TESObjectREFR* selected,
-      const LightConfig& cfg);
+      const LightConfig& cfg,
+      RE::NiNode* a_root,
+      RE::TESObjectREFR* a_this,
+      const std::string& meshName,
+      RE::FormID refFormID,
+      bool& attachedDebugMarker);
 
 private:
     RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;

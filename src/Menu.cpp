@@ -1203,7 +1203,7 @@ namespace UI {
         static bool createNewTemplate = false;
         static bool multiLight = false;
         static bool refLight = false;
-        static bool alreadyAttachedDebugMarker = false;
+        bool attachedDebugMarker = false;
 
         static RE::FormID formID = 0x0;
         static RE::FormID baseFormID = 0x0;
@@ -1230,7 +1230,7 @@ namespace UI {
             createNewTemplate = false;
             multiLight = false;
             refLight = false;
-            alreadyAttachedDebugMarker = false;
+           attachedDebugMarker = false;
 
             meshPath.clear();
             jsonFilePath.clear();
@@ -1341,7 +1341,15 @@ namespace UI {
                     jsonFilePath = multiLightCfg.configPath;
                     menuName = multiLightCfg.menuName;
 
-                    niLight = LightManager::AttachLight(selected, multiLightCfg);
+                    auto root = selected->Get3D();
+
+                    if (!root) break;
+
+                    auto rootAsNode = root->AsNode();
+
+                    if (!rootAsNode) break;
+
+                    niLight = LightManager::AttachLight(multiLightCfg, rootAsNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
 
                     newCfg = multiLightCfg;
                     newCfg.configID = globals::nextID++;
@@ -1362,9 +1370,7 @@ namespace UI {
 
                     logger::debug("attach another light matched = {}", matched);
 
-                    auto cell = selected->GetParentCell();
-
-                    selectedCfgs = findConfigsForMeshPath(matched, cell->IsInteriorCell());
+                    selectedCfgs = findConfigsForMeshPath(matched, globals::currentCellIsInterior);
 
                     if (selectedCfgs.empty()) {
                         logger::warn("during attach another light, cfgs is empty for ref {:08X}, with name {} ", selected->GetFormID(), meshPath);
@@ -1382,7 +1388,15 @@ namespace UI {
                     newCfg.menuName = finalMenuName; 
                     newCfg.configID = globals::nextID++;
 
-                    niLight = LightManager::AttachLight(selected, newCfg);
+                    auto root = selected->Get3D(); 
+
+                    if (!root) break; 
+
+                    auto rootAsNode = root->AsNode(); 
+                    
+                    if (!rootAsNode) break; 
+
+                    niLight = LightManager::AttachLight(newCfg, rootAsNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
             
                     LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
                 }
@@ -1555,7 +1569,7 @@ namespace UI {
         {
             centerNextItem(260.0f);
             ImGuiMCP::Text("This object only, or all objects like it?");
-     
+
             ImGuiMCP::Spacing();
 
             centerNextItem(300.0f);
@@ -1573,8 +1587,15 @@ namespace UI {
                     newCfg.configID = globals::nextID++;
                     newCfg.diffuseColor = { 255, 162, 61 };
                     newCfg.startingFade = 3.0f;
+                    auto root = selected->Get3D();
 
-                    niLight = LightManager::AttachLight(selected, newCfg);
+                    if (!root) break;
+
+                    auto rootAsNode = root->AsNode();
+
+                    if (!rootAsNode) break;
+
+                    niLight = LightManager::AttachLight(newCfg, rootAsNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
                     LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
 
                     SKSE::GetTaskInterface()->AddTask([]() {
@@ -1595,23 +1616,8 @@ namespace UI {
                     }
 
                     for (const auto& cfg : selectedCfgs) {
-                        auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
-                        if (!cloneLight) {
-                            logger::warn("Failed to clone preview light.");
-                            break;
-                        }
 
-                        niLight = cloneLight;
-
-                        if (globals::enableDebugLightBulbs && !alreadyAttachedDebugMarker) {
-                            LightManager::AttachDebugMarker(attachNode, cloneLight);
-                            alreadyAttachedDebugMarker = true;
-                        }
-
-                        LightManager::attachLightUsingAttachPath(cfg, attachNode, cloneLight, selected->GetFormID());
-                        LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-                        cloneLight->name = "RL" + meshPath;
-                        LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
+                        niLight = LightManager::AttachLight(cfg, attachNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
                     }
 
                     UpdateRefRootTransforms(selected);
@@ -1619,104 +1625,98 @@ namespace UI {
                     SKSE::GetTaskInterface()->AddTask([]() {
                         LightData::ResetTriLightCache();
                         });
-                }
 
-                std::string refIDandModName = BuildRefIDAndModName(selected);
+                    std::string refIDandModName = BuildRefIDAndModName(selected);
 
-                RemoveFromIniExcludeRefID(selected, refIDandModName);
+                    RemoveFromIniExcludeRefID(selected, refIDandModName);
 
-                refIDandModName.clear();
-
-                step = AttachLightStep::Done;
-                break;
-            }
-
-            ImGuiMCP::SameLine();
-
-            if (ImGuiMCP::Button("All like this")) {
-                refLight = false;
-
-                if (createNewTemplate) {
-
-                    newCfg.meshPath = meshPath;
-                    newCfg.menuName = meshPath;
-                    newCfg.configPath = "Data/SKSE/Plugins/RELight/Configs/" + meshPath + ".json";
-                    newCfg.jsonIndex = 0;
-                    newCfg.configID = globals::nextID++;
-                    newCfg.diffuseColor = { 255, 162, 61 };
-                    newCfg.startingFade = 3.0f;
-
-                    niLight = LightManager::AttachLight(selected, newCfg);
-                    LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
-
-                    SKSE::GetTaskInterface()->AddTask([]() {
-                        LightData::ResetTriLightCache();
-                        });
+                    refIDandModName.clear();
 
                     step = AttachLightStep::Done;
                     break;
                 }
 
-                auto a_root = selected->Get3D();
-                if (!a_root) {
-                    ImGuiMCP::Text("Could not load this object's 3D.");
-                    break;
-                }
+                ImGuiMCP::SameLine();
 
-                auto attachNode = a_root->AsNode();
-                if (!attachNode) {
-                    ImGuiMCP::Text("Could not load this object's node.");
-                    break;
-                }
+                if (ImGuiMCP::Button("All like this")) {
+                    refLight = false;
 
-                if (previewRef != selected->GetFormID() || previewSelectedIndex != selectedIndex) {
-                    previewRef = selected->GetFormID();
-                    previewSelectedIndex = selectedIndex;
-                    alreadyAttachedDebugMarker = false;
+                    if (createNewTemplate) {
 
-                    for (const auto& cfg : selectedCfgs) {
-                        auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
-                        if (!cloneLight) {
-                            ImGuiMCP::Text("Failed to clone preview light.");
+                        newCfg.meshPath = meshPath;
+                        newCfg.menuName = meshPath;
+                        newCfg.configPath = "Data/SKSE/Plugins/RELight/Configs/" + meshPath + ".json";
+                        newCfg.jsonIndex = 0;
+                        newCfg.configID = globals::nextID++;
+                        newCfg.diffuseColor = { 255, 162, 61 };
+                        newCfg.startingFade = 3.0f;
+
+                        auto a_root = selected->Get3D();
+                        if (!a_root) {
+                            logger::warn("Could not load this object's 3D cannnot attach light.");
                             break;
                         }
 
-                        if (!alreadyAttachedDebugMarker) {
-                            if (globals::enableDebugLightBulbs) {
-                                LightManager::AttachDebugMarker(attachNode, cloneLight);
-                            }
-                            alreadyAttachedDebugMarker = true;
+                        auto attachNode = a_root->AsNode();
+                        if (!attachNode) {
+                            logger::warn("Could not load this object's node cannnot attach light.");
+                            break;
                         }
 
-                        LightManager::attachLightUsingAttachPath(cfg, attachNode, cloneLight, selected->GetFormID());
-                        LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-                        cloneLight->name = "RL" + cfg.meshPath;
-                        LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
+                        niLight = LightManager::AttachLight(newCfg, attachNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
+                        LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
+
+                        SKSE::GetTaskInterface()->AddTask([]() {
+                            LightData::ResetTriLightCache();
+                            });
+
+                        step = AttachLightStep::Done;
+                        break;
                     }
 
-                    SKSE::GetTaskInterface()->AddTask([]() {
-                        LightData::ResetTriLightCache();
-                        });
+                    auto a_root = selected->Get3D();
+                    if (!a_root) {
+                        ImGuiMCP::Text("Could not load this object's 3D.");
+                        break;
+                    }
 
-                    UpdateRefRootTransforms(selected);
+                    auto attachNode = a_root->AsNode();
+                    if (!attachNode) {
+                        ImGuiMCP::Text("Could not load this object's node.");
+                        break;
+                    }
+
+                    if (previewRef != selected->GetFormID() || previewSelectedIndex != selectedIndex) {
+                        previewRef = selected->GetFormID();
+                        previewSelectedIndex = selectedIndex;
+
+                        for (const auto& cfg : selectedCfgs) {
+                            niLight = LightManager::AttachLight(cfg, attachNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
+                        }
+
+                        SKSE::GetTaskInterface()->AddTask([]() {
+                            LightData::ResetTriLightCache();
+                            });
+
+                        UpdateRefRootTransforms(selected);
+                    }
+
+                    std::string refIDandModName = BuildRefIDAndModName(selected);
+
+                    RemoveFromIniExcludeRefID(selected, refIDandModName);
+
+                    step = AttachLightStep::Done;
                 }
 
-                std::string refIDandModName = BuildRefIDAndModName(selected);
+                ImGuiMCP::SameLine();
 
-                RemoveFromIniExcludeRefID(selected, refIDandModName);
+                if (ImGuiMCP::Button("Cancel")) {
+                    resetState();
+                }
 
-                step = AttachLightStep::Done;
+                break;
             }
-
-            ImGuiMCP::SameLine();
-
-            if (ImGuiMCP::Button("Cancel")) {
-                resetState();
-            }
-
-            break;
         }
-
         case AttachLightStep::Done:
         {
             centerNextItem(120.0f);
@@ -1888,6 +1888,7 @@ namespace UI {
         }
         }
     }
+
 
     bool saveSettingsToIni()
     {

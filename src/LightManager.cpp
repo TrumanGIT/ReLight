@@ -129,7 +129,6 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 		}
 	}
 
-	// optional: only enable if you need to debug misses
 	// logger::debug("No config found for ref 0x{:08X}", static_cast<std::uint32_t>(formID));
 
 	return nullptr;
@@ -155,8 +154,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 	logger::debug("file path match found {}, Processing ref {:08X} ", meshName, refFormID);
 
-	auto ui = RE::UI::GetSingleton();
-	if (ui && ui->IsMenuOpen("InventoryMenu")) {
+	if (globals::inventoryMenuOpen) {
 		return true;
 	}
 
@@ -175,27 +173,21 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 	// multi lights cant cleanly merge so just attach right now
 	else {
-		static bool alreadyAttachedDebugMarker = false;
+		 bool alreadyAttachedDebugMarker = false;
 
 		for (auto& cfg : cfgs) {
-			auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
+			auto* light = LightManager::AttachLight(
+				cfg,
+				a_root,
+				a_this,
+				meshNameMatch,
+				refFormID,
+				alreadyAttachedDebugMarker);
 
-			if (!cloneLight) {
-				logger::warn("Failed to clone NiPointLight for node '{}' for ref {:08X})", meshName, refFormID);
+			if (!light) {
+				logger::warn("AttachLight failed for ref {:08X} with mesh '{}'", refFormID, meshNameMatch);
 				return true;
 			}
-
-			if (!alreadyAttachedDebugMarker) {
-				if (globals::enableDebugLightBulbs) AttachDebugMarker(a_root, cloneLight);
-			}
-
-				LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, a_this->GetFormID());
-
-				LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-
-				cloneLight->name = "RL" + cfg.meshPath; 
-
-				attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
 		}
 	}
 	return true;
@@ -244,14 +236,16 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 	if (globals::lastCellWasInterior !=	globals::currentCellIsInterior ) {
 
 		globals::secondAfterCellFullyLoaded.store(false);
-
-		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
-		globals::cellFullyLoaded.store(true);
+		globals::cellFullyLoaded.store(false);
 
 		logger::debug(" new cell detected.. islightaffectingsurface hook stopped");
 
 		LightManager::reinitializeLightsWithinRange(player);
 
+		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
+		globals::cellFullyLoaded.store(true);
+
+		LightData::triLightCacheGeneration.fetch_add(1);
 	}
 
 	// player changes from interor to another interior, must reinitialize otherwise engine cleans the lights
@@ -259,15 +253,17 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 
 		// not a second after cell fully laoded so reset
 		globals::secondAfterCellFullyLoaded.store(false);
-
-		// start timer and say cell fully loaded is true
-		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
-		globals::cellFullyLoaded.store(true);
+		globals::cellFullyLoaded.store(false);
 
 		logger::debug("new cell detected.. islightaffectingsurface hook stopped");
 
 		LightManager::reinitializeLightsWithinRange(player);
 
+		// start timer and say cell fully loaded is true
+		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
+		globals::cellFullyLoaded.store(true);
+
+		LightData::triLightCacheGeneration.fetch_add(1);
 	}
 
 	//set the prev cell after finished evaluating new cell
@@ -938,45 +934,41 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 	}
 }
 
+
  RE::NiLight* LightManager::AttachLight(
-    RE::TESObjectREFR* selected,
-    const LightConfig& cfg)
-{
-    if (!selected) {
-        logger::warn("AttachPreviewLightToSelected: selected was null");
-        return nullptr;
-    }
+	 const LightConfig& cfg,
+	 RE::NiNode* a_root,
+	 RE::TESObjectREFR* a_this,
+	 const std::string& meshName,
+	 RE::FormID refFormID,
+	 bool& attachedDebugMarker)
+ {
+	 if (!a_root) {
+		 logger::warn("AttachLight: a_root was null for ref {:08X}", refFormID);
+		 return nullptr;
+	 }
 
-    auto a_root = selected->Get3D();
-    if (!a_root) {
-        logger::warn("AttachPreviewLightToSelected: Could not load this object's 3D.");
-        return nullptr;
-    }
+	 if (!a_this) {
+		 logger::warn("AttachLight: a_this was null for node '{}'", meshName);
+		 return nullptr;
+	 }
 
-    auto attachNode = a_root->AsNode();
-    if (!attachNode) {
-        logger::warn("AttachPreviewLightToSelected: Could not load this object's node.");
-        return nullptr;
-    }
+	 auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
+	 if (!cloneLight) {
+		 logger::warn("Failed to clone NiPointLight for node '{}' for ref {:08X}", meshName, refFormID);
+		 return nullptr;
+	 }
 
-    auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
-    if (!cloneLight) {
-        logger::warn("AttachPreviewLightToSelected: Failed to clone preview light.");
-        return nullptr;
-    }
+	 if (!attachedDebugMarker && globals::enableDebugLightBulbs) {
+		 AttachDebugMarker(a_root, cloneLight);
+		 attachedDebugMarker = true;
+	 }
 
-    if (globals::enableDebugLightBulbs) {
-        LightManager::AttachDebugMarker(attachNode, cloneLight);
-    }
+	 LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, a_this->GetFormID());
+	 LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+	 cloneLight->name = "RL" + cfg.meshPath;
+	 attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
 
-    LightManager::attachLightUsingAttachPath(cfg, attachNode, cloneLight, selected->GetFormID());
-    LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-
-    cloneLight->name = "RL" + (cfg.menuName.empty() ? cfg.meshPath : cfg.menuName);
-
-    LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, selected);
-    LightManager::UpdateLightParent(cloneLight);
-
-    return cloneLight;
-}
+	 return cloneLight;
+ }
 

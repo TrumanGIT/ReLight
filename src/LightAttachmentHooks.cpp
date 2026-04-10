@@ -49,29 +49,22 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	
 		if (isExcludedRef(a_this)) return niAVObject;
 
-		static bool alreadyAttachedDebugMarker = false;
+		bool alreadyAttachedDebugMarker = false;
 
 		for (const auto& cfg : *refCfgs) {
 
-			auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
+			auto* light = LightManager::AttachLight(
+				cfg,
+				a_root,
+				a_this,
+				cfg.meshPath,
+				refFormID,
+				alreadyAttachedDebugMarker);
 
-			if (!cloneLight) {
-				logger::warn("Failed to clone NiPointLight for specific ref {:08X})", refFormID);
-				return niAVObject;
+			if (!light) {
+				logger::warn("AttachLight failed for ref {:08X} with mesh '{}'", refFormID, cfg.refFormIDAndModName);
 			}
-
-			if (!alreadyAttachedDebugMarker) {
-				if (globals::enableDebugLightBulbs) LightManager::AttachDebugMarker(a_root, cloneLight);
-				alreadyAttachedDebugMarker = true;
-			}
-
-			LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, refFormID);
-
-			LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-
-			cloneLight->name = "RL" + cfg.menuName;
-
-			LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
+		
 		}
 
 		return niAVObject;
@@ -96,9 +89,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		return niAVObject;
-	 }
-
-
+	 } 
 	return niAVObject;
 }
 

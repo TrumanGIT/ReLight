@@ -89,24 +89,16 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     // return here or crash on effect shaders 
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
-    auto ui = RE::UI::GetSingleton();
-    if (ui && (ui->IsMenuOpen("InventoryMenu") || ui->IsMenuOpen("CraftingMenu"))) return true;
-
-    // 
+    // torches and add on lights like candle lights ect
     if (light->unk060 == 4) return true;
 
-    if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures) return true;
-
-    // torhces
+    if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures || globals::inventoryMenuOpen.load() || globals::craftingMenuOpen.load()) return true;
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return true;
     
     // dont want to block large tri shapes that might supposed have more then 7 lights (windhelmBridge) 
     if (pass->geometry->worldBound.radius > 1800) return true;
-
-    // probobly a sky light or something we should return
-   // if (!light->light->radius.x > 1000) return true; 
 
     //return on actors and skp invalid references potentially
     auto objectRef = pass->geometry->GetUserData();

@@ -26,10 +26,10 @@ inline float getRandomFloat(const float& min, const float& max, uint32_t rngStat
 
 // generic type argument probly not needed both shadow light list and non shadow light list same array type proboblly
 template <class T>
-static void ApplyLightFlicker(T& lights, float delta)
+static void ApplyLightFlicker(T& lights, float delta, bool ShadowLights)
 {
-	for (auto& light : lights) {
-		if (!light)
+    for (auto& light : lights) {
+        if (!light || !light->light)
 			continue;
 
         auto name = std::string_view(light->light->name.c_str());
@@ -56,6 +56,18 @@ static void ApplyLightFlicker(T& lights, float delta)
 		rt.fade =
 			dataExt.startingFade +
 			std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
+        //shadow lights are persistance even if mesh dissapers, so if we want light to go away with mesh, must do this
+        if (ShadowLights) {
+            if (!light->light->parent) {
+            
+                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                if (!ssNode) {
+                    logger::warn("ShadowSceneNode[0] is null!");
+                    return;
+                }
+                ssNode->RemoveLight(light); 
+            }
+        }
 	}
 }
 

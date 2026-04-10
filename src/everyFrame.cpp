@@ -14,12 +14,10 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	handlePendingMerges();
 
-	// if cell is loaded lets wait 1 second before continueing. 
+	// if cell is loaded lets wait 1 second before continuing. 
 	if (globals::cellFullyLoaded.load() && !globals::secondAfterCellFullyLoaded.load()) {
 		if (OneSecondPassed(globals::cellFullyLoadedTimerStart)) {
 			globals::secondAfterCellFullyLoaded.store(true); 
-			//reset tri light cache so objects can select closest 7 lights again.
-			LightData::ResetTriLightCache();
 		}
 		return; 
 	}
@@ -45,14 +43,9 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	auto& ssRt = ssNode->GetRuntimeData();
 
-	//auto playerPos = player->GetPosition(); 
+	ApplyLightFlicker(ssRt.activeLights, delta, false);
 
-	ApplyLightFlicker(ssRt.activeLights, delta);
-
-	ApplyLightFlicker(ssRt.activeShadowLights, delta);
-
-	// check stored bs shader properties have created there light list yet and tag their 
-	//forced darkness field with a static # of a guesstamite of their light size. 
+	ApplyLightFlicker(ssRt.activeShadowLights, delta, true);
 }
 
 void PlayerCharacter_Update::Install()
