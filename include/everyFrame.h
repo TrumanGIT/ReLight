@@ -179,15 +179,12 @@ inline void handlePendingMerges() {
 
             LightManager::finalizeMerge(p, mergeGroup);
         }
-        //TODO:: doesent attach debug markers
+     
         else {
-            for (const auto& cfg : cfgs) {
-                auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
-                if (!cloneLight) continue;
+            bool debugMarkerAttached = false; 
 
-                LightManager::attachLightUsingAttachPath(cfg, rootNode, cloneLight, retryRefA->GetFormID());
-                LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
-                LightManager::attachNiPointLightToShadowSceneNode(cloneLight, cfg, retryRefA.get());
+            for (const auto& cfg : cfgs) {
+                LightManager::AttachLight(cfg, rootNode, retryRefA.get(), cfg.meshPath, retryRefA->GetFormID(), debugMarkerAttached);
             }
 
             // multi-light can't merge, retry others

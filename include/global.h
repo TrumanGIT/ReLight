@@ -9,9 +9,7 @@
 namespace globals
 
 {
-    inline std::atomic_bool inventoryMenuOpen = false;
-
-    inline std::atomic_bool craftingMenuOpen = false;
+    inline std::atomic_bool unDesiredMenuOpen = false;
 
 
     inline uint32_t nextID = 1;

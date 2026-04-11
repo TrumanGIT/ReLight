@@ -917,7 +917,7 @@ namespace UI {
 
                     if (ImGuiMCP::SliderFloat3(
                         "Position",
-                        &selectedLight->light->local.translate.x,
+                        &config.position[0],
                         -sliderRange, sliderRange, "%.3f"))
                     {
                         if (!isTorch) {
@@ -927,7 +927,9 @@ namespace UI {
                                 for (auto& l : rt.activeLights) {
                                     if (!l) continue;
                                     if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    l->light->local.translate = selectedLight->light->local.translate;
+                                    l->light->local.translate.x = config.position[0];
+                                    l->light->local.translate.y = config.position[1];
+                                    l->light->local.translate.z = config.position[2];
                                     if (auto* parent = l->light->parent) {
                                         RE::NiUpdateData updateData{};
                                         updateData.time = 0.0f;
@@ -938,7 +940,9 @@ namespace UI {
                                 for (auto& l : rt.activeShadowLights) {
                                     if (!l) continue;
                                     if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    l->light->local.translate = selectedLight->light->local.translate;
+                                    l->light->local.translate.x = config.position[0];
+                                    l->light->local.translate.y = config.position[1];
+                                    l->light->local.translate.z = config.position[2];
                                     if (auto* parent = l->light->parent) {
                                         RE::NiUpdateData updateData{};
                                         updateData.time = 0.0f;
@@ -1988,6 +1992,8 @@ namespace UI {
             return;
         }
         auto& cfg = itCfg->second;
+
+        cfg.position = backupCfg.position; 
 
         lightData.radius = LightData::getNiPointLightRadius(backupCfg);
         lightData.fade = backupCfg.brightness;

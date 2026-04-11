@@ -92,7 +92,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     // torches and add on lights like candle lights ect
     if (light->unk060 == 4) return true;
 
-    if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures || globals::inventoryMenuOpen.load() || globals::craftingMenuOpen.load()) return true;
+    if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures || globals::unDesiredMenuOpen.load()) return true;
 
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return true;

@@ -479,35 +479,32 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 			uint32_t otherRefFlags = otherRefCfg.flags;
 
-			if (refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
 
 				if (!increasedMergeDistance && (refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance) || otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance))) {
 					increasedMergeDistance = true;
 					logger::debug("increased distance used");
 				}
-			}
+			
 
-			looseMatch = LightData::ShouldLooseMergeByFlags(refAflags, otherRefFlags);
+			looseMatch = LightData::ShouldMergeByFlags(refAflags, otherRefFlags);
 
-				// giant campfires should merge with fires
-				if ((refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire) &&
-					otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) ||
-
-					(refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kFire) &&
-						otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire)))
-				{
-					looseMatch = true;
-				}
 			
 			//logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {} distance={}",
 			//	refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch, distance);
 			
 			if (looseMatch) {
 
-				//the final result of a merged light should  reflect a shadow light if 1 of the emrgies was a shadow light
+				//the final result of a merged light should  reflect a shadow light if 1 of the mergies was a shadow light
 				if (!cfg.shadowLight && cfgs[0].shadowLight) {
 					p.winningConfig = cfgs[0];
 				}
+
+				// If both are shadow lights, larger radius wins
+				else if (cfg.shadowLight && cfgs[0].shadowLight) {
+					if (cfgs[0].radius > cfg.radius) {
+						p.winningConfig = cfgs[0];
+					}
+						}
 
 				float zDistanceToUse = increasedMergeDistance ? globals::fMaxZDiffToMergeIncreased :  globals::fMaxZDiffToMerge;
 
@@ -731,10 +728,10 @@ void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)
 		logger::debug("AttachDebugMarker: null a_node or light");
 		return;
 	}
-	if (!a_node->parent) {
-	logger::debug("AttachDebugMarker: a_node has no parent, skipping debug marker attach");
-		return;
-	}
+	//if (!a_node->parent) {
+	//logger::debug("AttachDebugMarker: a_node has no parent, skipping debug marker attach");
+		//return;
+	//}
 
 	RE::NiPointer<RE::NiNode> loadedModel;
 	constexpr RE::BSModelDB::DBTraits::ArgsType args{};
@@ -816,6 +813,8 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 
 				if (light->unk060 == 2) {
 
+					// chandeliers shouldent have such strict z compares as they are usually high in the air and otherwise would lose
+					// this check to get 7 closest lights every time.
 					dz *= 0.33f; 
 					distXY2 = dx * dx + dy * dy + dz * dz;
 				}
@@ -824,7 +823,7 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 					distXY2 = dx * dx + dy * dy + dz * dz;
 				}
 
-				//only a sky lightor something equivalent would have such a large radius and should just make it on the list
+				//only a sky light or something equivalent would have such a large radius and should just make it on the list
 				if (light->light->radius.x >= 900) {
 				
 					distXY2 *= 0.1f; 

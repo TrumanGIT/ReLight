@@ -7,12 +7,12 @@ RE::UI_MESSAGE_RESULTS InventoryMenu::thunk(RE::UIMessage& a_message)
 	switch (a_message.type.get())
 	{
 	case RE::UI_MESSAGE_TYPE::kShow:
-		globals::inventoryMenuOpen.store(true); 
+		globals::unDesiredMenuOpen.store(true);
 		logger::debug("inventory menu hook fired menu OPEN");
 		break;
 
 	case RE::UI_MESSAGE_TYPE::kHide:
-		globals::inventoryMenuOpen.store(false);
+		globals::unDesiredMenuOpen.store(false);
 		logger::debug("inventory menu hook fired menu CLOSED");
 		break;
 	}
@@ -32,12 +32,12 @@ RE::UI_MESSAGE_RESULTS CraftingMenu::thunk(RE::UIMessage& a_message)
 	switch (a_message.type.get())
 	{
 	case RE::UI_MESSAGE_TYPE::kShow:
-		globals::craftingMenuOpen.store(true);
+		globals::unDesiredMenuOpen.store(true);
 		logger::debug("crafting menu hook fired menu OPEN");
 		break;
 
 	case RE::UI_MESSAGE_TYPE::kHide:
-		globals::craftingMenuOpen.store(false);
+		globals::unDesiredMenuOpen.store(false);
 		logger::debug("crafting menu hook fired menu CLOSED");
 		break;
 	}

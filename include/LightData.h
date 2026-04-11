@@ -119,7 +119,7 @@ static	bool HasLightFlag(uint32_t flags, LIGHT_FLAGS flag)
 		return (flags & static_cast<uint32_t>(flag)) != 0;
 	}
 
-static bool ShouldLooseMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
+static bool ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
 	{
 		// same-type merges
 		if (HasLightFlag(refAflags, LIGHT_FLAGS::kCandle) &&
@@ -129,6 +129,21 @@ static bool ShouldLooseMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
 
 		if (HasLightFlag(refAflags, LIGHT_FLAGS::kFire) &&
 			HasLightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) {
+			return true;
+		}
+
+		// giant campfires should merge with fires
+		if ((refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire) &&
+			otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) ||
+
+			(refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kFire) &&
+				otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire)))
+		{
+			return true;
+		}
+
+		if (HasLightFlag(refAflags, LIGHT_FLAGS::kOther) &&
+			HasLightFlag(otherRefFlags, LIGHT_FLAGS::kOther)) {
 			return true;
 		}
 
