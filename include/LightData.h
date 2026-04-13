@@ -80,7 +80,7 @@ struct LightData {
 
 	static void ResetTriLightCache();
 
-	static bool excludeLightEditorID(const RE::TESObjectLIGH* light);
+	static bool excludeLightEditorID(const std::string& edid);
 
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
 	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg);

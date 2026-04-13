@@ -44,10 +44,14 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 		return false;
 	}
 
-	if (LightData::excludeLightEditorID(light)) return false;
+    std::string edid = clib_util::editorID::get_editorID(light);
+
+    toLower(edid);
+
+	if (LightData::excludeLightEditorID(edid)) return false;
 
     if (globals::excludedRefFormIDs.contains(ref->GetFormID())) {
-        logger::info("excluded ref runtime formID {:08X} relight will not disable this light", ref->GetFormID());
+        logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));
         return false;
     }
 
@@ -58,7 +62,7 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     for (const auto& whitelistedMod : globals::whitelist) {
         if (modName.find(whitelistedMod) != std::string::npos) {
-            logger::info("whitelisted ref {:08X} from mod {} relight will not disable this light", ref->GetFormID(), whitelistedMod);
+            logger::info("whitelisted ref 0x{:08X} from mod {} with edid {} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()), whitelistedMod, edid);
             return false;
         }
     }

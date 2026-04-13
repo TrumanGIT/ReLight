@@ -36,15 +36,9 @@ void LightData::ResetTriLightCache()
 }
 
 // Try to exclude light by editorID.
-bool LightData::excludeLightEditorID(const RE::TESObjectLIGH* light) {
-
-	std::string edid = clib_util::editorID::get_editorID(light);
-
-	toLower(edid); 
+bool LightData::excludeLightEditorID(const std::string& edid) {
 
 	if (!edid.empty()) {
-
-			toLower(edid);
 
 			for (const auto& keyword : globals::keywordLightGroups) {
 				if (edid.contains(keyword)) {
