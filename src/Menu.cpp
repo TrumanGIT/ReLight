@@ -485,11 +485,18 @@ namespace UI {
 
                 auto it = LightData::configIDToJsonCfg.find(light->unk138);
                 if (it == LightData::configIDToJsonCfg.end()) {
-                    logger::warn("no config found to restore defaults from for configID {}", light->unk138);
+                    logger::warn("no config for configID {} cant refresh non runtime settings", light->unk138);
                     continue;
                 }
 
-                LightData::setNiPointLightDataFromCfg(light.get(), it->second);
+                auto ref = light->GetUserData(); 
+
+                if (!ref) {
+                    logger::warn("no ref for configID {} cant refresh non runtime settings", light->unk138);
+                    continue; 
+                }
+
+                LightData::setNiPointLightDataFromCfg(light.get(), it->second, ref->GetScale());
 
                 auto params = LightData::makeLightParams(it->second);
                 ssNode->AddLight(light.get(), params);
@@ -1995,7 +2002,15 @@ namespace UI {
 
         cfg.position = backupCfg.position; 
 
-        lightData.radius = LightData::getNiPointLightRadius(backupCfg);
+
+        auto ref = light->GetUserData();
+
+        if (!ref) {
+            logger::warn("no ref for configID {} cant restore defaults", light->unk138);
+            return; 
+        }
+
+        lightData.radius = LightData::getNiPointLightRadius(backupCfg, ref->GetScale());
         lightData.fade = backupCfg.brightness;
         LightData::setNiPointLightAmbientAndDiffuse(light.get(), backupCfg);
         LightData::setNiPointLightPos(light.get(), backupCfg);

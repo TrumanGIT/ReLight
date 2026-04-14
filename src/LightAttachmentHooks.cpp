@@ -166,7 +166,7 @@ void AddonNodes::thunk(
 					light->name = "RL" + torchName;
 					light->unk138 = cfg.configID;
 
-					LightData::setNiPointLightDataFromCfg(light, cfg);
+					LightData::setNiPointLightDataFromCfg(light, cfg, 1.0);
 
 					logger::debug("Applied torch light data");
                 }

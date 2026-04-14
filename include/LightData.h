@@ -83,9 +83,9 @@ struct LightData {
 	static bool excludeLightEditorID(const std::string& edid);
 
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
-	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg);
+	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const float scale);
 	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
-	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg);
+	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg, const float scale);
 	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg);
 
 	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);

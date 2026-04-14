@@ -62,6 +62,7 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     for (const auto& whitelistedMod : globals::whitelist) {
         if (modName.find(whitelistedMod) != std::string::npos) {
+
             logger::info("whitelisted ref 0x{:08X} from mod {} with edid {} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()), whitelistedMod, edid);
             return false;
         }

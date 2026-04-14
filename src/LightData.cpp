@@ -54,9 +54,13 @@ bool LightData::excludeLightEditorID(const std::string& edid) {
 	return false;
 }
 
-RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg)
+RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg, const float scale)
 {
-	return RE::NiPoint3(cfg.radius, cfg.radius, cfg.radius);
+	float z = cfg.fov;
+	z = z >= 50.0f ? 1.414f : z;
+	z = std::clamp(z, 0.01f, 50.0f);
+
+	return RE::NiPoint3(cfg.radius * scale, cfg.radius * scale, z * scale);
 }
 
 void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg) {
@@ -102,17 +106,13 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 		overlay->size = cfg.size; // isl
 		overlay->cutoffOverride = cfg.cutoffOverride; // isl 
-		//overlay->fade = cfg.brightness;
-		//overlay->radius = cfg.radius;
-		overlay->lighFormId = 0;
-		overlay->unk138 = static_cast<std::uint32_t>(cfg.configID); 
-
+		overlay->lighFormId = 0; 
 		logger::debug(" size set to: {} ", overlay->size);
 		logger::debug("cutoffOverride  set to {}", overlay->cutoffOverride);
 	}
 }
 
-void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg) {
+void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const float scale) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.meshPath);
 		return;
@@ -124,7 +124,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	logger::debug(" Setting Light Data for {} from Configs", nodeNameOrMeshPath);
 
 	data.fade = cfg.brightness;
-	data.radius = getNiPointLightRadius(cfg);
+	data.radius = getNiPointLightRadius(cfg, scale);
 
 	data.unk138 = cfg.configID;
 

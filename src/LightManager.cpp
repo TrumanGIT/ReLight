@@ -338,7 +338,7 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 							auto it = LightData::configIDToJsonCfg.find(light->GetLightRuntimeData().unk138);
 
 							if (it == LightData::configIDToJsonCfg.end()) {
-								logger::warn("attempted to reinitialize light {} but its config ID {} wasent found for ref {:08X}", name, ref->GetFormID(), light->GetLightRuntimeData().unk138);
+								logger::warn("attempted to reinitialize light {} but its config ID {} wasent found for ref {:08X}", name, light->GetLightRuntimeData().unk138, ref->GetFormID());
 								continue;
 							}
 
@@ -548,7 +548,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 	if (p.candidateHandles.empty()) {
 
 		logger::debug("ref {:08X} has no merge candidates, attaching light", refA->GetFormID());
-		LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig);
+		LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig, refA->GetScale());
 
 		p.light->name = "RL" + p.refALightName;
 		LightManager::attachNiPointLightToShadowSceneNode(p.light.get(), p.winningConfig, refA);
@@ -582,12 +582,12 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 	 if (!light) return; 
 
-	 LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig);
-
-	 p.light->name = "RL" + p.refALightName;
-
 	 auto refA = p.refA.get();
 	 if (!refA) return;
+
+	 LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig, refA->GetScale());
+
+	 p.light->name = "RL" + p.refALightName;
 
 
 	 if (globals::enableDebugLightBulbs) {
@@ -964,7 +964,7 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 	 }
 
 	 LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, a_this->GetFormID());
-	 LightData::setNiPointLightDataFromCfg(cloneLight, cfg);
+	 LightData::setNiPointLightDataFromCfg(cloneLight, cfg, a_this->GetScale());
 	 cloneLight->name = "RL" + cfg.meshPath;
 	 attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
 
