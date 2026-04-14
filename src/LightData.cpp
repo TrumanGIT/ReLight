@@ -123,7 +123,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	logger::debug(" Setting Light Data for {} from Configs", nodeNameOrMeshPath);
 
-	data.fade = cfg.brightness;
+	data.fade = cfg.brightness * scale;
 	data.radius = getNiPointLightRadius(cfg, scale);
 
 	data.unk138 = cfg.configID;

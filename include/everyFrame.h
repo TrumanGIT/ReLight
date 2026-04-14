@@ -26,8 +26,11 @@ inline float getRandomFloat(const float& min, const float& max, uint32_t rngStat
 
 // generic type argument probly not needed both shadow light list and non shadow light list same array type proboblly
 template <class T>
-static void ApplyLightFlicker(T& lights, float delta, bool ShadowLights)
+static void ApplyLightFlicker(T& lights, float delta, bool shadowLights)
 {
+
+    std::vector<RE::NiPointer<RE::BSLight>> toRemove;  // only works if indexable container
+
     for (auto& light : lights) {
         if (!light || !light->light)
 			continue;
@@ -36,7 +39,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool ShadowLights)
         if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
             continue;
 
-		// free float used as flicker timer
+		// scale I use as a free float used as flicker timer
 		auto& scale = light->light->local.scale;
 		auto& rt = light->light->GetLightRuntimeData();
 
@@ -50,26 +53,32 @@ static void ApplyLightFlicker(T& lights, float delta, bool ShadowLights)
 			static_cast<uint32_t>(
 				reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
 
+        // r could add more randomness but we already do that with the seed so I dont use r actually lmao
 		const float r = getRandomFloat(-0.1f, 0.1f, seed);
 
 		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
 		rt.fade =
 			dataExt.startingFade +
 			std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
+
+        if (shadowLights && !light->light->parent) {
+            toRemove.push_back(light);
+        }
+    }
         //shadow lights are persistance even if mesh dissapers, so if we want light to go away with mesh, must do this
-        if (ShadowLights) {
-            if (!light->light->parent) {
-            
-                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                if (!ssNode) {
-                    logger::warn("ShadowSceneNode[0] is null!");
-                    return;
-                }
-                ssNode->RemoveLight(light); 
+        if (shadowLights && !toRemove.empty()) {
+            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+            if (!ssNode) {
+                logger::warn("ShadowSceneNode[0] is null!");
+                return;
+            }
+
+            for (auto& light : toRemove) {
+                ssNode->RemoveLight(light);
             }
         }
-	}
 }
+
 
 inline void handlePendingMerges() {
     std::lock_guard lock(LightManager::pendingMergesMutex);
