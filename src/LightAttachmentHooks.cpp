@@ -2,7 +2,6 @@
 #include "LightManager.h"
 #include "Utility.h"
 
-
 // ATTACH LIGHTS DURING LOAD3D() HOOK, ANY EARLIER AND LIGHTS SPAWN AT CELL ORIGIN BC WORLD POSITION DATA ISENT LOADED?
 
 RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
@@ -46,8 +45,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	// this looks for refs
 	if (auto* refCfgs = LightManager::findConfigsForRef(a_this, isInterior)) {
-	
-		if (isExcludedRef(a_this)) return niAVObject;
 
 		bool alreadyAttachedDebugMarker = false;
 
