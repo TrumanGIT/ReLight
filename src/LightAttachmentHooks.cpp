@@ -67,6 +67,15 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		
 		}
 
+		if (globals::removeFakeGlowOrbs) {
+
+			auto node = niAVObject->AsNode();
+
+			if (node) {
+				glowOrbRemover(node);
+			}
+		}
+
 		return niAVObject;
 	}
 
@@ -88,8 +97,20 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	// check file paths first, they will win over loose partial node name matches
 	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
+
+
+		if (globals::removeFakeGlowOrbs) {
+
+			auto node = niAVObject->AsNode();
+
+			if (node) {
+				glowOrbRemover(node);
+			}
+		}
+		
 		return niAVObject;
 	 } 
+
 	return niAVObject;
 }
 
@@ -100,10 +121,11 @@ void Load3D::Install()
 	logger::info("Hooked TESObjectREFR::Load3D");
 }
 
-//yoinked this from PO3 Light Placer used only for torch light, could be used for weapons / armor
+//yoinked this from PO3 Light Placer used only for torch light, could be used for weapons / armor and spells like candle light
 // im unable figure out how 1st person / 3rd person lights work. according to logging, in vanilla both are attachd at the 1st 
 //attachlight node in the node tree of a torch. I think the game constantly update the first persons lights position as the player moves.
-//would love to have full torch light control someday of torches but reusing vanilla light here is good enough for now.
+
+//TODO:: this is poorly implemented, possibly editing all torch sconces in the area as well when were only trying to target handheld torches
 void AddonNodes::thunk(
 	RE::NiAVObject* a_clonedNode,
 	RE::NiAVObject* a_node,
@@ -113,16 +135,18 @@ void AddonNodes::thunk(
 {
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
 		 
-	    // slot 9 == torch
+	    // slot 9 == torch or candle light ect, we wait 1 second after cell fully loaded or crash because of 1 hooks call site idk why 
 	if (a_slot == 9 && globals::secondAfterCellFullyLoaded.load()) {
 
-            SKSE::GetTaskInterface()->AddTask([a_actor]() {
+		// delay with add task or the light hasent appeared in the shadow scene node active light list yet
+            SKSE::GetTaskInterface()->AddTask([]() {
                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                 if (!ssNode)
                     return;
 
                 auto& rt = ssNode->GetRuntimeData();
 
+				// try to find the light from the hooks arguments
                 for (auto& lightEntry : rt.activeLights) {
                     if (!lightEntry)
                         continue;
@@ -139,20 +163,23 @@ void AddonNodes::thunk(
 
 					std::string parentsParentName = light->parent->parent->name.c_str(); 
 
+					// this is where the light would be in the torch or whatevers node tree
 					if (parentName != "AttachLight") {
 						//logger::warn("users torch node tree does not contain object w name AttachLight, cant attach light");
 						continue; 
 					}	
 
-					// catches magic lights and torches and this excludes them in bslightingshaderhook 
+					// catches magic lights and torches and this excludes them in bslightingshaderhook as well (important)
 					lightEntry->unk060 = 4;
 
+					// this check prevents editing lights to things like magic spell candly light ect
+					//tbh we should allow users to edit all lights one day so ill prolly remake this so users can edit spells too.
 					if (!parentsParentName.contains("orch")) continue; 
 
 					auto parent = light->parent->AsNode();
 					if (!parent) {
 						logger::warn("couldn’t cast torch as node will not apply light to torches");
-						return;
+						continue;
 					}
 					
 					std::string torchName = "torch";
@@ -166,9 +193,10 @@ void AddonNodes::thunk(
 					light->name = "RL" + torchName;
 					light->unk138 = cfg.configID;
 
+					// set scale to 1.0 I doubt user is using a scaled down size torch
 					LightData::setNiPointLightDataFromCfg(light, cfg, 1.0);
 
-					logger::debug("Applied torch light data");
+					logger::debug("Applied torch light data"); 
                 }
             });
     } 

@@ -8,7 +8,7 @@ namespace UI {
     void Register();
     void __stdcall RenderSettings();
     void __stdcall RenderLightEditor();
-    void __stdcall RenderTestingMenu();
+    void __stdcall  RenderLightFlickerPreventionMenu();
     void __stdcall RenderAttachRemove();
     bool saveSettingsToIni();
     void getAllLights();

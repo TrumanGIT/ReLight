@@ -38,7 +38,7 @@ namespace UI {
 
         SKSEMenuFramework::AddSectionItem("Attach Lights", UI::RenderAttachRemove);
 
-        SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderTestingMenu);
+        SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderLightFlickerPreventionMenu);
     }
 
     inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
@@ -93,7 +93,7 @@ namespace UI {
             });
     }
 
-    void __stdcall RenderTestingMenu() {
+    void __stdcall RenderLightFlickerPreventionMenu() {
 
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
