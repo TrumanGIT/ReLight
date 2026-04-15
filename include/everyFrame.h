@@ -29,7 +29,7 @@ template <class T>
 static void ApplyLightFlicker(T& lights, float delta, bool shadowLights)
 {
 
-    std::vector<RE::NiPointer<RE::BSLight>> toRemove;  // only works if indexable container
+    std::vector<RE::NiPointer<RE::NiLight>> toRemove;  // only works if indexable container
 
     for (auto& light : lights) {
         if (!light || !light->light)
@@ -38,6 +38,11 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights)
         auto name = std::string_view(light->light->name.c_str());
         if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
             continue;
+
+        if (shadowLights && !light->light->parent) {
+            toRemove.push_back(light->light);
+            continue;
+        }
 
 		// scale I use as a free float used as flicker timer
 		auto& scale = light->light->local.scale;
@@ -51,7 +56,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights)
 
 		uint32_t seed =
 			static_cast<uint32_t>(
-				reinterpret_cast<std::uintptr_t>(light->light.get()) & 0xFFFFFFFF);
+				reinterpret_cast<std::uintptr_t>(light.get()) & 0xFFFFFFFF);
 
         // r could add more randomness but we already do that with the seed so I dont use r actually lmao
 		const float r = getRandomFloat(-0.1f, 0.1f, seed);
@@ -60,13 +65,9 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights)
 		rt.fade =
 			dataExt.startingFade +
 			std::sin(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
-
-        if (shadowLights && !light->light->parent) {
-            toRemove.push_back(light);
-        }
     }
         //shadow lights are persistance even if mesh dissapers, so if we want light to go away with mesh, must do this
-        if (shadowLights && !toRemove.empty()) {
+        if (!toRemove.empty()) {
             auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
             if (!ssNode) {
                 logger::warn("ShadowSceneNode[0] is null!");
@@ -74,7 +75,8 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights)
             }
 
             for (auto& light : toRemove) {
-                ssNode->RemoveLight(light);
+                if (!light.get()) continue; 
+                ssNode->RemoveLight(light.get()); 
             }
         }
 }
