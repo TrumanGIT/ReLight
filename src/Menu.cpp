@@ -1001,7 +1001,6 @@ namespace UI {
                 if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 250), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
-
                     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
                         ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
                     ImGuiMCP::Text("Non-Runtime Light Settings");
@@ -1009,10 +1008,10 @@ namespace UI {
 
                     ImGuiMCP::SameLine();
 
-                    if (ImGuiMCP::Button("Refresh Lights")) {
+                    ImGuiMCP::BeginDisabled(isTorch);
 
+                    if (ImGuiMCP::Button("Refresh Lights")) {
                         RefreshNonRuntimeSettings(selectedLight->light->unk138);
-             
                     }
 
                     if (ImGuiMCP::IsItemHovered()) {
@@ -1028,36 +1027,21 @@ namespace UI {
                     ImGuiMCP::Columns(2, "NonRuntimeColumns", false);
 
                     ImGuiMCP::Spacing();
-
                     ImGuiMCP::PushItemWidth(halfWidth);
 
-
-                    if (ImGuiMCP::SliderFloat("Fall Off", &config.falloff, 0.0f, 5.0f, "%.1f")) {
-                    }
-
-                    if (ImGuiMCP::SliderFloat("Constant", &config.constAttenuation, 0.0f, 1.0f, "%.2f")) {
-                    }
-
-                    if (ImGuiMCP::SliderFloat("Linear", &config.linearAttenuation, 0.0f, 1.0f, "%.2f")) {
-                    }
-
-                    if (ImGuiMCP::SliderFloat("Quadratic", &config.quadraticAttenuation, 0.0f, 1.0f, "%.2f")) {
-                    }
+                    ImGuiMCP::SliderFloat("Fall Off", &config.falloff, 0.0f, 5.0f, "%.1f");
+                    ImGuiMCP::SliderFloat("Constant", &config.constAttenuation, 0.0f, 1.0f, "%.2f");
+                    ImGuiMCP::SliderFloat("Linear", &config.linearAttenuation, 0.0f, 1.0f, "%.2f");
+                    ImGuiMCP::SliderFloat("Quadratic", &config.quadraticAttenuation, 0.0f, 1.0f, "%.2f");
 
                     ImGuiMCP::NextColumn();
 
-                    if (ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f")) {
-                    }
+                    ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f");
+                    ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f");
+                    ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
+                    ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
 
-                    if (ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f")) {
-                    }
-
-                    if (ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f")) {
-                    }
-
-                    if (ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight)) {
-                    }
-
+                    ImGuiMCP::EndDisabled();
 
                     ImGuiMCP::EndChild();
                 }

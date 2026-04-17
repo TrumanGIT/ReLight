@@ -135,8 +135,10 @@ void AddonNodes::thunk(
 	    // slot 9 == torch or candle light ect, we wait 1 second after cell fully loaded or crash because of 1 hooks call site idk why 
 	if (a_slot == 9 && globals::secondAfterCellFullyLoaded.load()) {
 
+		logger::debug("cloned node = {} a_node = {}", a_clonedNode->name.c_str(), a_node->name.c_str());
+
 		// delay with add task or the light hasent appeared in the shadow scene node active light list yet
-            SKSE::GetTaskInterface()->AddTask([]() {
+            SKSE::GetTaskInterface()->AddTask([a_node]() {
                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                 if (!ssNode)
                     return;
@@ -150,35 +152,33 @@ void AddonNodes::thunk(
 
                     auto* light = lightEntry->light.get();
 
-                    if (!light || !light->parent || !light->parent->name.c_str())
+                    if (!light || !light->parent)
                         continue;
 
-					if (!light->parent->parent || !light->parent->parent->name.c_str())
-						continue;
+					auto torchFire = a_node->GetObjectByName("TorchFire");
 
-					std::string parentName = light->parent->name.c_str(); 
+					if (!torchFire) continue; 
 
-					std::string parentsParentName = light->parent->parent->name.c_str(); 
+					logger::debug("torchfire found"); 
+
+					auto attachLight = a_node->GetObjectByName("AttachLight"); 
+
+					if (!attachLight) continue; 
+
+					logger::debug("attach light found");
+
+					//attachlight
+					auto parent = light->parent;
 
 					// this is where the light would be in the torch or whatevers node tree
-					if (parentName != "AttachLight") {
-						//logger::warn("users torch node tree does not contain object w name AttachLight, cant attach light");
-						continue; 
-					}	
-
+					if (attachLight == parent) {
+	
 					// catches magic lights and torches and this excludes them in bslightingshaderhook as well (important)
 					lightEntry->unk060 = 4;
 
 					// this check prevents editing lights to things like magic spell candly light ect
 					//tbh we should allow users to edit all lights one day so ill prolly remake this so users can edit spells too.
-					if (!parentsParentName.contains("orch")) continue; 
-
-					auto parent = light->parent->AsNode();
-					if (!parent) {
-						logger::warn("couldn’t cast torch as node will not apply light to torches");
-						continue;
-					}
-					
+		
 					std::string torchName = "torch";
 
 					auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
@@ -194,6 +194,7 @@ void AddonNodes::thunk(
 					LightData::setNiPointLightDataFromCfg(light, cfg, 1.0);
 
 					logger::debug("Applied torch light data"); 
+					}
                 }
             });
     } 
