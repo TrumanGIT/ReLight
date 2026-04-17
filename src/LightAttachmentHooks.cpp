@@ -1,6 +1,4 @@
 #include "LightAttachmentHooks.h"
-#include "LightManager.h"
-#include "Utility.h"
 
 // ATTACH LIGHTS DURING LOAD3D() HOOK, ANY EARLIER AND LIGHTS SPAWN AT CELL ORIGIN BC WORLD POSITION DATA ISENT LOADED?
 
@@ -118,7 +116,7 @@ void Load3D::Install()
 	logger::info("Hooked TESObjectREFR::Load3D");
 }
 
-//yoinked this from PO3 Light Placer used only for torch light, could be used for weapons / armor and spells like candle light
+//yoinked this from PO3 Light Placer used only for torch light, could be used for weapons / armor 
 // im unable figure out how 1st person / 3rd person lights work. according to logging, in vanilla both are attachd at the 1st 
 //attachlight node in the node tree of a torch. I think the game constantly update the first persons lights position as the player moves.
 
@@ -132,71 +130,76 @@ void AddonNodes::thunk(
 {
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
 		 
-	    // slot 9 == torch or candle light ect, we wait 1 second after cell fully loaded or crash because of 1 hooks call site idk why 
+	    // slot 9 == torch we wait 1 second after cell fully loaded or crash because of 1 hooks call site idk why 
 	if (a_slot == 9 && globals::secondAfterCellFullyLoaded.load()) {
 
 		logger::debug("cloned node = {} a_node = {}", a_clonedNode->name.c_str(), a_node->name.c_str());
 
 		// delay with add task or the light hasent appeared in the shadow scene node active light list yet
-            SKSE::GetTaskInterface()->AddTask([a_node]() {
-                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                if (!ssNode)
-                    return;
+		SKSE::GetTaskInterface()->AddTask([a_node]() {
+			auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+			if (!ssNode || !a_node)
+				return;
 
-                auto& rt = ssNode->GetRuntimeData();
+			auto& rt = ssNode->GetRuntimeData();
 
-				// try to find the light from the hooks arguments
-                for (auto& lightEntry : rt.activeLights) {
-                    if (!lightEntry)
-                        continue;
+			auto* torchFire = a_node->GetObjectByName("TorchFire");
+			if (!torchFire)
+				return;
 
-                    auto* light = lightEntry->light.get();
+			auto* attachLight = a_node->GetObjectByName("AttachLight");
+			if (!attachLight)
+				return;
 
-                    if (!light || !light->parent)
-                        continue;
+			logger::debug("torchfire + attachlight found");
 
-					auto torchFire = a_node->GetObjectByName("TorchFire");
+			std::string torchName = "torch";
+			auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
+			if (cfgs.empty())
+				return;
 
-					if (!torchFire) continue; 
+			auto& cfg = cfgs[0];
 
-					logger::debug("torchfire found"); 
-
-					auto attachLight = a_node->GetObjectByName("AttachLight"); 
-
-					if (!attachLight) continue; 
-
-					logger::debug("attach light found");
-
-					//attachlight
-					auto parent = light->parent;
-
-					// this is where the light would be in the torch or whatevers node tree
-					if (attachLight == parent) {
-	
-					// catches magic lights and torches and this excludes them in bslightingshaderhook as well (important)
-					lightEntry->unk060 = 4;
-
-					// this check prevents editing lights to things like magic spell candly light ect
-					//tbh we should allow users to edit all lights one day so ill prolly remake this so users can edit spells too.
-		
-					std::string torchName = "torch";
-
-					auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
-					if (cfgs.empty())
+			// lambda that works for both active + shadow light containers
+			auto processLights = [&](auto& lights, const char* typeName) {
+				for (auto& lightEntry : lights) {
+					if (!lightEntry)
 						continue;
 
-					auto& cfg = cfgs[0];
+					auto* light = lightEntry->light.get();
+					if (!light || !light->parent)
+						continue;
+
+					if (light->parent != attachLight)
+						continue;
+
+					lightEntry->unk060 = 4;
 
 					light->name = "RL" + torchName;
 					light->unk138 = cfg.configID;
 
-					// set scale to 1.0 I doubt user is using a scaled down size torch
-					LightData::setNiPointLightDataFromCfg(light, cfg, 1.0);
+					LightData::setNiPointLightDataFromCfg(light, cfg, 1.0f);
 
-					logger::debug("Applied torch light data"); 
-					}
-                }
-            });
+					logger::debug(
+						"Applied torch light data to {} light ptr={}",
+						typeName,
+						static_cast<void*>(light));
+
+					return true; // stop after first match
+				}
+				return false;
+				};
+
+			bool found = false;
+
+			found |= processLights(rt.activeLights, "active");
+
+			found |= processLights(rt.activeShadowLights, "shadow");
+
+			if (!found) {
+				logger::debug("Torch light not found in active or shadow lists");
+			}
+			});
     } 
 }
 

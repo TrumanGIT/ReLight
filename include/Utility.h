@@ -13,16 +13,6 @@
 
 namespace logger = SKSE::log;
 
-/*inline void initialize() {
-     logger::info("loading forms");
-   auto dataHandler = RE::TESDataHandler::GetSingleton();
-   //LoadScreenLightMain (seemingly unsued, does not come through the  light gen hook so useful as a dymmy) 
-   dummyLightObject = dataHandler->LookupForm<RE::TESObjectLIGH>(0x00105300, "Skyrim.esm");
-   if (!dummyLightObject) {
-        logger::info("TESObjectLIGH dummyLightObject (0x00105300) not found");
-    }
-}*/
-
 inline void isPlayerInInteriorCell(){
 
 	auto* player = RE::PlayerCharacter::GetSingleton();
@@ -92,8 +82,6 @@ inline void splitString(const std::string& input, char delimiter, std::vector<st
 	}
 }
 
-
-//TODO:: Log set values for debugging (saved me alot of flickerTime with users) 
 inline void iniParser()
 {
 	std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
@@ -356,30 +344,6 @@ inline void iniParser()
 	logger::info("ReLight.ini parsed successfully!");
 }
 
-inline bool IsInSoulCairnOrApocrypha(RE::PlayerCharacter* player) {
-	if (!player) {
-		return false;
-	}
-
-	static RE::FormID soulCairnFormID = 0x2001408;
-	static RE::FormID apocryphaFormID = 0x0401C0B2;
-
-	auto worldspace = player->GetWorldspace();
-	if (!worldspace) {
-		// logger::info("worldSpace not valid cant get location");
-		return false;  // Not in a worldspace (probably in an interior cell)
-	}
-
-	// logger::debug("current worldspace = {}", worldspace->GetFormID());
-
-	if (worldspace->GetFormID() == apocryphaFormID || worldspace->GetFormID() == soulCairnFormID) {
-		//  logger::info("is in soul cairn or apocrypha");
-		return true;
-	}
-
-	return false;
-}
-
 //removes unsightly glow orbs from meshes
 inline void glowOrbRemover(RE::NiNode* node)
 {
@@ -454,36 +418,6 @@ inline bool isExcludedRef(const RE::TESObjectREFR* ref)
 	return false;
 }
 
-/*inline bool isNodeExclude(const RE::BSFixedString& nodeName, RE::TESObjectREFR* ref)
-{
-
-	// Exact matches in exclusion list
-	for (const auto& exclude : globals::nodeNameExclusionList) {
-		if (nodeName == exclude) {
-			logger::debug("isExclude: '{}' matched exact exclude '{}' skipping light attachment", nodeName.c_str(), exclude);
-			return true;
-		}
-		
-	}
-
-	// Partial matches in exclusion list
-	for (const auto& exclude : globals::nodeNameExclusionListPartialMatch) {
-		if (nodeName.contains(exclude)) {
-			logger::debug("isExclude: '{}' matched partial exclude '{}' skipping light attachment", nodeName.c_str(), exclude);
-			return true;
-		}
-			
-	}
-
-	if (isExcludedRef(ref)) {
-		return true;
-	}
-	
-
-	return false;
-}*/
-
-
 inline bool isExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
 {
 	// Exact matches in exclusion list
@@ -529,6 +463,52 @@ inline void getObjectFadeMult() {
 			globals::fLODFadeOutMultObjects = setting->GetFloat() * 1000;
 		}
 	}
+}
+
+inline RE::NiAVObject* FindObjectByNameRecursive(RE::NiAVObject* root, std::string_view targetName)
+{
+	if (!root) {
+		return nullptr;
+	}
+
+	auto name = std::string_view(root->name.c_str());
+	if (name == targetName) {
+		return root;
+	}
+
+	auto* asNode = root->AsNode();
+	if (!asNode) {
+		return nullptr;
+	}
+
+	for (const auto& child : asNode->GetChildren()) {
+		if (!child) {
+			continue;
+		}
+
+		if (auto* found = FindObjectByNameRecursive(child.get(), targetName)) {
+			return found;
+		}
+	}
+
+	return nullptr;
+}
+
+inline bool IsDescendantOf(RE::NiAVObject* object, RE::NiAVObject* possibleAncestor)
+{
+	if (!object || !possibleAncestor) {
+		return false;
+	}
+
+	auto* current = object;
+	while (current) {
+		if (current == possibleAncestor) {
+			return true;
+		}
+		current = current->parent;
+	}
+
+	return false;
 }
 
 // this was made for debugging 

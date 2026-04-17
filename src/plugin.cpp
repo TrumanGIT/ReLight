@@ -48,7 +48,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         LightData::masterNiPointLight = NiPointLight::NiPointLight();
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
-//      LightManager::OurEventSink::TESCellFullyLoadedEventInstall(); 
         getObjectFadeMult();
         logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);
      
@@ -75,5 +74,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    BSLightingShaderProperty_IsLightAffectingSurface::Install();
    InventoryMenu::Install(); 
    CraftingMenu::Install();
-    return true;
+   ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
+   return true;
 }

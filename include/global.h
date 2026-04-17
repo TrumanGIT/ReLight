@@ -11,6 +11,9 @@ namespace globals
 {
     inline std::atomic_bool unDesiredMenuOpen = false;
 
+    inline std::atomic_bool magicLightQueued = false;
+
+    inline RE::NiAVObject* magicLightAttachNode = nullptr; 
 
     inline uint32_t nextID = 1;
 

@@ -1,6 +1,5 @@
 #include "everyFrame.h"
-#include "LightManager.h"
-#include "disableLights.h"
+
 
 //this is used for flicker it runs every frame and works with SKSE Menu framework menu opem
 void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
@@ -43,14 +42,16 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	auto& ssRt = ssNode->GetRuntimeData();
 
-	ApplyLightFlicker(ssRt.activeLights, delta, false);
+	const auto playerPos = player->GetPosition(); 
 
-	ApplyLightFlicker(ssRt.activeShadowLights, delta, true);
+	ApplyLightFlicker(ssRt.activeLights, delta, false, playerPos);
+
+	ApplyLightFlicker(ssRt.activeShadowLights, delta, true, playerPos);
 }
 
 void PlayerCharacter_Update::Install()
 {
-
 	func = REL::Relocation<std::uintptr_t>(RE::PlayerCharacter::VTABLE[0])
 		.write_vfunc(0xAD, thunk);
+	logger::info("player chracter update hook installed");
 }

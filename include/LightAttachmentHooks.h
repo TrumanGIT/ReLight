@@ -1,5 +1,8 @@
 #pragma once
 
+#include "LightManager.h"
+#include "Utility.h"
+#include "global.h"
 
 // correct timing to attach lights because world position data is loaded, earlier = lights show up at cell origin 0,0,0
 struct Load3D {
@@ -28,4 +31,64 @@ struct AddonNodes
     static void Install();
 };
 
+// for spells like candlelight
+namespace ReferenceEffect
+{
+    template <class T>
+    struct Init
+    {
+        static bool thunk(T* a_this)
+        {
+            auto result = func(a_this);
 
+            if (result) {
+                if constexpr (std::is_same_v<T, RE::ModelReferenceEffect>) {
+                    logger::info("ModelReferenceEffect::Init fired a_this={}", static_cast<void*>(a_this));
+
+                    // must delay or no artobject3d
+                    SKSE::GetTaskInterface()->AddTask([a_this]() {
+                        if (!a_this) {
+                            logger::info("Deferred ModelReferenceEffect task: a_this was null");
+                            return;
+                        }
+
+                        RE::NiAVObject* node = a_this->artObject3D.get();
+                        if (!node) {
+                            logger::info("Deferred ModelReferenceEffect task: artObject3D still null");
+                            return;
+                        }
+
+                        logger::info("Deferred artObject3D root name = {}", node->name.c_str());
+
+                        globals::magicLightAttachNode = FindObjectByNameRecursive(node, "AttachLight");
+                        if (!globals::magicLightAttachNode) {
+                            logger::info("Deferred task: AttachLight not found in ModelReferenceEffect tree");
+                            return;
+                        }
+
+                        // must delay quite a while so we deal with this in the everyframe.h player update hook
+                        globals::magicLightQueued.store(true); 
+
+                        logger::info(
+                            "Deferred task: AttachLight found name={} ptr={}",
+                            globals::magicLightAttachNode->name.c_str(),
+                            static_cast<void*>(globals::magicLightAttachNode));
+                        });
+                }
+            }
+
+            return result;
+        }
+
+        static inline REL::Relocation<decltype(thunk)> func;
+        static constexpr std::size_t idx{ 0x36 };
+
+        static void Install()
+        {
+            func = REL::Relocation<std::uintptr_t>(T::VTABLE[0])
+                .write_vfunc(idx, thunk);
+
+            logger::info("Hooked {}::Init", typeid(T).name());
+        }
+    };
+}
