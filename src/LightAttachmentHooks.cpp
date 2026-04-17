@@ -130,77 +130,31 @@ void AddonNodes::thunk(
 {
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
 		 
-	    // slot 9 == torch we wait 1 second after cell fully loaded or crash because of 1 hooks call site idk why 
-	if (a_slot == 9 && globals::secondAfterCellFullyLoaded.load()) {
+	if (a_slot == 9) {
 
 		logger::debug("cloned node = {} a_node = {}", a_clonedNode->name.c_str(), a_node->name.c_str());
 
 		// delay with add task or the light hasent appeared in the shadow scene node active light list yet
-		SKSE::GetTaskInterface()->AddTask([a_node]() {
-			auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-			if (!ssNode || !a_node)
-				return;
 
-			auto& rt = ssNode->GetRuntimeData();
+		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+		if (!ssNode || !a_node)
+			return;
 
-			auto* torchFire = a_node->GetObjectByName("TorchFire");
-			if (!torchFire)
-				return;
+		auto& rt = ssNode->GetRuntimeData();
 
-			auto* attachLight = a_node->GetObjectByName("AttachLight");
-			if (!attachLight)
-				return;
+		auto* torchFire = a_node->GetObjectByName("TorchFire");
+		if (!torchFire)
+			return;
 
-			logger::debug("torchfire + attachlight found");
+		auto* attachLight = a_node->GetObjectByName("AttachLight");
+		if (!attachLight)
+			return;
 
-			std::string torchName = "torch";
-			auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
-			if (cfgs.empty())
-				return;
+		// deal with it a second later otherwise light isent ready yet
+		globals::torchLightAttachNodes.emplace_back(attachLight);
 
-			auto& cfg = cfgs[0];
-
-			// lambda that works for both active + shadow light containers
-			auto processLights = [&](auto& lights, const char* typeName) {
-				for (auto& lightEntry : lights) {
-					if (!lightEntry)
-						continue;
-
-					auto* light = lightEntry->light.get();
-					if (!light || !light->parent)
-						continue;
-
-					if (light->parent != attachLight)
-						continue;
-
-					lightEntry->unk060 = 4;
-
-					light->name = "RL" + torchName;
-					light->unk138 = cfg.configID;
-
-					LightData::setNiPointLightDataFromCfg(light, cfg, 1.0f);
-
-					logger::debug(
-						"Applied torch light data to {} light ptr={}",
-						typeName,
-						static_cast<void*>(light));
-
-					return true; // stop after first match
-				}
-				return false;
-				};
-
-			bool found = false;
-
-			found |= processLights(rt.activeLights, "active");
-
-			found |= processLights(rt.activeShadowLights, "shadow");
-
-			if (!found) {
-				logger::debug("Torch light not found in active or shadow lists");
-			}
-			});
-    } 
+		logger::debug("torchfire + attachlight nodes found sending to torch queue");
+	}
 }
 
 void AddonNodes::Install()

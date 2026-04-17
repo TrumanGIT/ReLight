@@ -9,11 +9,14 @@
 namespace globals
 
 {
+    //Attach Misc Lights
     inline std::atomic_bool unDesiredMenuOpen = false;
 
     inline std::atomic_bool magicLightQueued = false;
 
     inline RE::NiAVObject* magicLightAttachNode = nullptr; 
+
+    inline std::vector<RE::NiAVObject*> torchLightAttachNodes{};
 
     inline uint32_t nextID = 1;
 

@@ -494,23 +494,6 @@ inline RE::NiAVObject* FindObjectByNameRecursive(RE::NiAVObject* root, std::stri
 	return nullptr;
 }
 
-inline bool IsDescendantOf(RE::NiAVObject* object, RE::NiAVObject* possibleAncestor)
-{
-	if (!object || !possibleAncestor) {
-		return false;
-	}
-
-	auto* current = object;
-	while (current) {
-		if (current == possibleAncestor) {
-			return true;
-		}
-		current = current->parent;
-	}
-
-	return false;
-}
-
 // this was made for debugging 
 /*inline void DumpFullTree(RE::NiAVObject* obj, int depth = 0)
 {
@@ -585,7 +568,6 @@ inline std::string extractMeshName(const std::string& path) {
 	auto dotPos = filename.find_last_of('.');
 	return (dotPos != std::string::npos) ? filename.substr(0, dotPos) : filename;
 }
-
 
 inline bool TESRayHitStatic(RE::bhkWorld* world, RE::NiPoint3 start, RE::NiPoint3 end)
 {

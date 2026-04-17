@@ -562,7 +562,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
         if (!light || !light->light)
 			continue;
 
-        // this is to deal with spells like candlelight ect 
+        // this is to deal with spells like candlelight ect annoying af bc the light isent ready at the time of its hook
         if (globals::magicLightQueued.load()) {
             if (light->light->parent && light->light->parent == globals::magicLightAttachNode) {
 
@@ -575,6 +575,35 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
                 globals::magicLightAttachNode = nullptr;
             }
         }
+
+		// this is to deal with torches annoying af bc light isent ready at the tim eof th add on node hook
+		std::vector<size_t> indicesToRemove; 
+
+		for (size_t i = 0; i < globals::torchLightAttachNodes.size(); ++i) {
+			auto& attachLightNode = globals::torchLightAttachNodes[i];
+
+			if (light->light->parent && light->light->parent == attachLightNode) {
+				light->unk060 = 4;
+
+				std::string torchName = "torch";
+
+				auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
+
+				if (cfgs.empty()) continue; 
+
+				light->light->name = "RL" + torchName;
+				light->light->unk138 = cfgs[0].configID;
+
+				LightData::setNiPointLightDataFromCfg(light->light.get(), cfgs[0], 1.0f);
+
+				indicesToRemove.push_back(i); // mark for removal
+			}
+		}
+
+		// remove torch nodes we dealt with after iterating
+		for (auto it = indicesToRemove.rbegin(); it != indicesToRemove.rend(); ++it) {
+			globals::torchLightAttachNodes.erase(globals::torchLightAttachNodes.begin() + *it);
+		}
 
         auto name = std::string_view(light->light->name.c_str());
         if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
@@ -627,7 +656,6 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
             }
         }
 }
-
 
 inline void handlePendingMerges() {
     std::lock_guard lock(LightManager::pendingMergesMutex);
