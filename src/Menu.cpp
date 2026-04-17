@@ -1233,7 +1233,7 @@ namespace UI {
         case AttachLightStep::AlreadyHasLight:
         {
             centerNextItem(350.0f);
-            ImGuiMCP::Text("This object already has a ReLight light.");
+            ImGuiMCP::Text("Object Selected in the console already has a ReLight light.");
       
             ImGuiMCP::Spacing(); 
 
@@ -1330,7 +1330,7 @@ namespace UI {
 
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("Add Object To Light Exclusion List")) {
+            if (ImGuiMCP::Button("Add To Light Exclusion List")) {
 
                 std::string refIDandModName = BuildRefIDAndModName(selected);
 
@@ -1458,7 +1458,7 @@ namespace UI {
         case AttachLightStep::ChooseTemplateType:
         {
             centerNextItem(430.0f);
-            ImGuiMCP::Text("Create new Light Template or add to existing template.");
+            ImGuiMCP::Text("      Attaching light to object selected in console.\nCreate new Light Template or add to existing template?");
 
 
             ImGuiMCP::Spacing();
@@ -1578,7 +1578,7 @@ namespace UI {
         case AttachLightStep::ChooseScope:
         {
             centerNextItem(260.0f);
-            ImGuiMCP::Text("This object only, or all objects like it?");
+            ImGuiMCP::Text("Object you selected in the console only, or all objects like it?");
 
             ImGuiMCP::Spacing();
 
