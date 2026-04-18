@@ -1457,7 +1457,7 @@ namespace UI {
 
         case AttachLightStep::ChooseTemplateType:
         {
-            centerNextItem(430.0f);
+            centerNextItem(430.0f);       
             ImGuiMCP::Text("      Attaching light to object selected in console.\nCreate new Light Template or add to existing template?");
 
 
@@ -1578,7 +1578,7 @@ namespace UI {
         case AttachLightStep::ChooseScope:
         {
             centerNextItem(260.0f);
-            ImGuiMCP::Text("Object you selected in the console only, or all objects like it?");
+            ImGuiMCP::Text("This Object Only, or all objects like it?");
 
             ImGuiMCP::Spacing();
 
