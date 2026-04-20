@@ -427,13 +427,54 @@ namespace UI {
 
     inline void RefreshNonRuntimeSettings(uint32_t configID)
     {
+
+        // first find the selected config in the mesh path to config map path, 
+        // we will need to update the mesh path version of same config so when we disable / enble 
+        // the lights will be refreshed with current changes included
+        auto it = LightData::configIDToJsonCfg.find(configID);
+
+        if (it == LightData::configIDToJsonCfg.end()) {
+            logger::warn("configID {} not found in config map cant refresh lights", configID);
+            return; 
+        }
+      
+        auto cfg = it->second; 
+
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
         if (!ssNode) {
             logger::warn("ShadowSceneNode[0] is null cant reinitialize lights");
             return;
         }
 
-        std::vector<RE::NiPointer<RE::BSLight>> lightsToRemove;
+        bool found = false;
+
+        for (auto& [mesh, configs] : LightData::meshPathToJsonCfg) {
+            for (auto& c : configs) {
+                if (c.configID == cfg.configID) {
+                    //update config with current changes
+                    c = cfg;
+                    found = true;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+
+        if (!found) {
+            for (auto& [mesh, configs] : LightData::meshPathToJsonCfgExteriors) {
+                for (auto& c : configs) {
+                    if (c.configID == cfg.configID) {
+                        //update config with current changes
+                        c = cfg;
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) break;
+            }
+        }
+
+        std::vector<RE::NiPointer<RE::NiLight>> lightsToRemove;
 
         std::vector<RE::NiPointer<RE::NiLight>> lightsToReAdd;
 
@@ -445,7 +486,7 @@ namespace UI {
             if (l->light->unk138 != configID) continue;
 
             lightsToReAdd.push_back(l->light);
-            lightsToRemove.push_back(l);
+            lightsToRemove.push_back(l->light);
         }
 
         // shadow lights
@@ -455,21 +496,14 @@ namespace UI {
 
             if (l->light->unk138 != configID) continue;
             lightsToReAdd.push_back(l->light);
-            lightsToRemove.push_back(l);
-        }
-
-        for (const auto& l : ssNode->activeLights) {
-            if (!l || !l->light)
-                continue;
-
-            if (l->light->unk138 != configID) continue;
-            lightsToReAdd.push_back(l->light);
-            lightsToRemove.push_back(l);
+            lightsToRemove.push_back(l->light);
         }
 
         // remove using underlying light
         for (const auto& light : lightsToRemove) {
-            ssNode->RemoveLight(light);
+            if (!light.get()) continue; 
+
+            ssNode->RemoveLight(light.get());
         }
 
         SKSE::GetTaskInterface()->AddTask([lightsToReAdd]() {
@@ -483,12 +517,6 @@ namespace UI {
                 if (!light)
                     continue;
 
-                auto it = LightData::configIDToJsonCfg.find(light->unk138);
-                if (it == LightData::configIDToJsonCfg.end()) {
-                    logger::warn("no config for configID {} cant refresh non runtime settings", light->unk138);
-                    continue;
-                }
-
                 auto ref = light->GetUserData(); 
 
                 if (!ref) {
@@ -496,16 +524,17 @@ namespace UI {
                     continue; 
                 }
 
-                LightData::setNiPointLightDataFromCfg(light.get(), it->second, ref->GetScale());
-
-                auto params = LightData::makeLightParams(it->second);
-                ssNode->AddLight(light.get(), params);
+                ref->Disable(); 
+                ref->Enable(false); 
             }
 
-            // reset tri light cache
-            LightData::ResetTriLightCache(); 
+            //must reset surfaces closest 7 lights. shut off shader hook for 1 sec
+            // otherwise new lights wont appear
+            globals::secondAfterCellFullyLoaded.store(false); 
 
-            });
+            LightData::ResetTriLightCache(); 
+     
+        });
     }
 
     bool didRefreshThisFrame = false;
@@ -625,7 +654,7 @@ namespace UI {
 
         ImGuiMCP::Separator();
 
-        if (ImGuiMCP::Checkbox("Enable Editor", &enableLightEditor)) {
+      /* if (ImGuiMCP::Checkbox("Enable Editor", &enableLightEditor)) {
             if (enableLightEditor) {
                 lightRefreshTicker.reset();
                 refreshAllLights(selectedIndex);
@@ -635,7 +664,7 @@ namespace UI {
         if (!enableLightEditor) {
             ImGuiMCP::Text("Light Editor is disabled. Enable it to edit light properties.");
             return;
-        }
+        }*/ 
 
         if (lightRefreshTicker.shouldTick()) {
             refreshAllLights(selectedIndex);
@@ -1232,7 +1261,7 @@ namespace UI {
 
         case AttachLightStep::AlreadyHasLight:
         {
-            centerNextItem(350.0f);
+            centerNextItem(300.0f);
             ImGuiMCP::Text("Object Selected in the console already has a ReLight light.");
       
             ImGuiMCP::Spacing(); 
@@ -1446,7 +1475,7 @@ namespace UI {
             }
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip(
-                    "Adds to exclude by refID section in RELight.ini file\n"
+                    "Adds to exclude by refID section in RELight.ini file, preventing object from getting a Relight\n"
                     "TIP: Can also use to change a automated light into a seperate light you can edit by itself in the light editor.\n"
                     "Just push this button, then when attaching a new light select 'this object only'"
                 );

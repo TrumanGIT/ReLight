@@ -71,7 +71,8 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 	return true;
 }
 
-//what I do here is reimplement this func, and collect closest lights once 1 second after cell loaded (otherwise no lights yet)
+//used to limit surfaces to 7 closest lights to prevent light flickering
+//what I do here is reimplement this base game func, and collect closest lights once 1 second after cell loaded (otherwise no lights yet)
 // then I store the array index in a shader propertys unused forced darkness member field for fast lookups after that
 
 //meh321 - intellightent
