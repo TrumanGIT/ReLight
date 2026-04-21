@@ -425,20 +425,19 @@ namespace UI {
         }
     }
 
+
+    // timing is a real issue, ive tried 4 or 5 different ways anjd lights dont intiialize 
+    // properly and this was the way that i ended up on
     inline void RefreshNonRuntimeSettings(uint32_t configID)
     {
-
-        // first find the selected config in the mesh path to config map path, 
-        // we will need to update the mesh path version of same config so when we disable / enble 
-        // the lights will be refreshed with current changes included
         auto it = LightData::configIDToJsonCfg.find(configID);
 
         if (it == LightData::configIDToJsonCfg.end()) {
             logger::warn("configID {} not found in config map cant refresh lights", configID);
-            return; 
+            return;
         }
-      
-        auto cfg = it->second; 
+
+        LightConfig cfg = it->second;
 
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
         if (!ssNode) {
@@ -446,95 +445,96 @@ namespace UI {
             return;
         }
 
-        bool found = false;
+        auto queueLight = [&](const RE::NiPointer<RE::NiLight>& light) {
+            if (!light)
+                return;
 
-        for (auto& [mesh, configs] : LightData::meshPathToJsonCfg) {
-            for (auto& c : configs) {
-                if (c.configID == cfg.configID) {
-                    //update config with current changes
-                    c = cfg;
-                    found = true;
-                    break;
-                }
+            auto ref = light->GetUserData();
+            if (!ref) {
+                logger::warn("no ref for configID {} cant refresh non runtime settings", light->unk138);
+                return;
             }
-            if (found) break;
-        }
 
-        if (!found) {
-            for (auto& [mesh, configs] : LightData::meshPathToJsonCfgExteriors) {
-                for (auto& c : configs) {
-                    if (c.configID == cfg.configID) {
-                        //update config with current changes
-                        c = cfg;
-                        found = true;
-                        break;
-                    }
+            const RE::FormID formID = ref->GetFormID();
+
+            // delay
+            SKSE::GetTaskInterface()->AddTask([cfg, ref]() mutable {
+
+                const RE::FormID formID = ref->GetFormID();
+
+                auto loadedModel = ref->Get3D();
+                if (!loadedModel) {
+                    logger::error("no loaded model for ref, cant refresh non runtime settings");
+                    return;
                 }
-                if (found) break;
-            }
-        }
 
-        std::vector<RE::NiPointer<RE::NiLight>> lightsToRemove;
+                RE::NiNode* root = loadedModel->AsNode();
+                if (!root) {
+                    logger::error("no attachable node for ref cant refresh non runtime settings");
+                    return;
+                }
 
-        std::vector<RE::NiPointer<RE::NiLight>> lightsToReAdd;
+                auto baseObj = ref->GetBaseObject();
+                if (!baseObj) {
+                    logger::error("no base object for ref cant refresh non runtime settings");
+                    return;
+                }
 
-        // regular lights
+                const auto bm = baseObj->As<RE::TESModel>();
+                if (!bm) {
+                    logger::error("base object is not TESModel cant refresh non runtime settings");
+                    return;
+                }
+
+                auto currentModel = std::string(bm->GetModel());
+                auto meshName = extractMeshName(currentModel);
+
+                bool attachedDebugMarker = false;
+
+                RE::NiLight* niLight = LightManager::AttachLight(
+                    cfg,
+                    root,
+                    ref,
+                    meshName,
+                    formID,
+                    attachedDebugMarker);
+
+                if (!niLight) {
+                    logger::error("no niLight cant refresh non runtime settings");
+                    return;
+                }
+
+               
+            });
+
+            };
+
         for (const auto& l : ssNode->activeLights) {
             if (!l || !l->light)
                 continue;
 
-            if (l->light->unk138 != configID) continue;
+            if (l->light->unk138 != configID)
+                continue;
+            ssNode->RemoveLight(l->light.get());
 
-            lightsToReAdd.push_back(l->light);
-            lightsToRemove.push_back(l->light);
+            queueLight(l->light);
         }
 
-        // shadow lights
         for (const auto& l : ssNode->activeShadowLights) {
             if (!l || !l->light)
                 continue;
 
-            if (l->light->unk138 != configID) continue;
-            lightsToReAdd.push_back(l->light);
-            lightsToRemove.push_back(l->light);
+            if (l->light->unk138 != configID)
+                continue;
+
+            ssNode->RemoveLight(l->light.get()); 
+
+            queueLight(l->light);
         }
 
-        // remove using underlying light
-        for (const auto& light : lightsToRemove) {
-            if (!light.get()) continue; 
 
-            ssNode->RemoveLight(light.get());
-        }
-
-        SKSE::GetTaskInterface()->AddTask([lightsToReAdd]() {
-            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-            if (!ssNode) {
-                logger::warn("ShadowSceneNode[0] is null in queued light refresh task");
-                return;
-            }
-
-            for (const auto& light : lightsToReAdd) {
-                if (!light)
-                    continue;
-
-                auto ref = light->GetUserData(); 
-
-                if (!ref) {
-                    logger::warn("no ref for configID {} cant refresh non runtime settings", light->unk138);
-                    continue; 
-                }
-
-                ref->Disable(); 
-                ref->Enable(false); 
-            }
-
-            //must reset surfaces closest 7 lights. shut off shader hook for 1 sec
-            // otherwise new lights wont appear
-            globals::secondAfterCellFullyLoaded.store(false); 
-
-            LightData::ResetTriLightCache(); 
-     
-        });
+        globals::secondAfterCellFullyLoaded.store(false);
+        LightData::ResetTriLightCache();
     }
 
     bool didRefreshThisFrame = false;

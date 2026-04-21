@@ -615,7 +615,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 			continue;
 
         // this is to remove shadow lights from the scene otherwise they stay after mesh unloads
-        if (shadowLights && !light->light->parent) {
+        if (!light->light->parent) {
             toRemove.push_back(light->light);
             continue;
         }

@@ -43,33 +43,31 @@ namespace ReferenceEffect
 
             if (result) {
                 if constexpr (std::is_same_v<T, RE::ModelReferenceEffect>) {
-                    logger::info("ModelReferenceEffect::Init fired a_this={}", static_cast<void*>(a_this));
+                    //logger::info("ModelReferenceEffect::Init fired a_this={}", static_cast<void*>(a_this));
 
                     // must delay or no artobject3d
                     SKSE::GetTaskInterface()->AddTask([a_this]() {
                         if (!a_this) {
-                            logger::info("Deferred ModelReferenceEffect task: a_this was null");
+                            logger::debug("Deferred ModelReferenceEffect task: a_this was null");
                             return;
                         }
 
                         RE::NiAVObject* node = a_this->artObject3D.get();
                         if (!node) {
-                            logger::info("Deferred ModelReferenceEffect task: artObject3D still null");
+                            logger::debug("Deferred ModelReferenceEffect task: artObject3D still null");
                             return;
                         }
 
-                        logger::info("Deferred artObject3D root name = {}", node->name.c_str());
-
                         globals::magicLightAttachNode = FindObjectByNameRecursive(node, "AttachLight");
                         if (!globals::magicLightAttachNode) {
-                            logger::info("Deferred task: AttachLight not found in ModelReferenceEffect tree");
+                            logger::debug("Deferred task: AttachLight not found in ModelReferenceEffect tree");
                             return;
                         }
 
                         // must delay quite a while so we deal with this in the everyframe.h player update hook
                         globals::magicLightQueued.store(true); 
 
-                        logger::info(
+                        logger::debug(
                             "Deferred task: AttachLight found name={} ptr={}",
                             globals::magicLightAttachNode->name.c_str(),
                             static_cast<void*>(globals::magicLightAttachNode));
