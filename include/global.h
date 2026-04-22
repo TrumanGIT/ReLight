@@ -20,8 +20,8 @@ namespace globals
 
     inline uint32_t nextID = 1;
 
-    inline bool disableShadowCasters = false;
-    inline bool disableTorchLights = false;
+    inline bool disableGameLights = true;
+ 
     inline bool removeFakeGlowOrbs = false;
 
     inline bool lastCellWasInterior = false;

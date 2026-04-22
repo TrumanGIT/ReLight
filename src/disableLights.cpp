@@ -44,6 +44,8 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 		return false;
 	}
 
+    if (!globals::disableGameLights) return false; 
+
     std::string edid = clib_util::editorID::get_editorID(light);
 
     toLower(edid);
@@ -103,7 +105,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     auto pass = p->renderPassList.head;
     if (!pass || !pass->geometry) return true;
     
-    // dont want to block large tri shapes that might supposed have more then 7 lights (windhelmBridge) 
+    // dont want to block large tri shapes that might supposed have more then 7 lights (windhelmBridge, candlehearthhall) 
     if (pass->geometry->worldBound.radius > 1800) return true;
 
     //return on actors and skp invalid references potentially

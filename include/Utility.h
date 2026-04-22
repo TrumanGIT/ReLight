@@ -118,7 +118,6 @@ inline void iniParser()
 		if (line.starts_with(";"))
 		{
 		
-
 			if (line.find("exclude by light editor id") != std::string::npos)
 				section = lightEdid;
 			else if (line.find("exclude specific mesh paths") != std::string::npos)
@@ -255,18 +254,27 @@ inline void iniParser()
 		std::string value = trim(line.substr(eq + 1));
 		toLower(value);
 
+		if (key == "disablegamelights") {
+			globals::disableGameLights = value == "true";
+			logger::info("disableGameLights = {}", globals::disableGameLights);
+			continue;
+		}
+
 		if (key == "removefakegloworbs") {
 			globals::removeFakeGlowOrbs = value == "true";
+			logger::info("removeFakeGlowOrbs = {}", globals::removeFakeGlowOrbs);
 			continue;
 		}
 
 		if (key == "enablelightflickerprevention") {
 			globals::enableLightFlickerPreventionMeasures = value == "true";
-			continue; 
+			logger::info("enableLightFlickerPreventionMeasures = {}", globals::enableLightFlickerPreventionMeasures);
+			continue;
 		}
 
 		if (key == "enabledebugbulbs") {
-			globals::enableDebugLightBulbs= value == "true";
+			globals::enableDebugLightBulbs = value == "true";
+			logger::info("enableDebugLightBulbs = {}", globals::enableDebugLightBulbs);
 			continue;
 		}
 
@@ -314,12 +322,12 @@ inline void iniParser()
 			continue;
 		}
 
-		if (key == "light fade per merge") {
+		if (key == "light fade increase per merge") {
 			globals::lightFadePerMerge = std::stof(value);
 			continue;
 		}
 
-		if (key == "light radius per merge") {
+		if (key == "light radius increase per merge") {
 			globals::lightRadiusPerMerge = std::stof(value);
 			continue;
 		}
@@ -334,7 +342,7 @@ inline void iniParser()
 			continue;
 		}
 
-		if (key == "light merge maxlights") {
+		if (key == "light merge max lights") {
 			globals::lightMergeMaxLights = std::stoi(value);
 			continue;
 		}

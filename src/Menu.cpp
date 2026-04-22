@@ -430,6 +430,7 @@ namespace UI {
     // properly and this was the way that i ended up on
     inline void RefreshNonRuntimeSettings(uint32_t configID)
     {
+        //get config of light were trying to refresh
         auto it = LightData::configIDToJsonCfg.find(configID);
 
         if (it == LightData::configIDToJsonCfg.end()) {
@@ -445,7 +446,7 @@ namespace UI {
             return;
         }
 
-        auto queueLight = [&](const RE::NiPointer<RE::NiLight>& light) {
+        auto addLight = [&](const RE::NiPointer<RE::NiLight>& light) {
             if (!light)
                 return;
 
@@ -454,8 +455,6 @@ namespace UI {
                 logger::warn("no ref for configID {} cant refresh non runtime settings", light->unk138);
                 return;
             }
-
-            const RE::FormID formID = ref->GetFormID();
 
             // delay
             SKSE::GetTaskInterface()->AddTask([cfg, ref]() mutable {
@@ -487,6 +486,7 @@ namespace UI {
                 }
 
                 auto currentModel = std::string(bm->GetModel());
+
                 auto meshName = extractMeshName(currentModel);
 
                 bool attachedDebugMarker = false;
@@ -504,6 +504,7 @@ namespace UI {
                     return;
                 }
 
+                UpdateRefRootTransforms(ref); 
                
             });
 
@@ -513,25 +514,53 @@ namespace UI {
             if (!l || !l->light)
                 continue;
 
-            if (l->light->unk138 != configID)
+            //skip non relight lights
+            auto name = std::string_view(l->light->name.c_str());
+            if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
                 continue;
+
+            // find config of current light
+            auto it2 = LightData::configIDToJsonCfg.find(l->light->unk138);
+
+            if (it2 == LightData::configIDToJsonCfg.end()) {
+                logger::warn("configID {} not found in config map cant refresh lights", configID);
+                return;
+            }
+
+            //if current light does not == selected light config path and json index, skip
+            // this is because multiple configs can have same json index and config path but have different config ids.
+            if (it2->second.configPath != cfg.configPath || it2->second.jsonIndex != cfg.jsonIndex)
+                continue; 
+
+            // remove any matches 
             ssNode->RemoveLight(l->light.get());
 
-            queueLight(l->light);
+            // add anew light
+            addLight(l->light);
         }
 
         for (const auto& l : ssNode->activeShadowLights) {
             if (!l || !l->light)
                 continue;
 
-            if (l->light->unk138 != configID)
+            auto name = std::string_view(l->light->name.c_str());
+            if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
+                continue;
+
+            auto it3 = LightData::configIDToJsonCfg.find(l->light->unk138);
+
+            if (it3 == LightData::configIDToJsonCfg.end()) {
+                logger::warn("configID {} not found in config map cant refresh lights", configID);
+                return;
+            }
+
+            if (it3->second.configPath != cfg.configPath || it3->second.jsonIndex != cfg.jsonIndex)
                 continue;
 
             ssNode->RemoveLight(l->light.get()); 
 
-            queueLight(l->light);
+            addLight(l->light);
         }
-
 
         globals::secondAfterCellFullyLoaded.store(false);
         LightData::ResetTriLightCache();
