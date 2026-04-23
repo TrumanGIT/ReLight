@@ -1290,7 +1290,7 @@ namespace UI {
 
         case AttachLightStep::AlreadyHasLight:
         {
-            centerNextItem(300.0f);
+            centerNextItem(400.0f);
             ImGuiMCP::Text("Object Selected in the console already has a ReLight light.");
       
             ImGuiMCP::Spacing(); 
@@ -1521,7 +1521,7 @@ namespace UI {
 
             ImGuiMCP::Spacing();
 
-            centerNextItem(430.0f);
+            centerNextItem(630.0f);
 
             if (ImGuiMCP::Button("Reuse an existing template")) {
                 createNewTemplate = false;
@@ -1542,6 +1542,129 @@ namespace UI {
 
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Better if you want to control this light seperatly.");
+            }
+            ImGuiMCP::SameLine();
+
+            if (ImGuiMCP::Button("Add To Light Exclusion List")) {
+
+                std::string refIDandModName = BuildRefIDAndModName(selected);
+
+                if (!AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
+                    logger::error("Failed to append excluded ref {}", refIDandModName);
+                }
+
+                RE::ObjectRefHandle handle = selected->GetHandle();
+
+                SKSE::GetTaskInterface()->AddTask([handle]() {
+                    int lightsRemoved = 0;
+
+                    if (auto ref = handle.get()) {
+                        auto a_root = ref->Get3D();
+                        if (!a_root) {
+                            return;
+                        }
+
+                        auto node = a_root->AsNode();
+                        if (!node) {
+                            return;
+                        }
+
+                        std::vector<RE::NiAVObject*> childrenToDetach;
+                        std::vector<RE::NiLight*> niLights;
+
+                        for (const auto& childNode : node->GetChildren()) {
+                            if (!childNode) {
+                                continue;
+                            }
+
+                            auto name = std::string_view(childNode->name.c_str());
+
+                            // Relight point lights have RL prefix
+                            if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') {
+                                continue;
+                            }
+
+                            auto* light = netimmerse_cast<RE::NiLight*>(childNode.get());
+                            if (!light) {
+                                continue;
+                            }
+
+                            // collect ni point lights in the ref
+                            childrenToDetach.push_back(childNode.get());
+                            niLights.push_back(light);
+                        }
+
+                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                        if (!ssNode) {
+                            logger::warn("ShadowSceneNode[0] is null!");
+                            return;
+                        }
+
+                        std::vector<RE::NiPointer<RE::BSLight>> bsLightsToRemove;
+
+                        // try to find its matching bs light and remove
+                        for (const auto& bsLight : ssNode->activeLights) {
+                            if (!bsLight || !bsLight->light) {
+                                continue;
+                            }
+
+                            for (auto* light : niLights) {
+                                if (bsLight->light.get() == light) {
+                                    bsLightsToRemove.push_back(bsLight);
+                                    break;
+                                }
+                            }
+                        }
+
+                        for (const auto& bsLight : ssNode->activeShadowLights) {
+                            if (!bsLight || !bsLight->light) {
+                                continue;
+                            }
+
+                            for (auto* light : niLights) {
+                                if (bsLight->light.get() == light) {
+                                    bsLightsToRemove.push_back(bsLight);
+                                    break;
+                                }
+                            }
+                        }
+
+                        for (const auto& bsLight : bsLightsToRemove) {
+                            if (!bsLight || !bsLight->light) {
+                                continue;
+                            }
+
+                            logger::debug(
+                                "BSLight with name {} for ref {:08X} has been removed from ShadowSceneNode",
+                                bsLight->light->name,
+                                ref->GetFormID());
+
+                            ssNode->RemoveLight(bsLight);
+                        }
+
+                        // finally remove nilight from mesh geometry aswell 
+                        for (auto* child : childrenToDetach) {
+                            if (!child) {
+                                continue;
+                            }
+
+                            node->DetachChild(child);
+                            ++lightsRemoved;
+                        }
+
+                        logger::info("Removed {} lights for ref {:08X}", lightsRemoved, ref->GetFormID());
+                    }
+                    });
+
+                step = AttachLightStep::LightRemoved;
+                break;
+            }
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip(
+                    "Adds to exclude by refID section in RELight.ini file, preventing object from getting a Relight\n"
+                    "TIP: Can also use to change a automated light into a seperate light you can edit by itself in the light editor.\n"
+                    "Just push this button, then when attaching a new light select 'this object only'"
+                );
             }
 
             break;
@@ -1793,8 +1916,8 @@ namespace UI {
         
         case AttachLightStep::Done:
         {
-            centerNextItem(120.0f);
-            ImGuiMCP::Text("Lights attached.");
+            centerNextItem(440.0f);
+            ImGuiMCP::Text("Light attached, you can now edit the light in the light editor.");
 
             ImGuiMCP::Spacing();
 
