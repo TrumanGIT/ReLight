@@ -125,11 +125,9 @@ bool saveConfiguration(const LightConfig& config) {
 		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
 		newEntry["depthBias"] = truncateDecimals(config.depthBias, 2);
 		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 2);
-		newEntry["constAttenuation"] = truncateDecimals(config.constAttenuation, 2);
-		newEntry["linearAttenuation"] = truncateDecimals(config.linearAttenuation, 2);
-		newEntry["quadraticAttenuation"] = truncateDecimals(config.quadraticAttenuation, 2);
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
+		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
 		//clamp to 0.1f
 		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
 		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
@@ -193,11 +191,9 @@ bool saveNewConfiguration(LightConfig& config)
 		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
 		newEntry["depthBias"] = truncateDecimals(config.depthBias, 2);
 		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 2);
-		newEntry["constAttenuation"] = truncateDecimals(config.constAttenuation, 2);
-		newEntry["linearAttenuation"] = truncateDecimals(config.linearAttenuation, 2);
-		newEntry["quadraticAttenuation"] = truncateDecimals(config.quadraticAttenuation, 2);
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
+		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
 		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
 		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
 
@@ -689,11 +685,9 @@ bool AppendNewConfigEntryFromLight(
 		newEntry["nearDistance"] = truncateDecimals(cfg.nearDistance, 2);
 		newEntry["depthBias"] = truncateDecimals(cfg.depthBias, 2);
 		newEntry["ambientRatio"] = truncateDecimals(cfg.ambientRatio, 2);
-		newEntry["constAttenuation"] = truncateDecimals(cfg.constAttenuation, 2);
-		newEntry["linearAttenuation"] = truncateDecimals(cfg.linearAttenuation, 2);
-		newEntry["quadraticAttenuation"] = truncateDecimals(cfg.quadraticAttenuation, 2);
 		newEntry["flickerIntensity"] = truncateDecimals(cfg.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(cfg.flickersPerSecond, 2);
+		newEntry["flickerAmplitude"] = truncateDecimals(cfg.flickerAmplitude, 2);
 		newEntry["size"] = truncateDecimals(std::max(0.1f, cfg.size), 2);
 		newEntry["cutoffOverride"] = truncateDecimals(cfg.cutoffOverride, 2);
 

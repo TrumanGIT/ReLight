@@ -76,11 +76,11 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, cons
 	data.diffuse.blue = cfg.diffuseColor[2] / 255.0f;
 
 	// ambient is removed with community shaders and will break functinoality iof its set 
-	if (!globals::islInstalled) {
+	//if (!globals::islInstalled) {
 		data.ambient.red = data.diffuse.red * cfg.ambientRatio;
 		data.ambient.green = data.diffuse.green * cfg.ambientRatio;
 		data.ambient.blue = data.diffuse.blue * cfg.ambientRatio;
-	}
+	//}
 }
 
 void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig& cfg)
@@ -105,6 +105,9 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 	if (auto* overlay = Overlay::Get(niPointLight)) {
 
+		constexpr std::uint32_t kInverseSquare = 1u << 14;
+
+		overlay->flags |= kInverseSquare;
 		overlay->size = cfg.size; // isl
 		overlay->cutoffOverride = cfg.cutoffOverride; // isl 
 		overlay->lighFormId = 0; 

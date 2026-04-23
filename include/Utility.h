@@ -118,7 +118,7 @@ inline void iniParser()
 		if (line.starts_with(";"))
 		{
 		
-			if (line.find("exclude by light editor id") != std::string::npos)
+			if (line.find("exclude lights from being disabled") != std::string::npos)
 				section = lightEdid;
 			else if (line.find("exclude specific mesh paths") != std::string::npos)
 				section = meshPathExact;
@@ -590,7 +590,10 @@ inline bool TESRayHitStatic(RE::bhkWorld* world, RE::NiPoint3 start, RE::NiPoint
 		RE::bhkCollisionFilter::GetSingleton()->GetNewSystemGroup();
 	filter.SetSystemGroup(sSystemGroup);
 	pickData.rayInput.filterInfo = filter;
-	world->PickObject(pickData);
+	{
+		RE::BSReadLockGuard lock(world->worldLock);
+		world->PickObject(pickData);
+	}
 	if (!pickData.rayOutput.HasHit())
 		return false;
 	auto* collidable = pickData.rayOutput.rootCollidable;

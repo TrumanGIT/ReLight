@@ -683,18 +683,6 @@ namespace UI {
 
         ImGuiMCP::Separator();
 
-      /* if (ImGuiMCP::Checkbox("Enable Editor", &enableLightEditor)) {
-            if (enableLightEditor) {
-                lightRefreshTicker.reset();
-                refreshAllLights(selectedIndex);
-            }
-        }
-
-        if (!enableLightEditor) {
-            ImGuiMCP::Text("Light Editor is disabled. Enable it to edit light properties.");
-            return;
-        }*/ 
-
         if (lightRefreshTicker.shouldTick()) {
             refreshAllLights(selectedIndex);
             didRefreshThisFrame = !didRefreshThisFrame;
@@ -795,10 +783,9 @@ namespace UI {
                 ImGuiMCP::PushItemWidth(150.0f);
 
                 ImGuiMCP::Columns(2, nullptr, false);
-                float boxHeight = globals::islInstalled ? 200.0f : 150.0f;
 
 
-                if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, boxHeight), true,
+                if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, 200), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
                     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
@@ -899,7 +886,7 @@ namespace UI {
 
                 if (ImGuiMCP::BeginChild(
                     "FlickerBox",
-                    ImGuiMCP::ImVec2(0, boxHeight),
+                    ImGuiMCP::ImVec2(0, 200),
                     true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
@@ -948,7 +935,7 @@ namespace UI {
                     ImGuiMCP::EndDisabled();
 
                     ImGuiMCP::SliderFloat(
-                        "Amplitude",
+                        "Movement",
                         &config.flickerAmplitude,
                         0.0f, 5.0f, "%.2f");
                     ImGuiMCP::EndDisabled();
@@ -958,7 +945,6 @@ namespace UI {
 
                 ImGuiMCP::Columns(1);
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
-
 
                 ImGuiMCP::Columns(2, nullptr, false);
 
@@ -1062,7 +1048,7 @@ namespace UI {
 
                 ImGuiMCP::Spacing();
 
-                if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 250), true,
+                if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 200), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
                     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,

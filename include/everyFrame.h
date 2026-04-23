@@ -632,7 +632,12 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 
 		// scale I use as a free float used as flicker timer
 		auto& scale = light->light->local.scale;
+
 		auto& rt = light->light->GetLightRuntimeData();
+
+		auto* pointLight = netimmerse_cast<RE::NiPointLight*>(light->light.get());
+		if (!pointLight)
+			continue;
 
 		// seems like everyone throws ambient away like Community shaders for example
 		// so we will do the same to act as 3 free floats we can store values in for flicker amplitude.
@@ -651,27 +656,32 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
         // r could add more randomness but we already do that with the seed so I dont use r actually lmao
 		const float r = getRandomFloat(-0.1f, 0.1f, seed);
 
+		//pulsing
 		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
 		rt.fade =
 			dataExt.startingFade +
 			NiSinQ(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
 
-		if (rt.constAttenuation == 0.0f && rt.linearAttenuation == 0.0f && rt.quadraticAttenuation == 0.0f) {
-			rt.constAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed);
-			rt.linearAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 1);
-			rt.quadraticAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 2);
+		// oscillation
+		if (pointLight->constAttenuation == 0.0f &&
+			pointLight->linearAttenuation == 0.0f &&
+			pointLight->quadraticAttenuation == 0.0f) {
+
+			pointLight->constAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed);
+			pointLight->linearAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 1);
+			pointLight->quadraticAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 2);
 		}
 
 		const float speedBase = dataExt.flickersPerSecond * std::numbers::pi_v<float>;
 		const float amp = dataExt.flickerAmplitude;
-	
-		rt.constAttenuation = std::fmod(rt.constAttenuation + delta * speedBase * 0.91f, RE::NI_TWO_PI);
-		rt.linearAttenuation = std::fmod(rt.linearAttenuation + delta * speedBase * 1.13f, RE::NI_TWO_PI);
-		rt.quadraticAttenuation = std::fmod(rt.quadraticAttenuation + delta * speedBase * 1.37f, RE::NI_TWO_PI);
 
-		const float sx = NiSinQ(rt.constAttenuation);
-		const float sy = NiSinQ(rt.linearAttenuation);
-		const float sz = NiSinQ(rt.quadraticAttenuation);
+		pointLight->constAttenuation = std::fmod(pointLight->constAttenuation + delta * speedBase * 0.91f, RE::NI_TWO_PI);
+		pointLight->linearAttenuation = std::fmod(pointLight->linearAttenuation + delta * speedBase * 1.13f, RE::NI_TWO_PI);
+		pointLight->quadraticAttenuation = std::fmod(pointLight->quadraticAttenuation + delta * speedBase * 1.37f, RE::NI_TWO_PI);
+
+		const float sx = NiSinQ(pointLight->constAttenuation);
+		const float sy = NiSinQ(pointLight->linearAttenuation);
+		const float sz = NiSinQ(pointLight->quadraticAttenuation);
 
 		pos.x = sx * amp;
 		pos.y = sy * amp;
