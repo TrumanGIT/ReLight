@@ -75,11 +75,11 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, cons
 	data.diffuse.green = cfg.diffuseColor[1] / 255.0f;
 	data.diffuse.blue = cfg.diffuseColor[2] / 255.0f;
 
-	// idk about ambient after a quick google search it seems ambient is usually a fraction of diffuse
-	// we could prolly research futher and get better results but for now good enough
-	data.ambient.red = data.diffuse.red * cfg.ambientRatio;
-	data.ambient.green = data.diffuse.green * cfg.ambientRatio;
-	data.ambient.blue = data.diffuse.blue * cfg.ambientRatio;
+	if (!globals::islInstalled) {
+		data.ambient.red = data.diffuse.red * cfg.ambientRatio;
+		data.ambient.green = data.diffuse.green * cfg.ambientRatio;
+		data.ambient.blue = data.diffuse.blue * cfg.ambientRatio;
+	}
 }
 
 void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig& cfg)
