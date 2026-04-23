@@ -548,6 +548,57 @@ inline float getRandomFloat(const float& min, const float& max, uint32_t rngStat
 	return min + (max - min) * Random::rand(rngState);
 }
 
+inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
+{
+	if (!light || !light->light) {
+		return;
+	}
+
+	auto* niLight = light->light.get();
+	if (!niLight) {
+		return;
+	}
+
+	if (globals::magicLightQueued.load()) {
+		if (niLight->parent && niLight->parent == globals::magicLightAttachNode) {
+			light->unk060 = 4;
+
+			logger::info("set magic light unk060 to 4 so it will skip the islightaffectingsurface hook");
+
+			globals::magicLightQueued.store(false);
+			globals::magicLightAttachNode = nullptr;
+		}
+	}
+
+	std::vector<size_t> indicesToRemove;
+
+	for (size_t i = 0; i < globals::torchLightAttachNodes.size(); ++i) {
+		auto& attachLightNode = globals::torchLightAttachNodes[i];
+
+		if (niLight->parent && niLight->parent == attachLightNode) {
+			light->unk060 = 4;
+
+			std::string torchName = "torch";
+
+			auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
+			if (cfgs.empty()) {
+				continue;
+			}
+
+			niLight->name = "RL" + torchName;
+			niLight->unk138 = cfgs[0].configID;
+
+			LightData::setNiPointLightDataFromCfg(niLight, cfgs[0], 1.0f);
+
+			indicesToRemove.push_back(i);
+		}
+	}
+
+	for (auto it = indicesToRemove.rbegin(); it != indicesToRemove.rend(); ++it) {
+		globals::torchLightAttachNodes.erase(globals::torchLightAttachNodes.begin() + *it);
+	}
+}
+
 // generic type argument probly not needed both shadow light list and non shadow light list same array type proboblly
 template <class T>
 static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiPoint3 playerPos)
@@ -556,54 +607,13 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 	constexpr float maxDist = 5000.0f;
 	constexpr float maxDistSq = maxDist * maxDist;
 
-    std::vector<RE::NiPointer<RE::NiLight>> toRemove;  // only works if indexable container
+    std::vector<RE::NiPointer<RE::NiLight>> toRemove;  
 
     for (auto& light : lights) {
         if (!light || !light->light)
 			continue;
 
-        // this is to deal with spells like candlelight ect annoying af bc the light isent ready at the time of its hook
-        if (globals::magicLightQueued.load()) {
-            if (light->light->parent && light->light->parent == globals::magicLightAttachNode) {
-
-                // setting unk060 = 4 skips this light in the light flicker prevention hook (otherwise it wont light up objects)
-                light->unk060 = 4;
-
-                logger::info(" set magic light unk060 to 4 so it will skip the islightaffectingsurface hook");
-
-                globals::magicLightQueued.store(false);
-                globals::magicLightAttachNode = nullptr;
-            }
-        }
-
-		// this is to deal with torches annoying af bc light isent ready at the tim eof th add on node hook
-		std::vector<size_t> indicesToRemove; 
-
-		for (size_t i = 0; i < globals::torchLightAttachNodes.size(); ++i) {
-			auto& attachLightNode = globals::torchLightAttachNodes[i];
-
-			if (light->light->parent && light->light->parent == attachLightNode) {
-				light->unk060 = 4;
-
-				std::string torchName = "torch";
-
-				auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
-
-				if (cfgs.empty()) continue; 
-
-				light->light->name = "RL" + torchName;
-				light->light->unk138 = cfgs[0].configID;
-
-				LightData::setNiPointLightDataFromCfg(light->light.get(), cfgs[0], 1.0f);
-
-				indicesToRemove.push_back(i); // mark for removal
-			}
-		}
-
-		// remove torch nodes we dealt with after iterating
-		for (auto it = indicesToRemove.rbegin(); it != indicesToRemove.rend(); ++it) {
-			globals::torchLightAttachNodes.erase(globals::torchLightAttachNodes.begin() + *it);
-		}
+		HandleQueuedLights(light); 
 
         auto name = std::string_view(light->light->name.c_str());
         if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
@@ -614,7 +624,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		if (distSq > maxDistSq)
 			continue;
 
-        // this is to remove shadow lights from the scene otherwise they stay after mesh unloads
+        // this is to remove lights from the scene otherwise they stay after mesh unloads
         if (!light->light->parent) {
             toRemove.push_back(light->light);
             continue;
@@ -623,6 +633,10 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		// scale I use as a free float used as flicker timer
 		auto& scale = light->light->local.scale;
 		auto& rt = light->light->GetLightRuntimeData();
+
+		// seems like everyone throws ambient away like Community shaders for example
+		// so we will do the same to act as 3 free floats we can store values in for flicker amplitude.
+		auto& pos = light->light->local.translate;
 
 		auto it = LightData::configIDToJsonCfg.find(rt.unk138);
 		if (it == LightData::configIDToJsonCfg.end())
@@ -641,6 +655,39 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		rt.fade =
 			dataExt.startingFade +
 			NiSinQ(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity;
+
+		if (rt.constAttenuation == 0.0f && rt.linearAttenuation == 0.0f && rt.quadraticAttenuation == 0.0f) {
+			rt.constAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed);
+			rt.linearAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 1);
+			rt.quadraticAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 2);
+		}
+
+		const float speedBase = dataExt.flickersPerSecond * std::numbers::pi_v<float>;
+		const float amp = dataExt.flickerAmplitude;
+	
+		rt.constAttenuation = std::fmod(rt.constAttenuation + delta * speedBase * 0.91f, RE::NI_TWO_PI);
+		rt.linearAttenuation = std::fmod(rt.linearAttenuation + delta * speedBase * 1.13f, RE::NI_TWO_PI);
+		rt.quadraticAttenuation = std::fmod(rt.quadraticAttenuation + delta * speedBase * 1.37f, RE::NI_TWO_PI);
+
+		const float sx = NiSinQ(rt.constAttenuation);
+		const float sy = NiSinQ(rt.linearAttenuation);
+		const float sz = NiSinQ(rt.quadraticAttenuation);
+
+		pos.x = sx * amp;
+		pos.y = sy * amp;
+		pos.z = sz * (amp * 0.5f);
+
+		RE::NiUpdateData updateData{};
+		updateData.time = 0.0f;
+		updateData.flags = RE::NiUpdateData::Flag::kDirty;
+
+		auto a_root = light->light->parent;
+		if (!a_root) {
+			continue;
+		}
+
+		a_root->UpdateTransformAndBounds(updateData);
+
     }
         //shadow lights are persistance even if mesh dissapers, so if we want light to go away with mesh, must do this
         if (!toRemove.empty()) {

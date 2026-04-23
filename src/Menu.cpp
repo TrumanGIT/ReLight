@@ -946,6 +946,12 @@ namespace UI {
                         &config.flickersPerSecond,
                         0.0f, 5.0f, "%.2f");
                     ImGuiMCP::EndDisabled();
+
+                    ImGuiMCP::SliderFloat(
+                        "Amplitude",
+                        &config.flickerAmplitude,
+                        0.0f, 5.0f, "%.2f");
+                    ImGuiMCP::EndDisabled();
                 }
                 ImGuiMCP::EndChild();
 
@@ -1088,14 +1094,10 @@ namespace UI {
                     ImGuiMCP::PushItemWidth(halfWidth);
 
                     ImGuiMCP::SliderFloat("Fall Off", &config.falloff, 0.0f, 5.0f, "%.1f");
-                    ImGuiMCP::SliderFloat("Constant", &config.constAttenuation, 0.0f, 1.0f, "%.2f");
-                    ImGuiMCP::SliderFloat("Linear", &config.linearAttenuation, 0.0f, 1.0f, "%.2f");
-                    ImGuiMCP::SliderFloat("Quadratic", &config.quadraticAttenuation, 0.0f, 1.0f, "%.2f");
-
-                    ImGuiMCP::NextColumn();
-
                     ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f");
                     ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f");
+                    ImGuiMCP::NextColumn();
+ 
                     ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
                     ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
 
@@ -1167,6 +1169,7 @@ namespace UI {
             ImGuiMCP::GetContentRegionAvail(&avail);
             ImGuiMCP::SetCursorPosX(startX + (avail.x - estimatedWidth) * 0.5f);
          };
+
 
         static AttachLightStep step = AttachLightStep::SelectTarget;
         static bool createNewTemplate = false;
@@ -2279,6 +2282,7 @@ namespace UI {
         cfg.startingFade = backupCfg.startingFade;
         cfg.flickerIntensity = backupCfg.flickerIntensity;
         cfg.flickersPerSecond = backupCfg.flickersPerSecond;
+        cfg.flickerAmplitude = backupCfg.flickerAmplitude; 
 
         // Propagate to active lights in the shader node
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];

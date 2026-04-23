@@ -28,12 +28,10 @@ F(falloff, 1.f) \
 F(nearDistance, 5.f) \
 F(depthBias, 0.0005f) \
 F(ambientRatio, 0.1f) \
-F(constAttenuation, 0.f) \
-F(linearAttenuation, 0.f) \
-F(quadraticAttenuation, 0.f) \
 F(flickerIntensity, 0.1f) \
 F(flickersPerSecond, 0.1f) \
 F(flickerTime, 0.0f) \
+F(flickerAmplitude, 0.0f) \
 F(startingFade, 0.f) \
 F(size, 2.0f) \
 F(cutoffOverride , 0.05f) \

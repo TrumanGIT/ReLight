@@ -75,6 +75,7 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, cons
 	data.diffuse.green = cfg.diffuseColor[1] / 255.0f;
 	data.diffuse.blue = cfg.diffuseColor[2] / 255.0f;
 
+	// ambient is removed with community shaders and will break functinoality iof its set 
 	if (!globals::islInstalled) {
 		data.ambient.red = data.diffuse.red * cfg.ambientRatio;
 		data.ambient.green = data.diffuse.green * cfg.ambientRatio;
