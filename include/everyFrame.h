@@ -683,9 +683,11 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		const float sy = NiSinQ(pointLight->linearAttenuation);
 		const float sz = NiSinQ(pointLight->quadraticAttenuation);
 
-		pos.x = sx * amp;
-		pos.y = sy * amp;
-		pos.z = sz * (amp * 0.5f);
+		const auto& base = dataExt.position;  // or whatever your config field is called
+
+		pos.x = base[0] + sx * amp;
+		pos.y = base[1] + sy * amp;
+		pos.z = base[2] + sz * (amp * 0.5f);
 
 		RE::NiUpdateData updateData{};
 		updateData.time = 0.0f;
