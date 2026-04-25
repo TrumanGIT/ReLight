@@ -683,7 +683,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		const float sy = NiSinQ(pointLight->linearAttenuation);
 		const float sz = NiSinQ(pointLight->quadraticAttenuation);
 
-		const auto& base = dataExt.position;  // or whatever your config field is called
+		const auto& base = pointLight->local.translate;  // or whatever your config field is called
 
 		pos.x = base[0] + sx * amp;
 		pos.y = base[1] + sy * amp;

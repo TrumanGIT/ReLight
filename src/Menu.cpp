@@ -932,7 +932,6 @@ namespace UI {
                         "Flickers / Second",
                         &config.flickersPerSecond,
                         0.0f, 5.0f, "%.2f");
-                    ImGuiMCP::EndDisabled();
 
                     ImGuiMCP::SliderFloat(
                         "Movement",
@@ -1279,7 +1278,7 @@ namespace UI {
 
         case AttachLightStep::AlreadyHasLight:
         {
-            centerNextItem(400.0f);
+            centerNextItem(300.0f);
             ImGuiMCP::Text("Object Selected in the console already has a ReLight light.");
       
             ImGuiMCP::Spacing(); 
