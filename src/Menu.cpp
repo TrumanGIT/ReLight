@@ -211,9 +211,6 @@ namespace UI {
         }
 
         ImGuiMCP::EndChild();
-        if (ImGuiMCP::Button("Debug log all lights")) {
-            debugLogAllLights(); 
-        }
 
     }
 
@@ -250,8 +247,18 @@ namespace UI {
         }
 
         renderDone(saveINIButton, iconX, iconY);
+
+        ImGuiMCP::SameLine(); 
+
+        if (ImGuiMCP::Button("Debug log all lights")) {
+            debugLogAllLights();
+        }
+
         
         ImGuiMCP::Separator();
+
+        ImGuiMCP::Checkbox("Disable Game Lights", &globals::disableGameLights);
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Disable all game lights except for those in exclude by light editor ID section in Relight.ini\n Used so the Relight Official light add on can start with a clean base");
 
         ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &globals::removeFakeGlowOrbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
@@ -273,6 +280,8 @@ namespace UI {
             spdlog::set_level(lvl); 
         }
 
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip(" Set Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)");
+
         ImGuiMCP::Separator();
 
         if (ImGuiMCP::CollapsingHeader("Whitelist (by plugin name)")) {
@@ -280,20 +289,40 @@ namespace UI {
                 ImGuiMCP::Text("%s", entry.c_str());
         }
 
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Mods whos esp name are in here will not have their lights disabled by relight no matter what.");
+
         if (ImGuiMCP::CollapsingHeader("Priority Nodes")) {
             for (auto& entry : globals::priorityList)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
+
+        if (ImGuiMCP::IsItemHovered())   ImGuiMCP::SetTooltip(
+            "Relight uses partial string matching (e.g. \"candle\" matches any candle mesh).\n"
+            "This can cause unintended matches (e.g. \"candlechandelier01\").\n"
+            "Meshes listed here take priority and override broader matches."
+        );
 
         if (ImGuiMCP::CollapsingHeader("Excluded Mesh Paths (Exact)")) {
             for (auto& entry : globals::meshPathExclusionList)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
 
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip(
+            "Relight uses partial string matching (e.g. \"candle\" matches any candle mesh).\n"
+            "This can cause unintended matches, any mesh name here will be excluded from getting Relights\n"
+        );
+
+
         if (ImGuiMCP::CollapsingHeader("Excluded Mesh Paths (Partial Match)")) {
             for (auto& entry : globals::meshPathExclusionListPartialMatch)
                 ImGuiMCP::Text("%s", entry.c_str());
         }
+
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip(
+            "Relight uses partial string matching (e.g. \"candle\" matches any candle mesh).\n"
+            "Any mesh name that contains a word in this list will be excluded from getting Relights\n"
+        );
+
     }
 
     inline void makeDisplayName(std::string& name) {
@@ -1218,7 +1247,7 @@ namespace UI {
 
         if (!selected) {
             resetState();
-            centerNextItem(330.0f);
+            centerNextItem(350.0f);
             ImGuiMCP::Text("Click on an object in the console to continue.");
             return;
         }
@@ -1278,12 +1307,12 @@ namespace UI {
 
         case AttachLightStep::AlreadyHasLight:
         {
-            centerNextItem(300.0f);
+            centerNextItem(470.0f);
             ImGuiMCP::Text("Object Selected in the console already has a ReLight light.");
       
             ImGuiMCP::Spacing(); 
 
-            centerNextItem(500.0f);
+            centerNextItem(400.0f);
 
             if (ImGuiMCP::Button("Add another Light")) {
 
@@ -1904,7 +1933,7 @@ namespace UI {
         
         case AttachLightStep::Done:
         {
-            centerNextItem(440.0f);
+            centerNextItem(460.0f);
             ImGuiMCP::Text("Light attached, you can now edit the light in the light editor.");
 
             ImGuiMCP::Spacing();

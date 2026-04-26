@@ -129,8 +129,11 @@ bool saveConfiguration(const LightConfig& config) {
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
 		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
 		//clamp to 0.1f
-		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
-		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
+		newEntry["cutoffOverride"] =
+			std::max(0.01f, static_cast<float>(truncateDecimals(config.cutoffOverride, 2)));
+
+		newEntry["size"] =
+			std::max(0.01f, static_cast<float>(truncateDecimals(config.size, 2)));
 
 		newEntry["color"] = { config.diffuseColor[0], config.diffuseColor[1], config.diffuseColor[2] };
 		newEntry["position"] = { 
