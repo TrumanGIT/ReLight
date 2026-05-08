@@ -2152,7 +2152,7 @@ namespace UI {
         outFile << "light radius increase per merge=" << globals::lightRadiusPerMerge << "\n";
         outFile << "light fade max=" << globals::lightFadeMax << "\n";
         outFile << "light radius max=" << globals::lightRadiusMax << "\n";
-        outFile << "light merge maxlights=" << globals::lightMergeMaxLights << "\n\n";
+        outFile << "light merge max lights=" << globals::lightMergeMaxLights << "\n\n";
 
         // dump the entire preserved block back verbatim - comments, formids, everything
         if (!preservedBlock.empty())
