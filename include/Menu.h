@@ -167,7 +167,8 @@ namespace UI {
             logger::error("Failed to open {} for writing!", path);
             return false;
         }
-
+        outFile << ";allow relight to disable all non relight lights(to start with a clean base)\n";
+        outFile << "disablegamelights=" << (globals::disableGameLights ? "true" : "false") << "\n\n";
         outFile << "; enable light flicker prevention (default = false)\n";
         outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
         outFile << "; remove fake glow orbs (default = true)\n";
