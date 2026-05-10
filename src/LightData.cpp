@@ -45,6 +45,8 @@ void LightData::ResetTriLightCache()
 	}
 
 	for (const auto& keyword : keywords) {
+	//	logger::debug("comparing vanilla light {} to {}", edid, keyword);
+
 		if (edid.contains(keyword)) {
 
 			// special exception
