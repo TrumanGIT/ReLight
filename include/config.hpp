@@ -75,7 +75,7 @@ struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
     std::string configPath{};                     // save the path from where this config is loaded
-    std::string meshPath{};
+    std::vector<std::string> meshPaths;
     std::string menuName{};
     std::string refFormIDAndModName{}; 
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
@@ -102,7 +102,9 @@ struct LightConfig {
     void print(bool exterior) {
         if (exterior) logger::info("loading exterior config:");
         logger::info("Path               : {}", configPath);
-        logger::info(" Mesh Path         : {}", meshPath);
+        for (const auto& mesh : meshPaths) {
+            logger::info(" Mesh Path         : {}", mesh);
+        }
         logger::info(" RefID and Mod Name : {}", refFormIDAndModName);
         logger::info(" Menu name         : {}", menuName);
         FOREACH_BOOL(BOOL2PRINT);
@@ -120,7 +122,7 @@ struct LightConfig {
         }
     }
     bool operator<(const LightConfig& other) const {
-        return meshPath < other.meshPath;
+        return configID < other.configID;
     }
 };
 

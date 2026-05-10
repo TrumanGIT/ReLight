@@ -98,7 +98,7 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 
 	if (!niPointLight) {
-		logger::error("light nullptr for mesh {}", cfg.meshPath);
+		logger::error("light nullptr for mesh {}", cfg.menuName);
 		return;
 	}
 
@@ -118,14 +118,14 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 
 void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const float scale) {
 	if (!niPointLight) {
-		logger::error("light nullptr for node {}", cfg.meshPath);
+		logger::error("light nullptr for node {}", cfg.menuName);
 		return;
 	}
 	auto& data = niPointLight->GetLightRuntimeData();
 
-	auto& nodeNameOrMeshPath = cfg.meshPath.empty() ? cfg.menuName : cfg.meshPath;
+	auto& lightName = cfg.menuName;
 
-	logger::debug(" Setting Light Data for {} from Configs", nodeNameOrMeshPath);
+	logger::debug(" Setting Light Data for {} from Configs", lightName);
 
 	data.fade = cfg.brightness * scale;
 	data.radius = getNiPointLightRadius(cfg, scale);
@@ -215,8 +215,11 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 	// keep direct configID lookup in sync
 	configIDToJsonCfg[updatedCfg.configID] = updatedCfg;
 
-	if (!updatedCfg.meshPath.empty()) {
-		auto meshKey = updatedCfg.meshPath;
+	for (auto meshKey : updatedCfg.meshPaths) {
+		if (meshKey.empty()) {
+			continue;
+		}
+
 		toLower(meshKey);
 
 		if (auto it = meshPathToJsonCfg.find(meshKey); it != meshPathToJsonCfg.end()) {
@@ -294,19 +297,16 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 	return updated;
 }
 
- void LightData::AddConfigToMaps(
+void LightData::AddConfigToMaps(
 	const LightConfig& cfg,
 	bool isRefLight,
 	RE::FormID refFormID)
 {
-	 auto meshPath = cfg.meshPath; 
-
-	 toLower(meshPath); 
-
 	LightData::configIDToJsonCfg[cfg.configID] = cfg;
 	LightData::defaultConfigs[cfg.configID] = cfg;
 
 	if (isRefLight) {
+
 		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
 			LightData::refFormIDToJsonCfgExteriors[refFormID].push_back(cfg);
 		}
@@ -316,21 +316,34 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 
 		logger::info(
 			"RegisterConfigInMaps: added ref config '{}' at {} index {}",
-			cfg.menuName, cfg.configPath, cfg.jsonIndex);
+			cfg.menuName,
+			cfg.configPath,
+			cfg.jsonIndex);
 	}
 	else {
-		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-			LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
-		}
-		else {
-		
-			LightData::meshPathToJsonCfg[meshPath].push_back(cfg);
-		}
 
-		globals::priorityList.push_back(meshPath);
+		for (auto meshPath : cfg.meshPaths) {
 
-		logger::info(
-			"RegisterConfigInMaps: added mesh config '{}' at {} index {}",
-			meshPath, cfg.configPath, cfg.jsonIndex);
+			if (meshPath.empty()) {
+				continue;
+			}
+
+			toLower(meshPath);
+
+			if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
+			}
+			else {
+				LightData::meshPathToJsonCfg[meshPath].push_back(cfg);
+			}
+
+			globals::priorityList.push_back(meshPath);
+
+			logger::info(
+				"RegisterConfigInMaps: added mesh config '{}' at {} index {}",
+				meshPath,
+				cfg.configPath,
+				cfg.jsonIndex);
+		}
 	}
 }

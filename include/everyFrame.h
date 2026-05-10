@@ -829,7 +829,7 @@ inline void handlePendingMerges() {
             bool debugMarkerAttached = false; 
 
             for (const auto& cfg : cfgs) {
-                LightManager::AttachLight(cfg, rootNode, retryRefA.get(), cfg.meshPath, retryRefA->GetFormID(), debugMarkerAttached);
+                LightManager::AttachLight(cfg, rootNode, retryRefA.get(), cfg.menuName, retryRefA->GetFormID(), debugMarkerAttached);
             }
 
             // multi-light can't merge, retry others

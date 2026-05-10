@@ -142,7 +142,10 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 	 const auto refFormID = a_this->GetFormID();
 
-	if (meshNameMatch.empty()) return false;
+	 if (meshNameMatch.empty()) {
+		 logger::info("found no match for {} ", meshName);
+		 return false;
+	 } 
 
 	if (isExclude(meshName, a_this)) return true; 
 
@@ -425,7 +428,8 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 	int potentialMergeCount = 0;
 
-	 p.refALightName = cfg.meshPath.empty() ? cfg.menuName : cfg.meshPath;
+	//mabye com back and set this to correct mesh path instead
+	p.refALightName = cfg.menuName;
 
 	bool increasedMergeDistance = false;
 
@@ -966,7 +970,7 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 
 	 LightManager::attachLightUsingAttachPath(cfg, a_root, cloneLight, a_this->GetFormID());
 	 LightData::setNiPointLightDataFromCfg(cloneLight, cfg, a_this->GetScale());
-	 cloneLight->name = "RL" + cfg.meshPath;
+	 cloneLight->name = "RL" + cfg.menuName;
 	 attachNiPointLightToShadowSceneNode(cloneLight, cfg, a_this);
 
 	 return cloneLight;

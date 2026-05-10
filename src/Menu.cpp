@@ -1856,7 +1856,7 @@ namespace UI {
 
                     if (createNewTemplate) {
 
-                        newCfg.meshPath = meshPath;
+                        newCfg.meshPaths.push_back(meshPath);
                         newCfg.menuName = meshPath;
                         newCfg.configPath = "Data/SKSE/Plugins/RELight/Configs/" + meshPath + ".json";
                         newCfg.jsonIndex = 0;
@@ -2001,7 +2001,13 @@ namespace UI {
                         }
 
                         newCfg = selectedCfgs[0];
-                        newCfg.meshPath = meshPath;
+                        if (std::find(
+                            newCfg.meshPaths.begin(),
+                            newCfg.meshPaths.end(),
+                            meshPath) == newCfg.meshPaths.end())
+                        {
+                            newCfg.meshPaths.push_back(meshPath);
+                        }
                         LightData::AddConfigToMaps(newCfg, refLight, selected->GetFormID());
                         globals::baseFormsWithAttachedLights.emplace(baseFormID);
                         RefreshNearbyObjects(selected, meshPath);
@@ -2014,7 +2020,7 @@ namespace UI {
                     refCfg.jsonIndex = static_cast<std::uint16_t>(CountJsonEntriesInFile(filePath));
                     refCfg.menuName = selectedCfgs[0].menuName;
                     refCfg.refFormIDAndModName = BuildRefIDAndModName(selected);
-                    refCfg.meshPath.clear();
+                    refCfg.meshPaths.clear();
 
                     if (refCfg.refFormIDAndModName.empty()) {
                         logger::error("Failed to build ref ID for selected object");

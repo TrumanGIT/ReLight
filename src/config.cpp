@@ -94,14 +94,16 @@ bool saveConfiguration(const LightConfig& config) {
 
 		json newEntry;
 
-		json& originalEntry = data[0];
+		json& originalEntry = data[config.jsonIndex];
 
-		//preserve any mesh paths in there before 
 		if (originalEntry.contains("meshPath")) {
 			newEntry["meshPath"] = originalEntry["meshPath"];
 		}
+		else if (!config.meshPaths.empty()) {
+			newEntry["meshPath"] = config.meshPaths;
+		}
 		else {
-			newEntry["meshPath"] = config.meshPath; // fallback
+			newEntry["meshPath"] = json::array();
 		}
 
 		if (originalEntry.contains("refID")) {
@@ -176,7 +178,7 @@ bool saveNewConfiguration(LightConfig& config)
 	try {
 		json newEntry;
 
-		newEntry["meshPath"] = config.meshPath;
+		newEntry["meshPath"] = config.meshPaths;
 
 		if (!config.refFormIDAndModName.empty()) {
 			newEntry["refID"] = config.refFormIDAndModName;
@@ -368,12 +370,19 @@ inline nlohmann::json FlagsToJson(uint32_t mask) {
 
 // ini parser already filled the users desired, priority nodes, so these ones have no priority
 // doesnet actually sort file path or node name atm.
-void sortInPriorityList(const LightConfig& cfg) {
-	if (std::find(globals::priorityList.begin(),
-		globals::priorityList.end(),
-		cfg.meshPath) == globals::priorityList.end())
-	{
-		globals::priorityList.push_back(cfg.meshPath);
+void sortInPriorityList(const LightConfig& cfg)
+{
+	for (const auto& meshPath : cfg.meshPaths) {
+		if (meshPath.empty()) {
+			continue;
+		}
+
+		if (std::find(globals::priorityList.begin(),
+			globals::priorityList.end(),
+			meshPath) == globals::priorityList.end())
+		{
+			globals::priorityList.push_back(meshPath);
+		}
 	}
 }
 
@@ -520,36 +529,38 @@ void parseTemplates() {
 				}
 			}
 
-			for (const auto& meshPath : meshFilePaths) {
-				if (meshPath.empty()) continue;
+			if (!meshFilePaths.empty()) {
 				LightConfig cfg;
 				loadConfiguration(cfg, json);
+
 				cfg.configPath = p;
 				cfg.configID = globals::nextID++;
-
 				cfg.jsonIndex = jsonIndex;
+				cfg.meshPaths = meshFilePaths;
 
-				//set each cfg name according to the current iteration of all meshpaths read (for multiple mesh paths for 1 config support)
-				cfg.meshPath = meshPath;
-
-				toLower(cfg.meshPath);
+				for (auto& meshPath : cfg.meshPaths) {
+					toLower(meshPath);
+				}
 
 				sortInPriorityList(cfg);
 
-				auto pathLower = toLowerImmut(p);
+				LightData::configIDToJsonCfg[cfg.configID] = cfg;
+				LightData::defaultConfigs[cfg.configID] = cfg;
 
-				if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-					cfg.print(true);
-					LightData::configIDToJsonCfg[cfg.configID] = cfg;
-					LightData::defaultConfigs[cfg.configID] = cfg;
-					LightData::meshPathToJsonCfgExteriors[cfg.meshPath].push_back(cfg);
+				for (const auto& meshPath : cfg.meshPaths) {
+					if (meshPath.empty()) {
+						continue;
+					}
+
+					if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+						LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
+					}
+					else {
+						LightData::meshPathToJsonCfg[meshPath].push_back(cfg);
+					}
 				}
-				else {
-					cfg.print(false);
-					LightData::configIDToJsonCfg[cfg.configID] = cfg;
-					LightData::defaultConfigs[cfg.configID] = cfg;
-					LightData::meshPathToJsonCfg[cfg.meshPath].push_back(cfg);
-				}
+
+				cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
 			}
 
 			//used to get the right index to save back too
@@ -620,143 +631,163 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 	}
 }
 
-bool AppendNewConfigEntryFromLight(
-	const std::string& configPath,
-	std::uint16_t jsonIndex,
-	const std::string& menuName,
-	RE::NiLight* niLight,
-	const std::string& refIDAndModName,
-	const std::string& matched, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID)
-{
-	try {
-		if (configPath.empty()) {
-			logger::error("AppendNewConfigEntryFromLight: configPath was empty");
-			return false;
-		}
+ bool AppendNewConfigEntryFromLight(
+	 const std::string& configPath,
+	 std::uint16_t jsonIndex,
+	 const std::string& menuName,
+	 RE::NiLight* niLight,
+	 const std::string& refIDAndModName,
+	 const std::string& matched,
+	 const LightConfig& baseCfg,
+	 bool refLight,
+	 RE::FormID refFormID)
+ {
+	 try {
+		 if (configPath.empty()) {
+			 logger::error("AppendNewConfigEntryFromLight: configPath was empty");
+			 return false;
+		 }
 
-		if (!niLight) {
-			logger::error("AppendNewConfigEntryFromLight: niLight was null");
-			return false;
-		}
+		 if (!niLight) {
+			 logger::error("AppendNewConfigEntryFromLight: niLight was null");
+			 return false;
+		 }
 
-		LightConfig cfg;
-		LightData::updateConfigFromLight(cfg, baseCfg, niLight);
+		 LightConfig cfg;
+		 LightData::updateConfigFromLight(cfg, baseCfg, niLight);
 
-		cfg.configPath = configPath;
-		cfg.jsonIndex = jsonIndex;
-		cfg.configID = globals::nextID++;
-		cfg.menuName = menuName;
-		cfg.refFormIDAndModName = refIDAndModName;
-		cfg.meshPath = matched;
+		 cfg.configPath = configPath;
+		 cfg.jsonIndex = jsonIndex;
+		 cfg.configID = globals::nextID++;
+		 cfg.menuName = menuName;
+		 cfg.refFormIDAndModName = refIDAndModName;
 
-		std::ifstream inFile(configPath);
-		if (!inFile.is_open()) {
-			logger::error("AppendNewConfigEntryFromLight: failed to open {}", configPath);
-			return false;
-		}
+		 cfg.meshPaths.clear();
+		 if (!matched.empty()) {
+			 cfg.meshPaths.push_back(matched);
+		 }
 
-		json data;
-		inFile >> data;
-		inFile.close();
+		 std::ifstream inFile(configPath);
+		 if (!inFile.is_open()) {
+			 logger::error("AppendNewConfigEntryFromLight: failed to open {}", configPath);
+			 return false;
+		 }
 
-		if (!data.is_array()) {
-			data = json::array({ data });
-		}
+		 json data;
+		 inFile >> data;
+		 inFile.close();
 
-		json newEntry;
+		 if (!data.is_array()) {
+			 data = json::array({ data });
+		 }
 
-		if (!cfg.meshPath.empty()) {
-			newEntry["meshPath"] = cfg.meshPath;
-		}
+		 json newEntry;
 
-		if (!cfg.refFormIDAndModName.empty()) {
-			newEntry["refID"] = cfg.refFormIDAndModName;
-			//prevent merging for ref configs
-			cfg.flags |= static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging);
-		}
+		 if (!cfg.meshPaths.empty()) {
+			 newEntry["meshPath"] = cfg.meshPaths;
+		 }
 
-		newEntry["menuName"] = cfg.menuName;
+		 if (!cfg.refFormIDAndModName.empty()) {
+			 newEntry["refID"] = cfg.refFormIDAndModName;
+			 cfg.flags |= static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging);
+		 }
+
+		 newEntry["menuName"] = cfg.menuName;
 
 #define JSON_WRITE(C, I) newEntry[#C] = cfg.C;
-		FOREACH_BOOL(JSON_WRITE)
+		 FOREACH_BOOL(JSON_WRITE)
 
-			// set brightness to starting fadce so it doesent 0 out bc of flicker calcs
-		newEntry["brightness"] = truncateDecimals(cfg.startingFade, 2);
-		newEntry["radius"] = truncateDecimals(cfg.radius, 2);
-		newEntry["fov"] = truncateDecimals(cfg.fov, 2);
-		newEntry["falloff"] = truncateDecimals(cfg.falloff, 2);
-		newEntry["nearDistance"] = truncateDecimals(cfg.nearDistance, 2);
-		newEntry["depthBias"] = truncateDecimals(cfg.depthBias, 2);
-		newEntry["ambientRatio"] = truncateDecimals(cfg.ambientRatio, 2);
-		newEntry["flickerIntensity"] = truncateDecimals(cfg.flickerIntensity, 2);
-		newEntry["flickersPerSecond"] = truncateDecimals(cfg.flickersPerSecond, 2);
-		newEntry["flickerAmplitude"] = truncateDecimals(cfg.flickerAmplitude, 2);
-		newEntry["size"] = truncateDecimals(std::max(0.1f, cfg.size), 2);
-		newEntry["cutoffOverride"] = truncateDecimals(cfg.cutoffOverride, 2);
+			 newEntry["brightness"] = truncateDecimals(cfg.startingFade, 2);
+		 newEntry["radius"] = truncateDecimals(cfg.radius, 2);
+		 newEntry["fov"] = truncateDecimals(cfg.fov, 2);
+		 newEntry["falloff"] = truncateDecimals(cfg.falloff, 2);
+		 newEntry["nearDistance"] = truncateDecimals(cfg.nearDistance, 2);
+		 newEntry["depthBias"] = truncateDecimals(cfg.depthBias, 2);
+		 newEntry["ambientRatio"] = truncateDecimals(cfg.ambientRatio, 2);
+		 newEntry["flickerIntensity"] = truncateDecimals(cfg.flickerIntensity, 2);
+		 newEntry["flickersPerSecond"] = truncateDecimals(cfg.flickersPerSecond, 2);
+		 newEntry["flickerAmplitude"] = truncateDecimals(cfg.flickerAmplitude, 2);
+		 newEntry["size"] = truncateDecimals(std::max(0.1f, cfg.size), 2);
+		 newEntry["cutoffOverride"] = truncateDecimals(cfg.cutoffOverride, 2);
 
-		newEntry["color"] = {
-			cfg.diffuseColor[0],
-			cfg.diffuseColor[1],
-			cfg.diffuseColor[2]
-		};
+		 newEntry["color"] = {
+			 cfg.diffuseColor[0],
+			 cfg.diffuseColor[1],
+			 cfg.diffuseColor[2]
+		 };
 
-		newEntry["position"] = {
-			truncateDecimals(cfg.position[0], 2),
-			truncateDecimals(cfg.position[1], 2),
-			truncateDecimals(cfg.position[2], 2)
-		};
+		 newEntry["position"] = {
+			 truncateDecimals(cfg.position[0], 2),
+			 truncateDecimals(cfg.position[1], 2),
+			 truncateDecimals(cfg.position[2], 2)
+		 };
 
-		newEntry["flags"] = FlagsToJson(cfg.flags);
-		newEntry["attachPath"] = cfg.attachPath;
+		 newEntry["flags"] = FlagsToJson(cfg.flags);
+		 newEntry["attachPath"] = cfg.attachPath;
 
-		if (jsonIndex > data.size()) {
-			logger::warn("AppendNewConfigEntryFromLight: jsonIndex {} > data.size() {}, appending instead",
-				jsonIndex, data.size());
-			data.push_back(newEntry);
-			cfg.jsonIndex = static_cast<std::uint16_t>(data.size() - 1);
-		}
-		else {
-			data.insert(data.begin() + static_cast<std::ptrdiff_t>(jsonIndex), newEntry);
-		}
+		 if (jsonIndex > data.size()) {
+			 logger::warn(
+				 "AppendNewConfigEntryFromLight: jsonIndex {} > data.size() {}, appending instead",
+				 jsonIndex,
+				 data.size());
 
-		std::ofstream outFile(configPath, std::ios::trunc);
-		if (!outFile.is_open()) {
-			logger::error("AppendNewConfigEntryFromLight: failed to write {}", configPath);
-			return false;
-		}
+			 data.push_back(newEntry);
+			 cfg.jsonIndex = static_cast<std::uint16_t>(data.size() - 1);
+		 }
+		 else {
+			 data.insert(data.begin() + static_cast<std::ptrdiff_t>(jsonIndex), newEntry);
+		 }
 
-		outFile << data.dump(4);
+		 std::ofstream outFile(configPath, std::ios::trunc);
+		 if (!outFile.is_open()) {
+			 logger::error("AppendNewConfigEntryFromLight: failed to write {}", configPath);
+			 return false;
+		 }
 
-		LightData::configIDToJsonCfg[cfg.configID] = cfg;
-		LightData::defaultConfigs[cfg.configID] = cfg;
+		 outFile << data.dump(4);
 
-		if (refLight) {
-			if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-				LightData::refFormIDToJsonCfgExteriors[refFormID].push_back(cfg);
-			}
-			else {
-				LightData::refFormIDToJsonCfg[refFormID].push_back(cfg);
-			}
+		 LightData::configIDToJsonCfg[cfg.configID] = cfg;
+		 LightData::defaultConfigs[cfg.configID] = cfg;
 
-			logger::info("AppendNewConfigEntryFromLight: added ref config '{}' at {} index {}",
-				cfg.menuName, cfg.configPath, cfg.jsonIndex);
-		}
-		else {
-			if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-				LightData::meshPathToJsonCfgExteriors[cfg.meshPath].push_back(cfg);
-			}
-			else {
-				LightData::meshPathToJsonCfg[cfg.meshPath].push_back(cfg);
-			}
+		 if (refLight) {
+			 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				 LightData::refFormIDToJsonCfgExteriors[refFormID].push_back(cfg);
+			 }
+			 else {
+				 LightData::refFormIDToJsonCfg[refFormID].push_back(cfg);
+			 }
 
-			logger::info("AppendNewConfigEntryFromLight: added mesh config '{}' at {} index {}",
-				cfg.menuName, cfg.configPath, cfg.jsonIndex);
-		}
+			 logger::info(
+				 "AppendNewConfigEntryFromLight: added ref config '{}' at {} index {}",
+				 cfg.menuName,
+				 cfg.configPath,
+				 cfg.jsonIndex);
+		 }
+		 else {
+			 for (const auto& meshPath : cfg.meshPaths) {
+				 if (meshPath.empty()) {
+					 continue;
+				 }
 
-		return true;
-	}
-	catch (const std::exception& e) {
-		logger::error("AppendNewConfigEntryFromLight failed: {}", e.what());
-		return false;
-	}
-}
+				 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+					 LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
+				 }
+				 else {
+					 LightData::meshPathToJsonCfg[meshPath].push_back(cfg);
+				 }
+			 }
+
+			 logger::info(
+				 "AppendNewConfigEntryFromLight: added mesh config '{}' at {} index {}",
+				 cfg.menuName,
+				 cfg.configPath,
+				 cfg.jsonIndex);
+		 }
+
+		 return true;
+	 }
+	 catch (const std::exception& e) {
+		 logger::error("AppendNewConfigEntryFromLight failed: {}", e.what());
+		 return false;
+	 }
+ }

@@ -52,7 +52,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 				cfg,
 				a_root,
 				a_this,
-				cfg.meshPath,
+				cfg.menuName,
 				refFormID,
 				alreadyAttachedDebugMarker);
 

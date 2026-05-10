@@ -454,13 +454,16 @@ inline bool isExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
 inline const std::string findPriorityMatch(const std::string& meshName)
 {
 	for (const auto& meshNameInPriorityList : globals::priorityList) {
+		if (meshNameInPriorityList.empty()) {
+			continue;
+		}
+
 		if (meshName.contains(meshNameInPriorityList)) {
-			//logger::info("priority list item{} ", nodeNameInPriorityList);
 			return meshNameInPriorityList;
 		}
 	}
 
-	return ""; // safe, reference exists
+	return "";
 }
 
 //gets users skyrim pref setting. lights reinitialized are set to this exact distance
