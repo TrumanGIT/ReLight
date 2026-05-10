@@ -44,13 +44,13 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 		return false;
 	}
 
-    if (!globals::disableGameLights) return false; 
-
     std::string edid = clib_util::editorID::get_editorID(light);
 
     toLower(edid);
 
     if (LightData::ContainsEditorID(edid, globals::disableByEditorID)) return true;
+
+    if (!globals::disableGameLights) return false;
 
 	if (LightData::ContainsEditorID(edid, globals::enableByEditorID)) return false;
 
