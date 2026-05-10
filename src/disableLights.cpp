@@ -50,7 +50,9 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     toLower(edid);
 
-	if (LightData::excludeLightEditorID(edid)) return false;
+    if (LightData::ContainsEditorID(edid, globals::disableByEditorID)) return true;
+
+	if (LightData::ContainsEditorID(edid, globals::enableByEditorID)) return false;
 
     if (globals::excludedRefFormIDs.contains(ref->GetFormID())) {
         logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));
@@ -108,7 +110,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     // dont want to block large tri shapes that might supposed have more then 7 lights (windhelmBridge, candlehearthhall) 
     if (pass->geometry->worldBound.radius > 1800) return true;
 
-    //return on actors and skp invalid references potentially
+    //return on actors and skip invalid references potentially
     auto objectRef = pass->geometry->GetUserData();
 
     if (!objectRef) {

@@ -41,7 +41,10 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     {
         iniParser();
 
+        //cs installed dont need flicker prevention
         if (globals::islInstalled) globals::enableLightFlickerPreventionMeasures = false;
+
+        if (globals::disableISL == true) globals::islInstalled = false; 
 
         parseTemplates();
         // create master point light. must clone it or crash idk why

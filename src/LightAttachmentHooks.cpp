@@ -25,7 +25,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		if (globals::mergedRefs.count(refFormID) > 0)
 			return niAVObject;
 	}
-	
+
 	// calling asNode crashed on some dyndolod references for a user so netimmersive cast instead
 	auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
 	if (!a_root) {
@@ -57,7 +57,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 				alreadyAttachedDebugMarker);
 
 			if (!light) {
-				logger::warn("AttachLight failed for ref {:08X} with mesh '{}'", refFormID, cfg.refFormIDAndModName);
+				logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
 			}
 		
 		}
@@ -104,7 +104,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		}
 		
 		return niAVObject;
-	 } 
+	 }
 
 	return niAVObject;
 }

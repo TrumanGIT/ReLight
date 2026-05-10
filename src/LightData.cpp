@@ -36,21 +36,27 @@ void LightData::ResetTriLightCache()
 }
 
 // Try to exclude light by editorID.
-bool LightData::excludeLightEditorID(const std::string& edid) {
-
-	if (!edid.empty()) {
-
-			for (const auto& keyword : globals::keywordLightGroups) {
-				if (edid.contains(keyword)) {
-
-					if (edid.contains("solitudeinnsunlightshadow"))
-						return false;
-
-					logger::info("Excluding light by editorID: {}", edid);
-					return true;
-				}
-			}
+ bool LightData::ContainsEditorID(
+	const std::string& edid,
+	const std::vector<std::string>& keywords)
+{
+	if (edid.empty()) {
+		return false;
 	}
+
+	for (const auto& keyword : keywords) {
+		if (edid.contains(keyword)) {
+
+			// special exception
+			if (edid.contains("solitudeinnsunlightshadow")) {
+				return false;
+			}
+
+			logger::info("Matched editorID '{}' with keyword '{}'", edid, keyword);
+			return true;
+		}
+	}
+
 	return false;
 }
 
@@ -187,9 +193,9 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 	cfg.radius = rt.radius.x;
 	cfg.brightness = cfg.startingFade;
 
-	cfg.position[0] = niLight->local.translate.x;
-	cfg.position[1] = niLight->local.translate.y;
-	cfg.position[2] = niLight->local.translate.z;
+	//cfg.position[0] = niLight->local.translate.x;
+	//cfg.position[1] = niLight->local.translate.y;
+	//cfg.position[2] = niLight->local.translate.z;
 
 	cfg.diffuseColor[0] = int(rt.diffuse.red * 255.0f);
 	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
@@ -231,70 +237,119 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 		}
 	}
 
-	if (!updatedCfg.refFormIDAndModName.empty()) {
-		auto refKey = updatedCfg.refFormIDAndModName;
+	for (auto refKey : updatedCfg.refFormIDsAndModNames) {
+		if (refKey.empty()) {
+			continue;
+		}
+
 		toLower(refKey);
 
 		auto tildePos = refKey.find('~');
-		if (tildePos != std::string::npos) {
-			std::string formIDStr = trim(refKey.substr(0, tildePos));
-			std::string modName = trim(refKey.substr(tildePos + 1));
+		if (tildePos == std::string::npos) {
+			logger::warn("Invalid refID format '{}' while updating runtime config cache", refKey);
+			continue;
+		}
 
-			try {
-				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
-					formIDStr = formIDStr.substr(2);
-				}
+		std::string formIDStr = trim(refKey.substr(0, tildePos));
+		std::string modName = trim(refKey.substr(tildePos + 1));
 
-				auto* dataHandler = RE::TESDataHandler::GetSingleton();
-				if (!dataHandler) {
-					logger::warn("TESDataHandler was null while updating ref config cache");
-					return updated;
-				}
-
-				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
-
-				auto mod = dataHandler->LookupModByName(modName);
-				if (!mod) {
-					logger::warn("Invalid mod name '{}' while updating ref config cache", modName);
-					return updated;
-				}
-
-				RE::FormID runtimeID = 0;
-
-				if (mod->IsLight()) {
-					auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
-					if (!ref) {
-						logger::warn(
-							"Failed to resolve light plugin ref localID 0x{:X} from mod '{}' while updating ref config cache",
-							static_cast<std::uint32_t>(parsedID),
-							modName);
-						return updated;
-					}
-
-					runtimeID = ref->GetFormID();
-				}
-				else {
-					runtimeID = parsedID;
-				}
-
-				if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-					auto& vec = refFormIDToJsonCfgExteriors[runtimeID];
-					updated |= updateConfigMap(vec, updatedCfg);
-				}
-				else {
-					auto& vec = refFormIDToJsonCfg[runtimeID];
-					updated |= updateConfigMap(vec, updatedCfg);
-				}
+		try {
+			if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+				formIDStr = formIDStr.substr(2);
 			}
-			catch (...) {
-				logger::warn(
-					"Failed to parse refFormIDAndModName '{}' while updating runtime config cache",
-					updatedCfg.refFormIDAndModName);
+
+			auto* dataHandler = RE::TESDataHandler::GetSingleton();
+			if (!dataHandler) {
+				logger::warn("TESDataHandler was null while updating ref config cache");
+				continue;
 			}
+
+			RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+
+			auto mod = dataHandler->LookupModByName(modName);
+			if (!mod) {
+				logger::warn("Invalid mod name '{}' while updating ref config cache", modName);
+				continue;
+			}
+
+			RE::FormID runtimeID = 0;
+
+			if (mod->IsLight()) {
+				auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
+				if (!ref) {
+					logger::warn(
+						"Failed to resolve light plugin ref localID 0x{:X} from mod '{}' while updating ref config cache",
+						static_cast<std::uint32_t>(parsedID),
+						modName);
+					continue;
+				}
+
+				runtimeID = ref->GetFormID();
+			}
+			else {
+				runtimeID = parsedID;
+			}
+
+			if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				auto& vec = refFormIDToJsonCfgExteriors[runtimeID];
+				updated |= updateConfigMap(vec, updatedCfg);
+			}
+			else {
+				auto& vec = refFormIDToJsonCfg[runtimeID];
+				updated |= updateConfigMap(vec, updatedCfg);
+			}
+		}
+		catch (...) {
+			logger::warn(
+				"Failed to parse refID '{}' while updating runtime config cache",
+				refKey);
 		}
 	}
 
 	return updated;
+}
+
+//used to stop light flicker prevention mode from blocking dyncamically spawned lights from 
+// torch or candle activators. 
+void LightData::InvalidateTriLightCacheForActivator(RE::TESObjectREFR* ref)
+{
+	if (!ref) {
+		return;
+	}
+
+	auto* baseObj = ref->GetBaseObject();
+	if (!baseObj || baseObj->GetFormType() != RE::FormType::Activator) {
+		return;
+	}
+
+	if (!globals::secondAfterCellFullyLoaded.load()) {
+		return;
+	}
+
+	auto* player = RE::PlayerCharacter::GetSingleton();
+	if (!player) {
+		return;
+	}
+
+	const auto refPos = ref->GetPosition();
+	const auto playerPos = player->GetPosition();
+
+	const float dx = refPos.x - playerPos.x;
+	const float dy = refPos.y - playerPos.y;
+	const float dz = refPos.z - playerPos.z;
+
+	const float dist2 = dx * dx + dy * dy + dz * dz;
+
+	constexpr float maxInvalidateDistance = 300.0f;
+
+	if (dist2 > maxInvalidateDistance * maxInvalidateDistance) {
+		return;
+	}
+
+	SKSE::GetTaskInterface()->AddTask([]() {
+		logger::debug("nearby activator spawned, resetting light cache");
+		LightData::triLightCacheGeneration.fetch_add(1);
+		});
 }
 
 void LightData::AddConfigToMaps(

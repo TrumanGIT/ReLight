@@ -135,7 +135,7 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 	return nullptr;
 }
 
-bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior) {
+bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string meshName, RE::NiNode* a_root, bool isInterior) {
 
 
 	 std::string meshNameMatch = findPriorityMatch(meshName);
@@ -143,7 +143,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 	 const auto refFormID = a_this->GetFormID();
 
 	 if (meshNameMatch.empty()) {
-		 logger::info("found no match for {} ", meshName);
+		 //logger::info("found no match for {} ", meshName);
 		 return false;
 	 } 
 
@@ -186,9 +186,14 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this, std::string mesh
 
 			if (!light) {
 				logger::warn("AttachLight failed for ref {:08X} with mesh '{}'", refFormID, meshNameMatch);
-				return true;
+				continue; 
 			}
 		}
+
+		// light flicker prevention blocks newly spawned torch and candle lights from activators.
+		// this should help
+		LightData::InvalidateTriLightCacheForActivator(a_this); 
+	
 	}
 	return true;
 }
@@ -424,7 +429,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 	p.refA = refA->GetHandle();
 
-	p.refARoot = refA_root;
+	p.refARoot = refA_root; 
 
 	int potentialMergeCount = 0;
 
@@ -484,7 +489,6 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 			uint32_t otherRefFlags = otherRefCfg.flags;
 
-
 				if (!increasedMergeDistance && (refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance) || otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMergeDistance))) {
 					increasedMergeDistance = true;
 					logger::debug("increased distance used");
@@ -493,7 +497,6 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 			looseMatch = LightData::ShouldMergeByFlags(refAflags, otherRefFlags);
 
-			
 			//logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {} distance={}",
 			//	refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch, distance);
 			
@@ -559,6 +562,10 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 		LightManager::attachNiPointLightToShadowSceneNode(p.light.get(), p.winningConfig, refA);
 
 		if (globals::enableDebugLightBulbs) AttachDebugMarker(refA_root, p.light.get()); 
+
+		// light flicker prevention blocks newly spawned torch and candle lights from activators.
+		// this should help
+		LightData::InvalidateTriLightCacheForActivator(refA);
 
 		return;
 	}
@@ -725,6 +732,11 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 			 );
 
 	 LightManager::attachNiPointLightToShadowSceneNode(p.light.get(), p.winningConfig, refA.get());
+
+	 // light flicker prevention blocks newly spawned torch and candle lights from activators.
+	 // this should help
+
+	 LightData::InvalidateTriLightCacheForActivator(refA.get());
 }
 
 void LightManager::AttachDebugMarker(RE::NiNode* a_node, RE::NiLight* light)

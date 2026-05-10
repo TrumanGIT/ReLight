@@ -80,7 +80,9 @@ struct LightData {
 
 	static void ResetTriLightCache();
 
-	static bool excludeLightEditorID(const std::string& edid);
+	static bool ContainsEditorID(
+		const std::string& edid,
+		const std::vector<std::string>& keywords);
 
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
 	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const float scale);
@@ -95,6 +97,8 @@ struct LightData {
 	static void updateConfigFromLight(LightConfig& cfg, const LightConfig& baseConfig, RE::NiLight* niLight);
 
 	static bool updateRuntimeConfigCaches(const LightConfig& updatedCfg);
+
+	static void InvalidateTriLightCacheForActivator(RE::TESObjectREFR* ref);
 
     static void AddConfigToMaps(
 		const LightConfig& cfg,

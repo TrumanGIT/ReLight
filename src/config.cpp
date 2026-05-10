@@ -109,8 +109,13 @@ bool saveConfiguration(const LightConfig& config) {
 		if (originalEntry.contains("refID")) {
 			newEntry["refID"] = originalEntry["refID"];
 		}
-		else if (!config.refFormIDAndModName.empty()) {
-			newEntry["refID"] = config.refFormIDAndModName;
+		else if (!config.refFormIDsAndModNames.empty()) {
+			if (config.refFormIDsAndModNames.size() == 1) {
+				newEntry["refID"] = config.refFormIDsAndModNames.front();
+			}
+			else {
+				newEntry["refID"] = config.refFormIDsAndModNames;
+			}
 		}
 
 		newEntry["menuName"] = config.menuName;
@@ -180,8 +185,8 @@ bool saveNewConfiguration(LightConfig& config)
 
 		newEntry["meshPath"] = config.meshPaths;
 
-		if (!config.refFormIDAndModName.empty()) {
-			newEntry["refID"] = config.refFormIDAndModName;
+		if (!config.refFormIDsAndModNames.empty()) {
+			newEntry["refID"] = config.refFormIDsAndModNames;
 		}
 
 		newEntry["menuName"] = config.menuName;
@@ -430,91 +435,98 @@ void parseTemplates() {
 				}
 			}
 
-			// create a config for each refID listed
-			for (const auto& refID : refFormIDs) {
-				if (refID.empty()) {
-					continue;
-				}
-
+			// create ONE config for all refIDs listed
+			if (!refFormIDs.empty()) {
 				LightConfig cfg;
 				loadConfiguration(cfg, json);
+
 				cfg.configPath = p;
 				cfg.configID = globals::nextID++;
 				cfg.jsonIndex = jsonIndex;
-				cfg.refFormIDAndModName = refID;
-				toLower(cfg.refFormIDAndModName);
+				cfg.refFormIDsAndModNames = refFormIDs;
 
-				auto tildePos = cfg.refFormIDAndModName.find('~');
-				if (tildePos == std::string::npos) {
-					logger::warn("Invalid refID format '{}', expected FormID~ModName", refID);
-					continue;
+				for (auto& refID : cfg.refFormIDsAndModNames) {
+					toLower(refID);
 				}
 
-				std::string formIDStr = trim(cfg.refFormIDAndModName.substr(0, tildePos));
-				std::string modName = trim(cfg.refFormIDAndModName.substr(tildePos + 1));
-				toLower(modName);
-
-				try {
-					if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
-						formIDStr = formIDStr.substr(2);
-					}
-
-					std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
-
-					auto* dataHandler = RE::TESDataHandler::GetSingleton();
-					if (!dataHandler) {
-						logger::warn("TESDataHandler was null while parsing refID '{}'", refID);
+				for (const auto& refID : cfg.refFormIDsAndModNames) {
+					if (refID.empty()) {
 						continue;
 					}
 
-					const RE::TESFile* file = dataHandler->LookupLoadedModByName(modName);
-					bool isLightMod = false;
+					auto tildePos = refID.find('~');
+					if (tildePos == std::string::npos) {
+						logger::warn("Invalid refID format '{}', expected FormID~ModName", refID);
+						continue;
+					}
 
-					if (!file) {
-						file = dataHandler->LookupLoadedLightModByName(modName);
-						if (file) {
-							isLightMod = true;
+					std::string formIDStr = trim(refID.substr(0, tildePos));
+					std::string modName = trim(refID.substr(tildePos + 1));
+					toLower(modName);
+
+					try {
+						if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+							formIDStr = formIDStr.substr(2);
 						}
-					}
 
-					if (!file) {
-						logger::warn("Invalid mod name '{}' in refID '{}'", modName, refID);
-						continue;
-					}
+						std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
 
-					RE::FormID runtimeID = 0;
-
-					if (isLightMod) {
-						auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
-						if (!ref) {
-							logger::warn("Failed to resolve light plugin refID '{}' in {}", refID, p);
+						auto* dataHandler = RE::TESDataHandler::GetSingleton();
+						if (!dataHandler) {
+							logger::warn("TESDataHandler was null while parsing refID '{}'", refID);
 							continue;
 						}
 
-						runtimeID = ref->GetFormID();
-					}
-					else {
-						runtimeID = parsedID;
-					}
+						const RE::TESFile* file = dataHandler->LookupLoadedModByName(modName);
+						bool isLightMod = false;
 
-					if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-						LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
-						logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
-						cfg.print(true);
-					}
-					else {
-						LightData::refFormIDToJsonCfg[runtimeID].push_back(cfg);
-						logger::info("adding ref ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
-						cfg.print(false);
-					}
+						if (!file) {
+							file = dataHandler->LookupLoadedLightModByName(modName);
+							if (file) {
+								isLightMod = true;
+							}
+						}
 
-					LightData::configIDToJsonCfg[cfg.configID] = cfg;
-					LightData::defaultConfigs[cfg.configID] = cfg;
+						if (!file) {
+							logger::warn("Invalid mod name '{}' in refID '{}'", modName, refID);
+							continue;
+						}
+
+						RE::FormID runtimeID = 0;
+
+						if (isLightMod) {
+							auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
+							if (!ref) {
+								logger::warn("Failed to resolve light plugin refID '{}' in {}", refID, p);
+								continue;
+							}
+
+							runtimeID = ref->GetFormID();
+						}
+						else {
+							runtimeID = parsedID;
+						}
+						// create one lightconfig object for each of these maps
+						if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+							LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
+							logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+						}
+						else {
+							LightData::refFormIDToJsonCfg[runtimeID].push_back(cfg);
+							logger::info("adding ref ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+						}
+					}
+					catch (...) {
+						logger::warn("Failed to parse refID '{}' in {}", refID, p);
+						continue;
+					}
 				}
-				catch (...) {
-					logger::warn("Failed to parse refID '{}' in {}", refID, p);
-					continue;
-				}
+
+				// only create one lightconfig object for these maps
+				LightData::configIDToJsonCfg[cfg.configID] = cfg;
+				LightData::defaultConfigs[cfg.configID] = cfg;
+
+				cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
 			}
 
 			// create a config for each mesh file path
@@ -544,9 +556,11 @@ void parseTemplates() {
 
 				sortInPriorityList(cfg);
 
+				// only create one lightconfig object for these maps
 				LightData::configIDToJsonCfg[cfg.configID] = cfg;
 				LightData::defaultConfigs[cfg.configID] = cfg;
 
+				// create one lightconfig object for each of these maps
 				for (const auto& meshPath : cfg.meshPaths) {
 					if (meshPath.empty()) {
 						continue;
@@ -640,7 +654,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 	 const std::string& matched,
 	 const LightConfig& baseCfg,
 	 bool refLight,
-	 RE::FormID refFormID)
+	 RE::FormID refFormID, bool preserveConfigID)
  {
 	 try {
 		 if (configPath.empty()) {
@@ -656,11 +670,15 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 LightConfig cfg;
 		 LightData::updateConfigFromLight(cfg, baseCfg, niLight);
 
+		 cfg.position = baseCfg.position;
 		 cfg.configPath = configPath;
 		 cfg.jsonIndex = jsonIndex;
-		 cfg.configID = globals::nextID++;
+		 cfg.configID = preserveConfigID ? baseCfg.configID : globals::nextID++;
 		 cfg.menuName = menuName;
-		 cfg.refFormIDAndModName = refIDAndModName;
+		 cfg.refFormIDsAndModNames.clear(); // clear copied baseCfg refs since were adding a new json object to json file
+		 if (!refIDAndModName.empty()) {
+			 cfg.refFormIDsAndModNames.push_back(refIDAndModName);
+		 }
 
 		 cfg.meshPaths.clear();
 		 if (!matched.empty()) {
@@ -687,9 +705,15 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 			 newEntry["meshPath"] = cfg.meshPaths;
 		 }
 
-		 if (!cfg.refFormIDAndModName.empty()) {
-			 newEntry["refID"] = cfg.refFormIDAndModName;
+		 if (!cfg.refFormIDsAndModNames.empty()) {
 			 cfg.flags |= static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging);
+
+			 if (cfg.refFormIDsAndModNames.size() == 1) {
+				 newEntry["refID"] = cfg.refFormIDsAndModNames.front();
+			 }
+			 else {
+				 newEntry["refID"] = cfg.refFormIDsAndModNames;
+			 }
 		 }
 
 		 newEntry["menuName"] = cfg.menuName;
@@ -746,8 +770,9 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 
 		 outFile << data.dump(4);
 
-		 LightData::configIDToJsonCfg[cfg.configID] = cfg;
-		 LightData::defaultConfigs[cfg.configID] = cfg;
+			 LightData::configIDToJsonCfg[cfg.configID] = cfg;
+			 LightData::defaultConfigs[cfg.configID] = cfg;
+		
 
 		 if (refLight) {
 			 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {

@@ -50,7 +50,6 @@ enum class LIGHT_FLAGS : uint32_t
     kGiantCampfire = 1 << 3,
     kOther = 1 << 4,
     kTorchWall = 1 << 5,
-   // khandHeld = 1 << 6,
     kIncreasedMergeDistance = 1 << 6,
     kIncreasedMenuXYZScale = 1 << 7,
     kNoMerging = 1 << 8,
@@ -64,7 +63,6 @@ inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kGiantCampfire, "GiantCampfire" },
     { LIGHT_FLAGS::kGiantCampfire, "Other" },
     { LIGHT_FLAGS::kTorchWall, "TorchWall" },
-   // { LIGHT_FLAGS::khandHeld, "Handheld" },
     { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
     { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
     { LIGHT_FLAGS::kNoMerging, "NoMerging" },
@@ -77,7 +75,7 @@ struct LightConfig {
     std::string configPath{};                     // save the path from where this config is loaded
     std::vector<std::string> meshPaths;
     std::string menuName{};
-    std::string refFormIDAndModName{}; 
+    std::vector<std::string> refFormIDsAndModNames;
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{0, 0, 30};       // RE::NiPointLight->local.translate.x, y z
     uint32_t flags{ 0 };
@@ -105,7 +103,9 @@ struct LightConfig {
         for (const auto& mesh : meshPaths) {
             logger::info(" Mesh Path         : {}", mesh);
         }
-        logger::info(" RefID and Mod Name : {}", refFormIDAndModName);
+        for (const auto& refID : refFormIDsAndModNames) {
+            logger::info(" RefID and Mod Name : {}", refID);
+        }
         logger::info(" Menu name         : {}", menuName);
         FOREACH_BOOL(BOOL2PRINT);
         FOREACH_FLOAT(FLOAT2PRINT);
@@ -217,8 +217,8 @@ bool AppendNewConfigEntryFromLight(
     std::uint16_t jsonIndex,
     const std::string& menuName,
     RE::NiLight* niLight,
-    const std::string& refIDAndModName,
-    const std::string& matched, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID);
+    const std::string& refIDsAndModNames,
+    const std::string& matched, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID, bool preserveConfigID = false);
 
 void parseTemplates();
 

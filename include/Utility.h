@@ -61,6 +61,32 @@ inline std::string trim(const std::string& s) {
 	return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
 }
 
+// used for menu names in attach light section of menu
+inline std::string StripTrailingIdentifier(std::string name)
+{
+	// strip " [number]"
+	auto openBracket = name.rfind(" [");
+
+	if (openBracket != std::string::npos &&
+		name.back() == ']')
+	{
+		bool valid = true;
+
+		for (size_t i = openBracket + 2; i < name.size() - 1; i++) {
+			if (!std::isdigit(static_cast<unsigned char>(name[i]))) {
+				valid = false;
+				break;
+			}
+		}
+
+		if (valid) {
+			name.erase(openBracket);
+		}
+	}
+
+	return name;
+}
+
 inline void splitString(const std::string& input, char delimiter, std::vector<std::string>& listToSplit)
 {
 	std::stringstream ss(input);
@@ -103,6 +129,7 @@ inline void iniParser()
 	{
 		NONE,
 		lightEdid,
+		lightEdidDisable,
 		meshPathExact,
 		meshPathPartial,
 		priority,
@@ -120,6 +147,8 @@ inline void iniParser()
 		
 			if (line.find("exclude lights from being disabled") != std::string::npos)
 				section = lightEdid;
+			else if (line.find("disable lights by editor id") != std::string::npos)
+				section = lightEdidDisable;
 			else if (line.find("exclude specific mesh paths") != std::string::npos)
 				section = meshPathExact;
 			else if (line.find("exclude partial mesh paths") != std::string::npos)
@@ -138,8 +167,14 @@ inline void iniParser()
 		{
 		case lightEdid:
 			toLower(line);
-			globals::keywordLightGroups.push_back(line);
+			globals::enableByEditorID.push_back(line);
 			logger::info("Added light editorID Exclusion: {}", line);
+			continue;
+
+		case lightEdidDisable:
+			toLower(line);
+			globals::disableByEditorID.push_back(line);
+			logger::info("Added light editorID To Disable: {}", line);
 			continue;
 
 		case meshPathExact:
@@ -275,6 +310,12 @@ inline void iniParser()
 		if (key == "enabledebugbulbs") {
 			globals::enableDebugLightBulbs = value == "true";
 			logger::info("enableDebugLightBulbs = {}", globals::enableDebugLightBulbs);
+			continue;
+		}
+
+		if (key == "disableisl") {
+			globals::disableISL = value == "true";
+			logger::info("disableisl = {}", globals::disableISL);
 			continue;
 		}
 
@@ -537,6 +578,7 @@ inline void hasInverseSquareLighting()
 {
 	const auto path =
 		std::filesystem::path("Data/Shaders/InverseSquareLighting/InverseSquareLighting.hlsli");
+
 
 	globals::islInstalled = std::filesystem::exists(path);
 

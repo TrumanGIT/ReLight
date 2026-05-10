@@ -28,6 +28,7 @@ namespace globals
     inline bool currentCellIsInterior = false;
 
     inline bool islInstalled = false;
+    inline bool disableISL = false; 
 
     inline bool enableDebugLightBulbs = false;
 
@@ -108,6 +109,8 @@ namespace globals
     //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
    // inline std::unordered_set<RE::FormID> wallMeshes{};
 
-    inline std::vector<std::string> keywordLightGroups = {};
+    inline std::vector<std::string> enableByEditorID = {};
+
+    inline std::vector<std::string> disableByEditorID = {};
 
 }
