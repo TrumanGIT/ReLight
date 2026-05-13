@@ -75,6 +75,56 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 	return true;
 }
 
+//used to disable lights from flora once they are picked.
+
+bool TreeActivateHook::Activate(
+    RE::TESObjectTREE* a_this,
+    RE::TESObjectREFR* a_targetRef,
+    RE::TESObjectREFR* a_activatorRef,
+    std::uint8_t a_arg3,
+    RE::TESBoundObject* a_object,
+    std::int32_t a_targetCount)
+{
+
+    if (!a_this) return func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount);
+
+    logger::info("tree activate hook fired"); 
+    auto player = RE::PlayerCharacter::GetSingleton();
+
+    if (player && a_activatorRef == player && a_targetRef) {
+        auto root = a_targetRef->Get3D();
+
+        if (root) {
+            if (auto rootNode = root->AsNode()) {
+                for (auto& child : rootNode->GetChildren()) {
+                    if (!child) {
+                        continue;
+                    }
+
+                    std::string_view name = child->name.c_str();
+
+                    if (name.size() >= 2 && name[0] == 'R' && name[1] == 'L') {
+                        child->SetAppCulled(true);
+                        logger::info("culled a plant light");
+                    }
+                }
+            }
+        }
+    }
+
+    return func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount);
+}
+
+void TreeActivateHook::Install()
+{
+    REL::Relocation<std::uintptr_t> vtbl{ RE::VTABLE_TESObjectTREE[0] };
+
+    func = vtbl.write_vfunc(0x37, Activate);
+
+    logger::info("Installed TREE::Activate hook");
+}
+
+
 //used to limit surfaces to 7 closest lights to prevent light flickering
 //what I do here is reimplement this base game func, and collect closest lights once 1 second after cell loaded (otherwise no lights yet)
 // then I store the array index in a shader propertys unused forced darkness member field for fast lookups after that

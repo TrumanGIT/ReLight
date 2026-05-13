@@ -78,5 +78,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    InventoryMenu::Install(); 
    CraftingMenu::Install();
    ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
+   TreeActivateHook::Install(); 
    return true;
 }
