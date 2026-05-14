@@ -61,7 +61,7 @@ inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kChandelier, "Chandelier" },
     { LIGHT_FLAGS::kFire, "Fire" },
     { LIGHT_FLAGS::kGiantCampfire, "GiantCampfire" },
-    { LIGHT_FLAGS::kGiantCampfire, "Other" },
+    { LIGHT_FLAGS::kOther, "Other" },
     { LIGHT_FLAGS::kTorchWall, "TorchWall" },
     { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
     { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },

@@ -147,6 +147,12 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 		 return false;
 	 } 
 
+	 // skip harvested plants
+	 if (a_this->formFlags & (1 << 13)) {
+		 logger::debug("skip attaching light to harvested plant");
+		 return false;
+	 }
+
 	if (isExclude(meshName, a_this)) return true; 
 
 	auto cfgs = findConfigsForMeshPath(meshNameMatch, isInterior);

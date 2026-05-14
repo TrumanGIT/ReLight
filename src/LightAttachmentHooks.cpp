@@ -46,6 +46,12 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 		bool alreadyAttachedDebugMarker = false;
 
+		// skip harvested plants
+		if (a_this->formFlags & (1 << 13)) {
+			logger::debug("skip attaching light to harvested plant");
+			return niAVObject;
+		}
+
 		for (const auto& cfg : *refCfgs) {
 
 			auto* light = LightManager::AttachLight(

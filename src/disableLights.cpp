@@ -88,7 +88,7 @@ bool TreeActivateHook::Activate(
 
     if (!a_this) return func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount);
 
-    logger::info("tree activate hook fired"); 
+    logger::debug("tree activate hook fired"); 
     auto player = RE::PlayerCharacter::GetSingleton();
 
     if (player && a_activatorRef == player && a_targetRef) {
