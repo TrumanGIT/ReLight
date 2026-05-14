@@ -220,8 +220,6 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 
 	static bool s_firstCellEvent = true;
 
-	//logger::debug("cell event fired for player");
-
 	auto cell = RE::TESForm::LookupByID<RE::TESObjectCELL>(event->cellID);
 	if (!cell) {
 		return RE::BSEventNotifyControl::kContinue;
@@ -320,14 +318,8 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 		for (const auto& formID : globals::baseFormsWithAttachedLights) {
 
-			//logger::debug("Tried to match base form id: {} against: {}", baseFormID, formID);
-
 			if (baseFormID == formID) {
-				//logger::debug("baseForm ref that needs reinitializing found");
-
-			//	RE::ObjectRefHandle handle(ref);
-
-					//if (auto ref = handle.get()) {
+				//logger::debug("baseForm ref that needs reinitializing found")
 
 						auto root = ref->Get3D(); 
 

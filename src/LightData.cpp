@@ -83,7 +83,8 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, cons
 	data.diffuse.green = cfg.diffuseColor[1] / 255.0f;
 	data.diffuse.blue = cfg.diffuseColor[2] / 255.0f;
 
-	// ambient is removed with community shaders and will break functinoality iof its set 
+	// ambient is removed with community shaders and will break functinality
+	//if its set because you will be writing into the wrong fields
 	if (!globals::islInstalled) {
 		data.ambient.red = data.diffuse.red * cfg.ambientRatio;
 		data.ambient.green = data.diffuse.green * cfg.ambientRatio;
@@ -103,14 +104,10 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 }
 
 void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg) {
-
-
 	if (!niPointLight) {
 		logger::error("light nullptr for mesh {}", cfg.menuName);
 		return;
 	}
-
-
 	if (auto* overlay = Overlay::Get(niPointLight)) {
 
 		constexpr std::uint32_t kInverseSquare = 1u << 10;
@@ -138,6 +135,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	data.fade = cfg.brightness * scale;
 	data.radius = getNiPointLightRadius(cfg, scale);
 
+	// used for quick runtime acess in flicker calcs and the in game menu (quicker then string lookup)
 	data.unk138 = cfg.configID;
 
 	logger::debug(" radius set to: {} ", cfg.radius);
@@ -155,6 +153,20 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	if (globals::islInstalled) setOverlayData(niPointLight, cfg);
 
 }
+
+ float LightData::GetFOV(LightConfig cfg)
+{
+	if (!cfg.shadowLight) {
+		return 1.0;
+	}
+
+	if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight)) {
+	 return RE::deg_to_rad(cfg.fov > 0.0f ? cfg.fov : 90.0f);
+	}
+
+	return RE::NI_TWO_PI;
+}
+
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
@@ -163,22 +175,22 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 
 	//Truman -  sounds good homie idk how to use that shit anyway xD
 
-	p.dynamic = true;    // dynamic = game updates it every frame so yes
+	p.dynamic = true;    // dynamic = game updates it every frame? 
 	p.shadowLight = cfg.shadowLight;   
-	p.portalStrict = cfg.portalStrict; // idk 
+	p.portalStrict = cfg.portalStrict; // should always be on something to do with culling / optimizaitons
 	p.affectLand = cfg.affectLand; 
 	p.affectWater = cfg.affectWater; 
-	p.neverFades = cfg.neverFades; 
+	p.neverFades = cfg.neverFades; // no draw back apparently to set true (rob from skyblivion)
 
-	p.fov = cfg.fov;   // idk
-	p.falloff = cfg.falloff;    // idk 
-	p.nearDistance = cfg.nearDistance; // idk
-	p.depthBias = cfg.depthBias; // idk 
+	p.fov = GetFOV(cfg);          // for spotlights and hemi spheres maybe? 
+	p.falloff = cfg.falloff;    // shadows (I think)
+	p.nearDistance = cfg.nearDistance; // shadows (I think)
+	p.depthBias = cfg.depthBias; // shadows (I think)
 
-	p.sceneGraphIndex = 0;      // always use 0 
+	p.sceneGraphIndex = 0;      // always use 0 ?
 
 	p.restrictedNode = nullptr; //idk
-	p.lensFlareData = nullptr; //idk 
+	p.lensFlareData = nullptr; //idk
 
 	return p;
 }

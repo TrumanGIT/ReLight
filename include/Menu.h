@@ -168,14 +168,14 @@ namespace UI {
             return false;
         }
         outFile << ";allow relight to disable all non relight lights(to start with a clean base)\n";
-        outFile << "disablegamelights=" << (globals::disableGameLights ? "true" : "false") << "\n\n";
+        outFile << "disableGameLights=" << (globals::disableGameLights ? "true" : "false") << "\n\n";
         outFile << "; enable light flicker prevention (default = false)\n";
         outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
         outFile << "; remove fake glow orbs (default = true)\n";
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
         outFile << "; enable debug bulbs (default = false)\n";
         outFile << "enableDebugBulbs=" << (globals::enableDebugLightBulbs ? "true" : "false") << "\n\n";
-        outFile << "; disable Inverse Squared Lighting\n";
+        outFile << "; disable Inverse Squared Lighting (relight lights and menu will change to vanilla)\n";
         outFile << "disableISL=" << (globals::disableISL ? "true" : "false") << "\n\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
         outFile << "loggingLevel=" << globals::loggingLevel << "\n";

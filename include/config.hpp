@@ -49,7 +49,7 @@ enum class LIGHT_FLAGS : uint32_t
     kFire = 1 << 2,
     kGiantCampfire = 1 << 3,
     kOther = 1 << 4,
-    kTorchWall = 1 << 5,
+    kSpotLight = 1 << 5,
     kIncreasedMergeDistance = 1 << 6,
     kIncreasedMenuXYZScale = 1 << 7,
     kNoMerging = 1 << 8,
@@ -62,7 +62,7 @@ inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kFire, "Fire" },
     { LIGHT_FLAGS::kGiantCampfire, "GiantCampfire" },
     { LIGHT_FLAGS::kOther, "Other" },
-    { LIGHT_FLAGS::kTorchWall, "TorchWall" },
+    { LIGHT_FLAGS::kSpotLight, "SpotLight" },
     { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
     { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
     { LIGHT_FLAGS::kNoMerging, "NoMerging" },
@@ -78,6 +78,7 @@ struct LightConfig {
     std::vector<std::string> refFormIDsAndModNames;
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{0, 0, 30};       // RE::NiPointLight->local.translate.x, y z
+    std::array<float, POS_SIZE> rotation{ 0, 0, 0 };       // RE::NiPointLight->local.rotation
     uint32_t flags{ 0 };
     std::vector<int> attachPath;
     uint32_t configID = 0;

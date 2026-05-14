@@ -478,6 +478,10 @@ namespace UI {
                         return;
                 }
 
+                bool isSpotLight = config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight);
+
+                float radiusToUse = isSpotLight ? 1000.0f : 500.0f; 
+
                 ImGuiMCP::PushID(selectedLight->light.get());
 
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
@@ -517,7 +521,7 @@ namespace UI {
                     }
 
                     if (!globals::islInstalled) {
-                        if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, 500.0f, "%.2f")) {
+                        if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
                             auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                             if (ssNode) {
                                 auto& rt = ssNode->GetRuntimeData();
@@ -652,9 +656,11 @@ namespace UI {
                     ? 1250.0f
                     : 250.0f;
 
+                int boxSize = isSpotLight ? 150 : 100;
+
                 if (ImGuiMCP::BeginChild(
                     "PositionBox",
-                    ImGuiMCP::ImVec2(0, 100),
+                    ImGuiMCP::ImVec2(0, boxSize),
                     true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
@@ -706,6 +712,55 @@ namespace UI {
                             }
                         }
                     }
+                  if (isSpotLight){
+                    if (ImGuiMCP::SliderFloat3(
+                        "Rotation",
+                        &config.rotation[0],
+                        -180.0f,
+                        180.0f,
+                        "%.3f"))
+                    {
+                        if (!isTorch) {
+                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+
+                            if (ssNode) {
+                                auto& rt = ssNode->GetRuntimeData();
+
+                                auto applyRotation = [&](auto& lights)
+                                    {
+                                        for (auto& l : lights) {
+                                            if (!l) continue;
+
+                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138)
+                                                continue;
+
+                                            RE::NiMatrix3 rot;
+
+                                            rot.SetEulerAnglesXYZ(
+                                                RE::deg_to_rad(config.rotation[0]),
+                                                RE::deg_to_rad(config.rotation[1]),
+                                                RE::deg_to_rad(config.rotation[2])
+                                            );
+
+                                            l->light->local.rotate = rot;
+
+                                            if (auto* parent = l->light->parent) {
+                                                RE::NiUpdateData updateData{};
+                                                updateData.time = 0.0f;
+                                                updateData.flags = RE::NiUpdateData::Flag::kDirty;
+
+                                                parent->UpdateTransformAndBounds(updateData);
+                                            }
+                                        }
+                                    };
+
+                                applyRotation(rt.activeLights);
+                                applyRotation(rt.activeShadowLights);
+                            }
+                        }
+                    }
+                  }
+
                     ImGuiMCP::EndDisabled();
                 }
                 ImGuiMCP::EndChild();
@@ -713,7 +768,7 @@ namespace UI {
                 ImGuiMCP::NextColumn();
 
 
-                if (ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, 100), true,
+                if (ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, boxSize), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
                     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
@@ -788,6 +843,21 @@ namespace UI {
  
                     ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
                     ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
+
+                    bool isSpot =
+                        (config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+
+                    if (ImGuiMCP::Checkbox("SpotLight", &isSpot))
+                    {
+                        if (isSpot) {
+                            config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
+                                config.fov = 45.0f;
+                        }
+                        else {
+                            config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
+                            config.fov = 90.0f;
+                        }
+                    }
 
                     ImGuiMCP::EndDisabled();
 

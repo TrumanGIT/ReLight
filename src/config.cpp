@@ -48,10 +48,19 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 		if (data.contains("position") && data["position"].is_array()) {
 			auto& arr = data["position"];
 			for (size_t i = 0; i < std::min(arr.size(), size_t(POS_SIZE)); ++i) {
-				auto val = arr[i].get<float>();  // <- use float, not int
+				auto val = arr[i].get<float>(); 
 				config.position[i] = val;
 			}
 		}
+
+		if (data.contains("rotation") && data["rotation"].is_array()) {
+			auto& arr = data["rotation"];
+			for (size_t i = 0; i < std::min(arr.size(), size_t(POS_SIZE)); ++i) {
+				auto val = arr[i].get<float>(); 
+				config.rotation[i] = val;
+			}
+		}
+
 
 		if (data.contains("flags")) {
 			config.flags = ParseFlags(data["flags"]);
@@ -123,10 +132,16 @@ bool saveConfiguration(const LightConfig& config) {
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
 
 		FOREACH_BOOL(JSON_WRITE)
+
+			const bool isSpotLight =
+			(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+
+		const float maxRadius = isSpotLight ? 1000.0f : 500.0f;
+
 			// brighness useses in game slider copy value for a more stable value
 		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
 		// clamp radius as community shaders can send brighntess / radius values to infinity
-		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, 500.0f), 2);
+		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, maxRadius), 2);
 		newEntry["fov"] = truncateDecimals(config.fov, 2);
 		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
 		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
@@ -143,10 +158,17 @@ bool saveConfiguration(const LightConfig& config) {
 			std::max(0.01f, static_cast<float>(truncateDecimals(config.size, 2)));
 
 		newEntry["color"] = { config.diffuseColor[0], config.diffuseColor[1], config.diffuseColor[2] };
+
 		newEntry["position"] = { 
 			truncateDecimals(config.position[0], 2),
 			truncateDecimals(config.position[1], 2),
 			truncateDecimals(config.position[2], 2)
+		};
+
+		newEntry["rotation"] = {
+		truncateDecimals(config.rotation[0], 2),
+		truncateDecimals(config.rotation[1], 2),
+		truncateDecimals(config.rotation[2], 2)
 		};
 
 		newEntry["flags"] = FlagsToJson(config.flags);
@@ -194,8 +216,13 @@ bool saveNewConfiguration(LightConfig& config)
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
 		FOREACH_BOOL(JSON_WRITE)
 
-			newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
-		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, 500.0f), 2);
+		const bool isSpotLight =
+		(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+
+		const float maxRadius = isSpotLight ? 1000.0f : 500.0f;
+
+		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
+		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, maxRadius), 2);
 		newEntry["fov"] = truncateDecimals(config.fov, 2);
 		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
 		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
@@ -217,6 +244,12 @@ bool saveNewConfiguration(LightConfig& config)
 			truncateDecimals(config.position[0], 2),
 			truncateDecimals(config.position[1], 2),
 			truncateDecimals(config.position[2], 2)
+		};
+
+		newEntry["rotation"] = {
+		truncateDecimals(config.rotation[0], 2),
+		truncateDecimals(config.rotation[1], 2),
+		truncateDecimals(config.rotation[2], 2)
 		};
 
 		newEntry["flags"] = FlagsToJson(config.flags);
@@ -721,7 +754,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 #define JSON_WRITE(C, I) newEntry[#C] = cfg.C;
 		 FOREACH_BOOL(JSON_WRITE)
 
-			 newEntry["brightness"] = truncateDecimals(cfg.startingFade, 2);
+		 newEntry["brightness"] = truncateDecimals(cfg.startingFade, 2);
 		 newEntry["radius"] = truncateDecimals(cfg.radius, 2);
 		 newEntry["fov"] = truncateDecimals(cfg.fov, 2);
 		 newEntry["falloff"] = truncateDecimals(cfg.falloff, 2);
@@ -744,6 +777,12 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 			 truncateDecimals(cfg.position[0], 2),
 			 truncateDecimals(cfg.position[1], 2),
 			 truncateDecimals(cfg.position[2], 2)
+		 };
+
+		 newEntry["rotation"] = {
+	 truncateDecimals(cfg.rotation[0], 2),
+	 truncateDecimals(cfg.rotation[1], 2),
+	 truncateDecimals(cfg.rotation[2], 2)
 		 };
 
 		 newEntry["flags"] = FlagsToJson(cfg.flags);
