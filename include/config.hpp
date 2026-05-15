@@ -15,7 +15,7 @@ constexpr int POS_SIZE = 3;
 
 #define FOREACH_BOOL(B) \
 B(shadowLight, false) \
-B(portalStrict, false) \
+B(portalStrict, true) \
 B(affectLand, true) \
 B(affectWater, true) \
 B(neverFades, true) \
@@ -23,10 +23,10 @@ B(neverFades, true) \
 #define FOREACH_FLOAT(F) \
 F(brightness, 3.0f) \
 F(radius, 100.f) \
-F(fov, 90.f) \
+F(fov, 1.0f) \
 F(falloff, 1.f) \
 F(nearDistance, 5.f) \
-F(depthBias, 0.0005f) \
+F(depthBias, 1.0f) \
 F(ambientRatio, 0.1f) \
 F(flickerIntensity, 0.1f) \
 F(flickersPerSecond, 0.1f) \
