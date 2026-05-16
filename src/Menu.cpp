@@ -658,7 +658,7 @@ namespace UI {
                     ? 1250.0f
                     : 250.0f;
 
-                int boxSize = isSpotLight ? 150 : 100;
+                float boxSize = isSpotLight ? 150.0f : 100.0f;
 
                 if (ImGuiMCP::BeginChild(
                     "PositionBox",
