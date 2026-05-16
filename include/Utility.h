@@ -61,7 +61,7 @@ inline std::string trim(const std::string& s) {
 	return (start == std::string::npos) ? "" : s.substr(start, end - start + 1);
 }
 
-// used for menu names in attach light section of menu
+// used for multi light menu names in attach light section of menu
 inline std::string StripTrailingIdentifier(std::string name)
 {
 	// strip " [number]"
@@ -426,6 +426,32 @@ inline void glowOrbRemover(RE::NiNode* node)
 		// Recursive call to handle nested nodes
 		glowOrbRemover(childAsNode);
 	}
+}
+
+inline bool ContainsEditorID(
+	const std::string& edid,
+	const std::vector<std::string>& keywords)
+{
+	if (edid.empty()) {
+		return false;
+	}
+
+	for (const auto& keyword : keywords) {
+		//	logger::debug("comparing vanilla light {} to {}", edid, keyword);
+
+		if (edid.contains(keyword)) {
+
+			// special exception
+			if (edid.contains("solitudeinnsunlightshadow")) {
+				return false;
+			}
+
+			logger::info("Matched editorID '{}' with keyword '{}'", edid, keyword);
+			return true;
+		}
+	}
+
+	return false;
 }
 
 inline bool isLightPluginFormID(RE::FormID formID)

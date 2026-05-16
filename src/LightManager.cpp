@@ -80,7 +80,7 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	
 	uint32_t mask = cfg.flags; 
 
-	// we set this unk060 so we can fast lookup what lights belong to what kind of sources later on
+	// we set this unk060 so we can fast lookup what lights belong to what kind of sources during is light affecting surface hook 
 	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
 		bsLight->unk060 = 1;
 	}
@@ -101,7 +101,9 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 	if (!ref)
 		return nullptr;
 
-	RE::FormID formID = ref->GetFormID();
+	// remove the first 2 digits so non light plugins with diff mod names but same form id can work for eachother 
+	// may cause unintended matches needs to be tested
+	RE::FormID formID = ref->GetFormID() & 0x00FFFFFF;
 
 	if (isInterior) {
 		auto it = LightData::refFormIDToJsonCfg.find(formID);

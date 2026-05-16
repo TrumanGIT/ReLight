@@ -48,11 +48,11 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     toLower(edid);
 
-    if (LightData::ContainsEditorID(edid, globals::disableByEditorID)) return true;
+    if (ContainsEditorID(edid, globals::disableByEditorID)) return true;
 
     if (!globals::disableGameLights) return false;
 
-	if (LightData::ContainsEditorID(edid, globals::enableByEditorID)) return false;
+	if (ContainsEditorID(edid, globals::enableByEditorID)) return false;
 
     if (globals::excludedRefFormIDs.contains(ref->GetFormID())) {
         logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));

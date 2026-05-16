@@ -80,10 +80,6 @@ struct LightData {
 
 	static void ResetTriLightCache();
 
-	static bool ContainsEditorID(
-		const std::string& edid,
-		const std::vector<std::string>& keywords);
-
 	static void setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg);
 
 	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const float scale);

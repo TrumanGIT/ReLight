@@ -482,6 +482,10 @@ namespace UI {
 
                 float radiusToUse = isSpotLight ? 1000.0f : 500.0f; 
 
+                bool isTorch = (selectedLight->light->name == "RLtorch");
+
+                bool isShadowLight = config.shadowLight; 
+
                 ImGuiMCP::PushID(selectedLight->light.get());
 
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
@@ -586,8 +590,6 @@ namespace UI {
                 }
                 ImGuiMCP::EndChild();
                 ImGuiMCP::NextColumn();
-
-                bool isTorch = (selectedLight->light->name == "RLtorch");
 
                 if (ImGuiMCP::BeginChild(
                     "FlickerBox",
@@ -806,8 +808,6 @@ namespace UI {
                 if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 205), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
-               
-
                     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
                         ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
                     ImGuiMCP::Text("Non-Runtime Light Settings");
@@ -838,11 +838,17 @@ namespace UI {
 
                     ImGuiMCP::SliderFloat("Fall Off", &config.falloff, 0.0f, 5.0f, "%.1f");
                     ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f");
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("Affect shadow quality");
+                    }
+
                     ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f");
                     ImGuiMCP::NextColumn();
  
                     ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
                     ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
+
+                    ImGuiMCP::BeginDisabled(!isShadowLight);
 
                     bool isSpot =
                         (config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
@@ -851,7 +857,7 @@ namespace UI {
                     {
                         if (isSpot) {
                             config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
-                                config.fov = 45.0f;
+                            config.fov = 45.0f;
                         }
                         else {
                             config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
@@ -859,7 +865,13 @@ namespace UI {
                         }
                     }
 
-                    ImGuiMCP::EndDisabled();
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("SpotLights only work for shadow lights, FOV and rotation can be used to edit them");
+                    }
+
+                    ImGuiMCP::EndDisabled(); // closes !isShadowLight
+
+                    ImGuiMCP::EndDisabled(); // closes isTorch
 
                     ImGuiMCP::EndChild();
                 }
@@ -1258,14 +1270,14 @@ namespace UI {
             ImGuiMCP::Spacing();
 
             centerNextItem(630.0f);
-
-            if (ImGuiMCP::Button("Reuse an existing template")) {
+                                  
+            if (ImGuiMCP::Button("add to a existing tempalte")) {
                 createNewTemplate = false;
                 step = AttachLightStep::ChooseTemplate;
             }
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Reusing templates keeps your config folder uncluttered.");
+                ImGuiMCP::SetTooltip("Adding to a existing template keeps your config folder uncluttered.");
             }
 
             ImGuiMCP::SameLine();
@@ -1654,7 +1666,7 @@ namespace UI {
         
         case AttachLightStep::Done:
         {
-            centerNextItem(440.0f);
+            centerNextItem(495.0f);
             ImGuiMCP::Text("Light attached. You MUST confirm before saving in the light editor.");
 
             ImGuiMCP::Spacing();

@@ -9,3 +9,12 @@ using namespace std::literals;
 using namespace std;
 
 #define RELOCATION_OFFSET(SE, AE) REL::VariantOffset(SE, AE, 0).offset()
+
+
+SKSEPluginInfo(
+	.Version = REL::Version{ 4, 1, 0, 0 },
+	.Name = "Relight",
+	.Author = "Truman",
+	.StructCompatibility = SKSE::StructCompatibility::Independent,
+	.RuntimeCompatibility = SKSE::VersionIndependence::AddressLibrary
+);

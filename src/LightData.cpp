@@ -19,7 +19,6 @@ std::atomic<uint16_t> LightData::triLightCacheGeneration = { 0 };
 std::map<uint32_t, LightConfig> LightData::configIDToJsonCfg;
 
 std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJsonCfg;
-
 std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJsonCfgExteriors;
 
 std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfg;
@@ -35,32 +34,7 @@ void LightData::ResetTriLightCache()
 	LightData::triLightCacheGeneration.fetch_add(1);
 }
 
-// Try to exclude light by editorID.
- bool LightData::ContainsEditorID(
-	const std::string& edid,
-	const std::vector<std::string>& keywords)
-{
-	if (edid.empty()) {
-		return false;
-	}
 
-	for (const auto& keyword : keywords) {
-	//	logger::debug("comparing vanilla light {} to {}", edid, keyword);
-
-		if (edid.contains(keyword)) {
-
-			// special exception
-			if (edid.contains("solitudeinnsunlightshadow")) {
-				return false;
-			}
-
-			logger::info("Matched editorID '{}' with keyword '{}'", edid, keyword);
-			return true;
-		}
-	}
-
-	return false;
-}
 
 RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg, const float scale)
 {
