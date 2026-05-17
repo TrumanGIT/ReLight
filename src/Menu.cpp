@@ -395,71 +395,191 @@ namespace UI {
 
         if (ImGuiMCP::CollapsingHeader("Loaded Light Templates")) {
 
-            // Count duplicates first
-            std::unordered_map<std::string, int> nameCounts;
-            std::unordered_map<std::string, int> nameIndex;
+            std::unordered_map<std::string, std::vector<int>> groupedLights;
+
             for (int i = 0; i < lights.size(); i++) {
-
                 auto& light = lights[i];
-                if (!light) continue;
+                if (!light || !light->light)
+                    continue;
 
-                auto lightName = removePrefix(light->light->name.c_str(), "RL");
+                auto configID = light->light->GetLightRuntimeData().unk138;
 
-                std::string menuName;
+                auto it = LightData::configIDToJsonCfg.find(configID);
+                if (it == LightData::configIDToJsonCfg.end())
+                    continue;
 
-                auto it = LightData::configIDToJsonCfg.find(light->light->GetLightRuntimeData().unk138);
-                if (it != LightData::configIDToJsonCfg.end()) {
+                std::string groupName = it->second.configPath;
 
-                    menuName = it->second.menuName;
+                if (groupName.empty())
+                    groupName = "Unknown Config";
 
-                    if (menuName.empty()) {
-
-                        logger::debug("menu name empty for config {}", it->second.configID);
-                        menuName = std::string(light->light->name.c_str());
-                    }
-                }
-
-                nameCounts[menuName]++;
+                groupedLights[groupName].push_back(i);
             }
 
-            // Then render with duplicates count in name
-            for (int i = 0; i < lights.size(); i++) {
+            std::unordered_map<std::string, int> nameCounts;
 
-                auto& light = lights[i];
-                if (!light) continue;
+            for (auto& [configPath, indices] : groupedLights) {
+                for (int i : indices) {
+                    auto& light = lights[i];
+                    if (!light || !light->light)
+                        continue;
 
-                bool selected = (i == selectedIndex);
+                    auto configID = light->light->GetLightRuntimeData().unk138;
 
-                auto lightName = removePrefix(light->light->name.c_str(), "RL");
+                    auto it = LightData::configIDToJsonCfg.find(configID);
+                    if (it == LightData::configIDToJsonCfg.end())
+                        continue;
 
-                std::string menuName;
+                    std::string menuName = it->second.menuName;
 
-                auto it = LightData::configIDToJsonCfg.find(light->light->GetLightRuntimeData().unk138);
-                if (it != LightData::configIDToJsonCfg.end()) {
-                    menuName = it->second.menuName;
+                    if (menuName.empty() && !it->second.meshPaths.empty())
+                        menuName = it->second.meshPaths[0];
 
-                    if (menuName.empty()) {
+                    nameCounts[menuName]++;
+                }
+            }
 
-                        logger::debug("menu name empty for config {}", it->second.configID);
-                        menuName = std::string(light->light->name.c_str());
+            std::vector<std::string> sortedConfigPaths;
+
+            for (auto& [configPath, indices] : groupedLights) {
+                sortedConfigPaths.push_back(configPath);
+            }
+
+            std::sort(sortedConfigPaths.begin(), sortedConfigPaths.end(),
+                [&](const std::string& a, const std::string& b)
+                {
+                    auto getGroupMenuName = [&](const std::string& configPath) -> std::string {
+                        auto& indices = groupedLights[configPath];
+
+                        if (indices.empty())
+                            return "";
+
+                        auto& light = lights[indices.front()];
+
+                        if (!light || !light->light)
+                            return "";
+
+                        auto configID = light->light->GetLightRuntimeData().unk138;
+
+                        auto it = LightData::configIDToJsonCfg.find(configID);
+                        if (it == LightData::configIDToJsonCfg.end())
+                            return "";
+
+                        if (!it->second.menuName.empty())
+                            return it->second.menuName;
+
+                        if (!it->second.meshPaths.empty())
+                            return it->second.meshPaths[0];
+
+                        return "";
+                        };
+
+                    return compareLightNames(
+                        getGroupMenuName(a).c_str(),
+                        getGroupMenuName(b).c_str()
+                    );
+                });
+
+            for (auto& configPath : sortedConfigPaths) {
+                auto& indices = groupedLights[configPath];
+
+                if (indices.empty())
+                    continue;
+
+                int firstIndex = indices.front();
+                auto& firstLight = lights[firstIndex];
+
+                if (!firstLight || !firstLight->light)
+                    continue;
+
+                auto firstConfigID = firstLight->light->GetLightRuntimeData().unk138;
+
+                auto firstIt = LightData::configIDToJsonCfg.find(firstConfigID);
+                if (firstIt == LightData::configIDToJsonCfg.end())
+                    continue;
+
+                std::string groupMenuName = firstIt->second.menuName;
+
+                if (groupMenuName.empty()) {
+                    if (!firstIt->second.meshPaths.empty())
+                        groupMenuName = firstIt->second.meshPaths[0];
+                    else
+                        groupMenuName = "Unknown Light";
+                }
+
+                if (nameCounts[groupMenuName] > 1 && !firstIt->second.meshPaths.empty()) {
+                    groupMenuName += " (" + firstIt->second.meshPaths[0] + ")";
+                }
+
+                std::size_t jsonCount =
+                    CountJsonEntriesInFile(firstIt->second.configPath);
+
+                if (jsonCount > 1) {
+                    std::string headerName =
+                        groupMenuName + " (" + std::to_string(indices.size()) + ")";
+
+                    ImGuiMCP::PushID(configPath.c_str());
+
+                    if (ImGuiMCP::TreeNode(headerName.c_str())) {
+                        for (int i : indices) {
+                            auto& light = lights[i];
+                            if (!light || !light->light)
+                                continue;
+
+                            bool selected = (i == selectedIndex);
+
+                            auto configID = light->light->GetLightRuntimeData().unk138;
+
+                            std::string menuName;
+
+                            auto it = LightData::configIDToJsonCfg.find(configID);
+                            if (it != LightData::configIDToJsonCfg.end()) {
+                                menuName = it->second.menuName;
+
+                                if (menuName.empty()) {
+                                    if (!it->second.meshPaths.empty())
+                                        menuName = it->second.meshPaths[0];
+                                    else
+                                        menuName = "Unknown Light";
+                                }
+
+                                if (nameCounts[menuName] > 1 && !it->second.meshPaths.empty()) {
+                                    menuName += " (" + it->second.meshPaths[0] + ")";
+                                }
+                            }
+                            else {
+                                menuName = "Unknown Light";
+                            }
+
+                            ImGuiMCP::PushID(i);
+
+                            if (ImGuiMCP::Selectable(menuName.c_str(), selected)) {
+                                selectedIndex = i;
+                            }
+
+                            ImGuiMCP::PopID();
+                        }
+
+                        ImGuiMCP::TreePop();
                     }
-                }
 
-             //   if (nameCounts[menuName] > 1) {
-              //      const int index = ++nameIndex[menuName];
-               //     menuName = std::format("{} {} ({})", menuName, index, lightName);
-               // }
-
-                // If 2 lights in the menu has same menu name they cannot be selected, 
-                // ImGuiMCP::PushID(i) fixes this by giving each selectable a unique ID
-                ImGuiMCP::PushID(i);
-                if (ImGuiMCP::Selectable(menuName.c_str(), &selected)) {
-                    selectedIndex = i;
+                    ImGuiMCP::PopID();
                 }
-                ImGuiMCP::PopID();
+                else {
+                    int i = firstIndex;
+
+                    bool selected = (i == selectedIndex);
+
+                    ImGuiMCP::PushID(i);
+
+                    if (ImGuiMCP::Selectable(groupMenuName.c_str(), selected)) {
+                        selectedIndex = i;
+                    }
+
+                    ImGuiMCP::PopID();
+                }
             }
         }
-
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
                 auto& lightData = selectedLight->light->GetLightRuntimeData();

@@ -175,7 +175,7 @@ namespace UI {
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
         outFile << "; enable debug bulbs (default = false)\n";
         outFile << "enableDebugBulbs=" << (globals::enableDebugLightBulbs ? "true" : "false") << "\n\n";
-        outFile << "; disable Inverse Squared Lighting (relight lights and menu will change to vanilla)\n";
+        outFile << "; disable Inverse Squared Lighting (relight lights and menu will change to vanilla, Only works if ISL is disabled at boot in CS settings)\n";
         outFile << "disableISL=" << (globals::disableISL ? "true" : "false") << "\n\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
         outFile << "loggingLevel=" << globals::loggingLevel << "\n";
@@ -198,87 +198,7 @@ namespace UI {
         outFile.close();
         logger::info("ReLight.ini saved successfully!");
         return true;
-    }
-
-    //TODO:: clean and only use isl overlay if its installed
-   inline void getAllLights(std::vector<RE::NiPointer<RE::BSLight>>& lights, bool& lightAlreadyInList) {
-        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-        if (!ssNode) {
-            logger::warn("ShadowSceneNode[0] is null!");
-            return;
-        }
-
-        auto& rt = ssNode->GetRuntimeData();
-
-        for (auto& light : rt.activeLights) {
-            if (!light) continue;
-
-            std::string lightName = light->light->name.c_str();
-
-            if (lightName[0] != 'R' || lightName[1] != 'L')
-                continue;
-
-            const auto& currentRt = light->light->GetLightRuntimeData();
-
-            for (auto& existingLight : lights) {
-
-                if (!existingLight) continue;
-                // unk138 is a config id in this case, do this to handle editing multiple lights to 1 mesh 
-                if (existingLight->light->unk138 == currentRt.unk138) {
-                    // Light already exists in the list, skip adding
-                    lightAlreadyInList = true;
-                    break;
-                }
-            }
-
-            if (!lightAlreadyInList) {
-
-                lights.push_back(light);
-            }
-
-            lightAlreadyInList = false;
-        }
-
-        for (auto& shadowLight : rt.activeShadowLights) {
-            if (!shadowLight) continue;
-
-            std::string lightName = shadowLight->light->name.c_str();
-
-            if (lightName[0] != 'R' || lightName[1] != 'L')
-                continue;
-
-            const auto& currentRt = shadowLight->light->GetLightRuntimeData();
-
-            //const auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
-
-            bool shadowLightAlreadyInList = false;
-            for (auto& existingLight : lights) {
-                if (existingLight->light->unk138 == currentRt.unk138) {
-                    shadowLightAlreadyInList = true;
-                    break;
-                }
-            }
-
-            if (!shadowLightAlreadyInList) {
-                lights.push_back(shadowLight);
-            }
-        }
-
-        // sort alphabetically
-        std::sort(lights.begin(), lights.end(),
-            [](const RE::NiPointer<RE::BSLight>& a,
-                const RE::NiPointer<RE::BSLight>& b)
-            {
-                if (!a || !b) return false;
-
-                const char* nameA = a->light->name.c_str();
-                const char* nameB = b->light->name.c_str();
-
-                if (!nameA || !nameB) return false;
-
-                return std::strcmp(nameA, nameB) < 0;
-            });
-    }
+   }
 
    inline void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
         if (!light) {
@@ -335,6 +255,7 @@ namespace UI {
         cfg.flickerIntensity = backupCfg.flickerIntensity;
         cfg.flickersPerSecond = backupCfg.flickersPerSecond;
         cfg.flickerAmplitude = backupCfg.flickerAmplitude;
+        cfg.flags = backupCfg.flags;
 
         // Propagate to active lights in the shader node
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -367,6 +288,84 @@ namespace UI {
         logger::info("Restored '{}' to default config", lightName);
     }
 
+
+   inline bool compareLightNames(const char* a, const char* b) {
+       if (!a) a = "";
+       if (!b) b = "";
+       for (;; ++a, ++b) {
+           unsigned char ca = (unsigned char)std::tolower((unsigned char)*a);
+           unsigned char cb = (unsigned char)std::tolower((unsigned char)*b);
+           if (ca < cb) return true;
+           if (ca > cb) return false;
+           if (ca == 0) return false;
+       }
+   }
+
+   //TODO:: clean and only use isl overlay if its installed
+   inline void getAllLights(std::vector<RE::NiPointer<RE::BSLight>>& lights, bool& lightAlreadyInList) {
+       auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+       if (!ssNode) {
+           logger::warn("ShadowSceneNode[0] is null!");
+           return;
+       }
+
+       auto& rt = ssNode->GetRuntimeData();
+
+       for (auto& light : rt.activeLights) {
+           if (!light) continue;
+
+           std::string lightName = light->light->name.c_str();
+
+           if (lightName[0] != 'R' || lightName[1] != 'L')
+               continue;
+
+           const auto& currentRt = light->light->GetLightRuntimeData();
+
+           for (auto& existingLight : lights) {
+
+               if (!existingLight) continue;
+               // unk138 is a config id in this case, do this to handle editing multiple lights to 1 mesh 
+               if (existingLight->light->unk138 == currentRt.unk138) {
+                   // Light already exists in the list, skip adding
+                   lightAlreadyInList = true;
+                   break;
+               }
+           }
+
+           if (!lightAlreadyInList) {
+
+               lights.push_back(light);
+           }
+
+           lightAlreadyInList = false;
+       }
+
+       for (auto& shadowLight : rt.activeShadowLights) {
+           if (!shadowLight) continue;
+
+           std::string lightName = shadowLight->light->name.c_str();
+
+           if (lightName[0] != 'R' || lightName[1] != 'L')
+               continue;
+
+           const auto& currentRt = shadowLight->light->GetLightRuntimeData();
+
+           //const auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
+
+           bool shadowLightAlreadyInList = false;
+           for (auto& existingLight : lights) {
+               if (existingLight->light->unk138 == currentRt.unk138) {
+                   shadowLightAlreadyInList = true;
+                   break;
+               }
+           }
+
+           if (!shadowLightAlreadyInList) {
+               lights.push_back(shadowLight);
+           }
+       }
+   }
+
     inline int getLightKey(const RE::NiPointer<RE::BSLight>& l) {
         if (!l || !l->light) return -1;
         return l->light->GetLightRuntimeData().unk138;  // runtime configID key
@@ -396,11 +395,6 @@ namespace UI {
             logger::debug("light :{} (key={}) has no json cfg entry", name, key);
         }
 
-        /*logger::info("Active light found: {}, and its key{}, NiLight ptr={}, NiLight ptr={}",
-             activeLight->light->name.c_str(),
-             key,
-             static_cast<void*>(activeLight->light.get()), static_cast<void*>(activeLight.get()));*/
-
              // Refresh light pointer in list or add if new
         auto itIdx = keyToIndex.find(key);
         if (itIdx == keyToIndex.end()) {
@@ -409,18 +403,6 @@ namespace UI {
         }
         else {
             refreshedLights[itIdx->second] = activeLight;
-        }
-    }
-
-    inline bool compareLightNames(const char* a, const char* b) {
-        if (!a) a = "";
-        if (!b) b = "";
-        for (;; ++a, ++b) {
-            unsigned char ca = (unsigned char)std::tolower((unsigned char)*a);
-            unsigned char cb = (unsigned char)std::tolower((unsigned char)*b);
-            if (ca < cb) return true;
-            if (ca > cb) return false;
-            if (ca == 0) return false;
         }
     }
 
@@ -466,17 +448,6 @@ namespace UI {
             }),
             lights.end());
 
-        std::sort(lights.begin(), lights.end(),
-            [](const RE::NiPointer<RE::BSLight>& a, const RE::NiPointer<RE::BSLight>& b)
-            {
-                if (!a || !a->light) return true;
-                if (!b || !b->light) return false;
-
-                const char* nameA = a->light->name.c_str();
-                const char* nameB = b->light->name.c_str();
-
-                return compareLightNames(nameA, nameB);
-            });
 
         // Update selectded index after sorting
         selectedIndex = -1;
