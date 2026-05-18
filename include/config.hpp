@@ -199,6 +199,8 @@ inline bool updateConfigMap (std::vector<LightConfig>& vec, const LightConfig& u
 //used for in game menu
 bool AddMeshPathToAllEntries(const std::string& filePath, const std::string& meshPath); 
 
+bool AddRefIDToAllEntries(const std::string& configPath, const std::string& refID);
+
 std::size_t CountJsonEntriesInFile(const std::string& configPath); 
 
 //bool RemoveMeshPathFromAllEntriesInConfiguration(const std::string& configPath, const std::string& meshPathToRemove);

@@ -4,12 +4,14 @@
 #include "ClibUtil/EditorID.hpp"
 #include "LightAttachmentHooks.h"
 #include <chrono>
+#include <type_traits>
 
 //ATTACH LIGHTS AT CORRECT MESH INDEX, USEFULL FOR TORCHES WHERE LIGHT MUST BE INSERTED TO SPECIFIC SPOT
 void LightManager::attachLightUsingAttachPath(
 	const LightConfig& cfg,
 	RE::NiNode* root,
-	RE::NiPointLight* light, RE::FormID refFormID)
+	RE::NiPointLight* light,
+	RE::FormID refFormID)
 {
 	if (!root || !light) {
 		logger::warn("attachLightUsingAttachPath: null root or light");
@@ -26,12 +28,23 @@ void LightManager::attachLightUsingAttachPath(
 		}
 
 		auto& children = node->GetChildren();
-		if (index < 0 || index >= children.size() || !children[index]) {
+
+		using ChildArray = std::remove_reference_t<decltype(children)>;
+		using ChildIndex = ChildArray::size_type;
+
+		if (index < 0) {
 			logger::warn("attachLightUsingAttachPath: index {} out of bounds", index);
 			return;
 		}
 
-		current = children[index].get();
+		auto childIndex = static_cast<ChildIndex>(index);
+
+		if (childIndex >= children.size() || !children[childIndex]) {
+			logger::warn("attachLightUsingAttachPath: index {} out of bounds", index);
+			return;
+		}
+
+		current = children[childIndex].get();
 	}
 
 	auto* finalNode = current->AsNode();
@@ -44,7 +57,7 @@ void LightManager::attachLightUsingAttachPath(
 
 	finalNode->AttachChild(light);
 
-	logger::debug("attached light to node {} on ref {:08X} ", finalNodeName, refFormID);
+	logger::debug("attached light to node {} on ref {:08X}", finalNodeName, refFormID);
 }
 
 // ATTACH NI POINT LIGHT TO SHADOW SCENE NODE TO GET BS LIGHT IN RETURN. BS LIGHT IS THE LIGHT YOU VISUALLY SEE RENDERED IN GAME

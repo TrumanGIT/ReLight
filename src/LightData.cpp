@@ -29,8 +29,8 @@ std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
 void LightData::ResetTriLightCache()
 {
-	std::lock_guard lock(LightData::triLightCacheMutex);
-	LightData::triLightCache.clear();
+	//std::lock_guard lock(LightData::triLightCacheMutex);
+	//LightData::triLightCache.clear();
 	LightData::triLightCacheGeneration.fetch_add(1);
 }
 

@@ -1016,13 +1016,13 @@ namespace UI {
     void __stdcall RenderAttachRemove()
     {
 
-        auto centerNextItem = [&](float estimatedWidth) {
-            float startX = ImGuiMCP::GetCursorPosX();
-            ImGuiMCP::ImVec2 avail{};
-            ImGuiMCP::GetContentRegionAvail(&avail);
+        auto centerNextItem = [&](float estimatedWidth) { 
+            float startX = ImGuiMCP::GetCursorPosX(); 
+            
+            ImGuiMCP::ImVec2 avail{}; ImGuiMCP::GetContentRegionAvail(&avail); 
+            
             ImGuiMCP::SetCursorPosX(startX + (avail.x - estimatedWidth) * 0.5f);
-         };
-
+            };
 
         static AttachLightStep step = AttachLightStep::SelectTarget;
         static bool createNewTemplate = false;
@@ -1087,6 +1087,7 @@ namespace UI {
         if (!selected) {
             resetState();
             centerNextItem(350.0f);
+            ImGuiMCP::Dummy({ 0.0f, 170.0f });
             ImGuiMCP::Text("Click on an object in the console to continue.");
             return;
         }
@@ -1146,11 +1147,12 @@ namespace UI {
 
         case AttachLightStep::AlreadyHasLight:
         {
+            ImGuiMCP::Dummy({ 0.0f, 50.0f });
             centerNextItem(470.0f);
             ImGuiMCP::Text("Object Selected in the console already has a ReLight light.");
       
             ImGuiMCP::Spacing(); 
-
+            ImGuiMCP::Dummy({ 0.0f, 20.0f });
             centerNextItem(400.0f);
 
             if (ImGuiMCP::Button("Add another Light")) {
@@ -1251,7 +1253,7 @@ namespace UI {
             }
 
             if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("You can edit new light in Light Editor as Torch 1, Torch 2 ect.");
+                ImGuiMCP::SetTooltip("You can edit new light in Light Editor as Torch [1], Torch [2] ect.");
             }
 
             ImGuiMCP::SameLine();
@@ -1383,15 +1385,16 @@ namespace UI {
 
         case AttachLightStep::ChooseTemplateType:
         {
+            ImGuiMCP::Dummy({ 0.0f, 50.0f });
             centerNextItem(430.0f);       
-            ImGuiMCP::Text("      Attaching light to object selected in console.\nCreate new Light Template or add to existing template?");
+            ImGuiMCP::Text("      Attaching light to object selected in console.\nCreate new light template or add to existing template?");
 
 
             ImGuiMCP::Spacing();
-
+            ImGuiMCP::Dummy({ 0.0f, 20.0f});
             centerNextItem(630.0f);
                                   
-            if (ImGuiMCP::Button("add to a existing tempalte")) {
+            if (ImGuiMCP::Button("Add to a existing template")) {
                 createNewTemplate = false;
                 step = AttachLightStep::ChooseTemplate;
             }
@@ -1571,6 +1574,16 @@ namespace UI {
                 for (auto& [key, cfgVec] : LightData::meshPathToJsonCfgExteriors) {
                     tryAdd(key, cfgVec);
                 }
+
+                // alphabetize
+                std::sort(configDisplay.begin(), configDisplay.end(),
+                    [](const auto& a, const auto& b)
+                    {
+                        return compareLightNames(
+                            a.second.menuName.c_str(),
+                            b.second.menuName.c_str()
+                        );
+                    });
             }
 
             for (int i = 0; i < static_cast<int>(configDisplay.size()); i++) {
@@ -1603,7 +1616,7 @@ namespace UI {
 
             if (selectedCfgs.empty()) {
                 centerNextItem(220.0f);
-                ImGuiMCP::Text("Selected config was empty or not found.");
+                logger::error("Selected config was empty or not found.");
                 step = AttachLightStep::ChooseTemplateType;
                 selectedIndex = -1;
                 break;
@@ -1626,10 +1639,12 @@ namespace UI {
 
         case AttachLightStep::ChooseScope:
         {
+            ImGuiMCP::Dummy({ 0.0f, 50.0f });
             centerNextItem(260.0f);
-            ImGuiMCP::Text("This Object Only, or all objects like it?");
+            ImGuiMCP::Text("This object only, or all objects like it?");
 
             ImGuiMCP::Spacing();
+            ImGuiMCP::Dummy({ 0.0f, 20.0f });
 
             centerNextItem(300.0f);
 
@@ -1659,9 +1674,11 @@ namespace UI {
                     niLight = LightManager::AttachLight(newCfg, rootAsNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
                     LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
 
+                    UpdateRefRootTransforms(selected);
+
                     SKSE::GetTaskInterface()->AddTask([]() {
                         LightData::ResetTriLightCache();
-                        });
+                    });
 
 
                     RemoveFromIniExcludeRefID(selected, refFormIDandModName);
@@ -1688,15 +1705,13 @@ namespace UI {
 
                     SKSE::GetTaskInterface()->AddTask([]() {
                         LightData::ResetTriLightCache();
-                        });
+                    });
 
                     std::string refIDandModName = BuildRefIDAndModName(selected);
 
                     RemoveFromIniExcludeRefID(selected, refIDandModName);
 
                     refIDandModName.clear();
-
-                
                 }
                 step = AttachLightStep::Done;
                 break;
@@ -1786,11 +1801,12 @@ namespace UI {
         
         case AttachLightStep::Done:
         {
+            ImGuiMCP::Dummy({ 0.0f, 50.0f });
             centerNextItem(495.0f);
             ImGuiMCP::Text("Light attached. You MUST confirm before saving in the light editor.");
 
             ImGuiMCP::Spacing();
-
+            ImGuiMCP::Dummy({ 0.0f, 20.0f });
             centerNextItem(170.0f);
 
             if (ImGuiMCP::Button("Confirm")) {
@@ -1890,20 +1906,7 @@ namespace UI {
                         break;
                     }
 
-                    if (!AppendNewConfigEntryFromLight(
-                        refCfg.configPath,
-                        refCfg.jsonIndex,
-                        refCfg.menuName,
-                        niLight,
-                        refFormIDAndModName,
-                        "",
-                        refCfg,
-                        true,
-                        selected->GetFormID())) {
-                        logger::error("Failed to append ref-only config entry");
-                        resetState();
-                        break;
-                    }
+                    AddRefIDToAllEntries(refCfg.configPath, refFormIDAndModName);
 
                     globals::baseFormsWithAttachedLights.emplace(baseFormID);
                     resetState();
@@ -1957,10 +1960,11 @@ namespace UI {
 
         case AttachLightStep::LightRemoved:
         {
+            ImGuiMCP::Dummy({ 0.0f, 50.0f });
             centerNextItem(120.0f);
             ImGuiMCP::Text("Lights removed.");
 
-
+            ImGuiMCP::Dummy({ 0.0f, 20.0f });
             ImGuiMCP::Spacing();
 
             centerNextItem(50.0f);

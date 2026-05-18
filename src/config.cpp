@@ -367,6 +367,146 @@ bool saveNewConfiguration(LightConfig& config)
 	}
  }
 
+ inline bool AddRefIDToFirstJsonObject(
+    const std::string& configPath,
+    const std::string& refID)
+{
+    try {
+        std::ifstream inFile(configPath);
+        if (!inFile.is_open()) {
+            logger::error("Failed to open config: {}", configPath);
+            return false;
+        }
+
+        json data;
+        inFile >> data;
+        inFile.close();
+
+        if (!data.is_array() || data.empty()) {
+            logger::error("Config was not a valid JSON array");
+            return false;
+        }
+
+        json& firstObj = data[0];
+
+        if (!firstObj.contains("refFormIDsAndModNames")) {
+            firstObj["refFormIDsAndModNames"] = json::array();
+        }
+
+        auto& refArray = firstObj["refFormIDsAndModNames"];
+
+        for (const auto& existing : refArray) {
+            if (existing.is_string() && existing.get<std::string>() == refID) {
+                logger::info("Ref ID already exists in config");
+                return true;
+            }
+        }
+
+        refArray.push_back(refID);
+
+        std::ofstream outFile(configPath);
+        if (!outFile.is_open()) {
+            logger::error("Failed to save config: {}", configPath);
+            return false;
+        }
+
+        outFile << data.dump(4);
+
+        logger::info("Added ref ID '{}' to {}", refID, configPath);
+
+        return true;
+    }
+    catch (const std::exception& e) {
+        logger::error("AddRefIDToFirstJsonObject failed: {}", e.what());
+        return false;
+    }
+ }
+
+  bool AddRefIDToAllEntries(
+	 const std::string& configPath,
+	 const std::string& refID)
+ {
+	 try {
+		 std::ifstream inFile(configPath);
+		 if (!inFile.is_open()) {
+			 logger::error("Failed to open config file for reading: {}", configPath);
+			 return false;
+		 }
+
+		 json data;
+		 inFile >> data;
+		 inFile.close();
+
+		 if (!data.is_array()) {
+			 data = json::array({ data });
+		 }
+
+		 bool changed = false;
+
+		 for (auto& entry : data) {
+			 if (!entry.is_object()) {
+				 continue;
+			 }
+
+			 if (!entry.contains("refFormIDsAndModNames")) {
+				 entry["refFormIDsAndModNames"] = json::array();
+				 entry["refFormIDsAndModNames"].push_back(refID);
+				 changed = true;
+				 continue;
+			 }
+
+			 auto& refField = entry["refFormIDsAndModNames"];
+
+			 if (refField.is_string()) {
+				 std::string existing = refField.get<std::string>();
+
+				 if (existing != refID) {
+					 refField = json::array({ existing, refID });
+					 changed = true;
+				 }
+			 }
+			 else if (refField.is_array()) {
+				 bool found = false;
+
+				 for (const auto& item : refField) {
+					 if (item.is_string() && item.get<std::string>() == refID) {
+						 found = true;
+						 break;
+					 }
+				 }
+
+				 if (!found) {
+					 refField.push_back(refID);
+					 changed = true;
+				 }
+			 }
+			 else {
+				 logger::warn("refFormIDsAndModNames in {} was neither string nor array", configPath);
+			 }
+		 }
+
+		 if (!changed) {
+			 logger::info("refID '{}' already present in all entries of {}", refID, configPath);
+			 return true;
+		 }
+
+		 std::ofstream outFile(configPath, std::ios::trunc);
+		 if (!outFile.is_open()) {
+			 logger::error("Failed to open config file for writing: {}", configPath);
+			 return false;
+		 }
+
+		 outFile << data.dump(4);
+		 logger::info("Added refID '{}' to config file {}", refID, configPath);
+
+		 return true;
+	 }
+	 catch (const std::exception& e) {
+		 logger::error("Failed updating refID in {}: {}", configPath, e.what());
+		 return false;
+	 }
+ }
+
 inline uint32_t ParseFlags(const nlohmann::json& j)
 {
 	uint32_t mask = 0;
