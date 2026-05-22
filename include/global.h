@@ -42,6 +42,37 @@ namespace globals
 
     inline std::chrono::steady_clock::time_point cellFullyLoadedTimerStart;
 
+    // any surface (trishape world bounds) larger will not be affected by light flicker prevention
+    inline int largeSurfaceSize = 1800; 
+
+    // below coverage values will not affect surfaces (trishape world bounds)  larger then this value
+    inline int mediumSurfaceSize = 700;
+
+    // used only to limit how many candles can be on a small surface (trishape world bounds) 
+    inline int smallSurfaceSize = 350;
+
+    //candles
+
+    inline int maxLightTypesPerSurface = 4;
+    inline int maxLightTypesPerSurfaceXL = 6;
+
+    // candles cant affect surfaces this far below them enforced in islightaffectingsurface hook
+    inline float maxCandleZDistance = 200;
+
+    inline float maxCandleDistance = 470;
+
+    // fire
+    inline float maxFireDistance = 1200;
+
+    // Chandeliers
+
+    inline float maxChandelierDistance = 630;
+
+    // chandeliers cant affect surfaces this far below them enforced in islightaffectingsurface hook
+    inline float maxChandelierZDistance= 350;
+
+    inline float globalCoverage = 700;
+
     // Merge
 
     inline bool enableLightMerging = true;
@@ -65,26 +96,6 @@ namespace globals
     inline float lightFadeMax = 2.0f;    // maximum total fade multiplier
     inline float lightRadiusMax = 2.0f;  // maximum total radius multiplier
 
-    // flicker prevention
-
-    // Candle Bounds
-    inline float minCandleCoverageSM = 383;
-
-    inline float minCandleCoverage = 470;
-
-  //  inline float minCandleCoverageXL = 1100;
-
-    //FireBounds
-    inline float minFireCoverageXL = 1200;
-
-    inline float minFireCoverage = 680.49f;
-
-    // Chandeliers
-  //  inline float minChandelierCoverageSM = 314;
-
-    inline float minChandelierCoverage = 630;
-
-    inline float globalCoverage = 700; 
 
     // used to reinitialize lights based on this distance as we put lights into object geomatry
     inline float fLODFadeOutMultObjects = 9000;
@@ -106,11 +117,8 @@ namespace globals
     inline std::mutex refsWithAttachedLightsMutex{};
     inline std::unordered_set<RE::FormID> refsWithAttachedLights{};
 
-      inline std::mutex mergedRefsMutex{};
+    inline std::mutex mergedRefsMutex{};
     inline std::unordered_set<RE::FormID> mergedRefs{};
-
-    //I tag wall meshes in load3d hook so I can find them faster in islightaffectingsurface hook.
-   // inline std::unordered_set<RE::FormID> wallMeshes{};
 
     inline std::vector<std::string> enableByEditorID = {};
 

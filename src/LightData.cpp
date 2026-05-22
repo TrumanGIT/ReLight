@@ -29,12 +29,8 @@ std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
 void LightData::ResetTriLightCache()
 {
-	//std::lock_guard lock(LightData::triLightCacheMutex);
-	//LightData::triLightCache.clear();
 	LightData::triLightCacheGeneration.fetch_add(1);
 }
-
-
 
 RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg, const float scale)
 {
@@ -95,7 +91,7 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 	}
 }
 
-void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, const float scale) {
+void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, float scale) {
 	if (!niPointLight) {
 		logger::error("light nullptr for node {}", cfg.menuName);
 		return;
@@ -106,6 +102,8 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	logger::debug(" Setting Light Data for {} from Configs", lightName);
 
+	if (scale >= 1.0f) scale = 1.0f; 
+
 	data.fade = cfg.brightness * scale * globals::brightnessModifier;
 	data.radius = getNiPointLightRadius(cfg, scale);
 
@@ -113,6 +111,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	data.unk138 = cfg.configID;
 
 	logger::debug(" radius set to: {} ", cfg.radius);
+	logger::debug("objects scale = {}", scale); 
 	logger::debug(" brightness set to: {} ", cfg.brightness);
 	logger::debug("config ID set to {}", cfg.configID); 
 

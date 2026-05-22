@@ -10,6 +10,7 @@
 
 inline float NiSinQImpl(float a_value)
 {
+	// power of 3 
 	static constexpr std::array<float, 512> sineTable = {
 		0.0f,
 		0.012271538f,
@@ -527,6 +528,7 @@ inline float NiSinQImpl(float a_value)
 	return sineTable[static_cast<std::uint32_t>(a_value) & 511];
 }
 
+// power of 3 
 inline float NiSinQ(float a_radians)
 {
 	return NiSinQImpl((512.0f / (2.0f * std::numbers::pi_v<float>)) * a_radians);
@@ -559,6 +561,7 @@ inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 		return;
 	}
 
+	// spells like candle light ect, we mark them unk060 = 4; so that light flicker prevention can identify them without much work
 	if (globals::magicLightQueued.load()) {
 		if (niLight->parent && niLight->parent == globals::magicLightAttachNode) {
 			light->unk060 = 4;
@@ -572,6 +575,7 @@ inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 
 	std::vector<size_t> indicesToRemove;
 
+	// do the same as above for torches
 	for (size_t i = 0; i < globals::torchLightAttachNodes.size(); ++i) {
 		auto& attachLightNode = globals::torchLightAttachNodes[i];
 
@@ -717,7 +721,12 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
         }
 }
 
+//TODO:: Redo whatever the fuck this is 
 inline void handlePendingMerges() {
+
+	constexpr int maxPerFrame = 10;
+	int processedThisFrame = 0;
+
     std::lock_guard lock(LightManager::pendingMergesMutex);
     if (LightManager::pendingMerges.empty()) return;
 
@@ -728,6 +737,10 @@ inline void handlePendingMerges() {
     LightManager::pendingMerges.erase(
         std::remove_if(LightManager::pendingMerges.begin(), LightManager::pendingMerges.end(),
             [&](LightManager::PendingMerge& entry) {
+
+				// dont wanmt to hold up the hook
+				if (processedThisFrame >= maxPerFrame)
+					return false;
 
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - entry.registeredAt).count();
                 if (elapsed < 250) return false;
@@ -749,13 +762,13 @@ inline void handlePendingMerges() {
               
                     validCandidates.push_back(handle);
                 }
-
+				processedThisFrame++;
                 LightManager::finalizeMerge(entry, validCandidates);
                 return true;
             }),
         LightManager::pendingMerges.end());
 
-    while (!reprocessQueue.empty()) {
+    while (!reprocessQueue.empty() && processedThisFrame < maxPerFrame) {
 
         auto retryRefAHandle = reprocessQueue.front();
         reprocessQueue.erase(reprocessQueue.begin());
@@ -807,7 +820,9 @@ inline void handlePendingMerges() {
 
         uint32_t flags = cfgs[0].flags;
   
-        if (cfgs.size() == 1 && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
+		if (cfgs.size() == 1 &&
+			globals::enableLightMerging &&
+			!(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
             auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
             if (!cloneLight) { reprocessQueue = std::move(nextQueue); continue; }
 
@@ -822,7 +837,7 @@ inline void handlePendingMerges() {
             p.light = RE::NiPointer<RE::NiPointLight>(cloneLight);
             p.refALightName = match;
             p.winningConfig = cfgs[0]; 
-
+			processedThisFrame++;
             LightManager::finalizeMerge(p, mergeGroup);
         }
      
@@ -833,7 +848,8 @@ inline void handlePendingMerges() {
                 LightManager::AttachLight(cfg, rootNode, retryRefA.get(), cfg.menuName, retryRefA->GetFormID(), debugMarkerAttached);
             }
 
-            // multi-light can't merge, retry others
+			// This ref can't act as a merge source bc of flag or global or is multi light, so attach its normal light(s).
+		 // Keep the remaining refs queued so they can try to merge with each other.
             nextQueue.insert(nextQueue.end(), mergeGroup.begin(), mergeGroup.end());
         }
 

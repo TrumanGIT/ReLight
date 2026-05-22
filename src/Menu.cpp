@@ -33,13 +33,15 @@ namespace UI {
 
         SKSEMenuFramework::SetSection("ReLight");
 
-        SKSEMenuFramework::AddSectionItem("Settings", UI::RenderSettings);
+        SKSEMenuFramework::AddSectionItem("Settings", RenderSettings);
 
-        SKSEMenuFramework::AddSectionItem("Light Editor", UI::RenderLightEditor);
+        SKSEMenuFramework::AddSectionItem("Light Editor", RenderLightEditor);
 
-        SKSEMenuFramework::AddSectionItem("Attach Lights", UI::RenderAttachRemove);
+        SKSEMenuFramework::AddSectionItem("Attach Lights", RenderAttachRemove);
 
-        SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", UI::RenderLightFlickerPreventionMenu);
+        SKSEMenuFramework::AddSectionItem("Light Merge", RenderLightMergeMenu);
+
+        SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", RenderLightFlickerPreventionMenu);
     }
 
     void __stdcall RenderLightFlickerPreventionMenu() {
@@ -80,7 +82,120 @@ namespace UI {
         if (ImGuiMCP::IsItemHovered()) {
             ImGuiMCP::SetTooltip("Only the 7 closest lights can affect a surface");
         }
+
+        if (ImGuiMCP::BeginChild("Light Flicker Prevention", ImGuiMCP::ImVec2(0, 325), true,
+            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+        {
+            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+
+            ImGuiMCP::Text("Light Flicker Prevention");
+            ImGuiMCP::PopStyleColor();
+
+            ImGuiMCP::ImVec2 avail{};
+            ImGuiMCP::GetContentRegionAvail(&avail);
+
+            ImGuiMCP::Columns(2, "Bound", false);
+            ImGuiMCP::SetColumnWidth(0, avail.x * 0.5f);
+            ImGuiMCP::SetColumnWidth(1, avail.x * 0.5f);
+
+            float colWidth = avail.x * 0.25f;
+            ImGuiMCP::PushItemWidth(colWidth);
+
+            ImGuiMCP::SliderInt("Max Surface Size Flicker Prevention", &globals::largeSurfaceSize, 0, 5000);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Surfaces larger than this will not participate in light flicker prevention (windhelm bridge is size 2300 and has many lights on it makes no sense to limit to only 7");
+            }
+
+            ImGuiMCP::SliderInt("Medium surface size", &globals::mediumSurfaceSize, 0, 1500);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Distance checks are only enforced on surfaces (Trishape WorldBound) smaller than this");
+            }
+
+            ImGuiMCP::SliderInt("Small surface size", &globals::smallSurfaceSize, 0, 1000);
+            if (ImGuiMCP::IsItemHovered()) { 
+                ImGuiMCP::SetTooltip("Any surface (Trishape WorldBound) size larger will not have max light type per surface enforced on it");
+            }
+
+            ImGuiMCP::SliderInt("Max Light Types Per SM Surface", &globals::maxLightTypesPerSurface, 0, 7);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Maximum Light Type allowed to affect a small surface at once (only json files with kcandle, kchandelier, kfire)");
+            }
+
+            ImGuiMCP::SliderInt("Max Light Types Per M Surface", &globals::maxLightTypesPerSurfaceXL, 0, 7);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Maximum Light Type allowed to affect a medium surface at once (only json files with kcandle, kchandelier, kfire)");
+            }
+
+            ImGuiMCP::NextColumn(); 
+            ImGuiMCP::PushItemWidth(colWidth);
+
+            ImGuiMCP::SliderFloat("Max Candle Distance", &globals::maxCandleDistance, 0, 1000);
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Max distance a candle can be to affect a medium and small surface (requires kCandle flag)");
+            }
+
+            ImGuiMCP::SliderFloat("Max Candle Z Distance", &globals::maxCandleZDistance, 0, 500);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Maximum distance a candle can shine light on a medium and small surface below it (requires kCandle flag)");
+            }
+
+            ImGuiMCP::SliderFloat("Max Fire Distance", &globals::maxFireDistance, 0, 2000);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Max distance a fire can be to affect a medium and small surface (requires kFire flag)");
+            }
+
+            ImGuiMCP::SliderFloat("Max Chandelier Distance", &globals::maxChandelierDistance, 0, 200);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Max distance a chandelier can be to affect a medium and small surface (requires kChandelier flag)");
+            }
+
+            ImGuiMCP::SliderFloat("Max Chandelier Z Distance", &globals::maxChandelierZDistance, 0, 1000);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Maximum vertical distance a chandelier can affect a medium and small surface (requires kChandelier flag)");
+            }
+
+            ImGuiMCP::SliderFloat("Global Coverage", &globals::globalCoverage, 0, 1500);
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Fallback/ max distance for lights to affect a medium and small surface that don't have kcandle, kfire, or kchandelier flag");
+            }
   
+            ImGuiMCP::PopItemWidth(); 
+        }
+
+        ImGuiMCP::EndChild();
+
+    }
+
+    void __stdcall RenderLightMergeMenu() {
+        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+
+        FontAwesome::PushSolid();
+
+        ImGuiMCP::Text("Light Merge");
+        ImGuiMCP::PopStyleColor();
+
+        ImGuiMCP::SameLine();
+
+        bool saveINIClicked = ImGuiMCP::Button("Save INI");
+
+        ImGuiMCP::ImVec2 rectMax;
+        ImGuiMCP::GetItemRectMax(&rectMax);
+        ImGuiMCP::ImVec2 rectMin;
+        ImGuiMCP::GetItemRectMin(&rectMin);
+        ImGuiMCP::ImVec2 winPos;
+        ImGuiMCP::GetWindowPos(&winPos);
+
+        float iconX = (rectMax.x - winPos.x) + 10.0f;
+        float iconY = (rectMin.y - winPos.y) + 4.0f;
+        if (saveINIClicked) {
+            bool ok = false;
+            saveINIButton.set(buttonState::Working);
+            ok = saveSettingsToIni();
+            saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
+        }
+        renderDone(saveINIButton, iconX, iconY);
+
         ImGuiMCP::Spacing();
 
         if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 335), true,
@@ -149,7 +264,7 @@ namespace UI {
                 ImGuiMCP::SetTooltip("For configs with the IncreasedMergeDistance flag");
             }
 
-            ImGuiMCP::NextColumn(); 
+            ImGuiMCP::NextColumn();
             ImGuiMCP::PushItemWidth(colWidth);
 
             ImGuiMCP::SliderFloat("Fade Boost per Merge", &globals::lightFadePerMerge, 0.0f, 1.0f);
@@ -167,12 +282,13 @@ namespace UI {
             ImGuiMCP::SliderFloat("Max Radius Multiplier", &globals::lightRadiusMax, 1.0f, 5.0f);
             if (ImGuiMCP::IsItemHovered())
                 ImGuiMCP::SetTooltip("Max radius mult after merging.");
-  
-            ImGuiMCP::PopItemWidth(); 
+
+
+
+            ImGuiMCP::PopItemWidth();
         }
 
         ImGuiMCP::EndChild();
-
     }
 
     void __stdcall RenderSettings() {
@@ -362,7 +478,7 @@ namespace UI {
         bool deleteClicked =
             ImGuiMCP::Button(trashIcon.c_str());
 
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Delete the Json file from Relight/Configs");
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Delete the Json file from Relight/Configs. You will need to restart the game for changes to take effect");
 
         ImGuiMCP::ImVec2 rectMax;
         ImGuiMCP::GetItemRectMax(&rectMax);
@@ -931,7 +1047,7 @@ namespace UI {
                     ImGuiMCP::SliderFloat(
                         "Movement",
                         &config.flickerAmplitude,
-                        0.0f, 5.0f, "%.2f");
+                        0.0f, 1.0f, "%.2f");
                     ImGuiMCP::EndDisabled();
                 }
                 ImGuiMCP::EndChild();

@@ -146,10 +146,11 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
             return false;
         }
     }
-    // return here or crash on effect shaders 
+
+    // return here or crash on effect shaders  idk why
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
-    // torches and add on lights like candle lights ect
+    // torches spells we marked in attachlight hooks so they can bypass here
     if (light->unk060 == 4) return true;
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures || globals::unDesiredMenuOpen.load()) return true;
@@ -158,7 +159,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     if (!pass || !pass->geometry) return true;
     
     // dont want to block large tri shapes that might supposed have more then 7 lights (windhelmBridge, candlehearthhall) 
-    if (pass->geometry->worldBound.radius > 1800) return true;
+    if (pass->geometry->worldBound.radius > globals::largeSurfaceSize) return true;
 
     //return on actors and skip invalid references potentially
     auto objectRef = pass->geometry->GetUserData();
@@ -167,6 +168,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         return true;
     }
 
+    // dont want to block light on actors
     if (objectRef->IsActor()) return true; 
 
     std::lock_guard lock(LightData::triLightCacheMutex);

@@ -345,6 +345,8 @@ inline void iniParser()
 			continue;
 		}
 
+		// light merge
+
 		if (key == "light merge distance") {
 			globals::lightMergeDistance = std::stof(value);
 			continue;
@@ -400,6 +402,63 @@ inline void iniParser()
 			logger::info("enable Light Merging = {}", globals::enableLightMerging);
 			continue;
 		}
+		// light flicker prevention 
+
+		if (key == "large surface size") {
+			globals::largeSurfaceSize = std::stoi(value);
+			continue;
+		}
+
+		if (key == "medium surface size") {
+			globals::mediumSurfaceSize = std::stoi(value);
+			continue;
+		}
+
+		if (key == "small surface size") {
+			globals::smallSurfaceSize = std::stoi(value);
+			continue;
+		}
+
+		if (key == "max candles per surface") {
+			globals::maxLightTypesPerSurface = std::clamp(std::stoi(value), 0, 7);
+			continue;
+		}
+
+		if (key == "max candles per surface xl") {
+			globals::maxLightTypesPerSurfaceXL = std::clamp(std::stoi(value), 0, 7);
+			continue;
+		}
+
+		if (key == "max candle distance") {
+			globals::maxCandleDistance = std::stof(value);
+			continue;
+		}
+
+		if (key == "max candle z distance") {
+			globals::maxCandleZDistance = std::stof(value);
+			continue;
+		}
+
+		if (key == "max fire distance") {
+			globals::maxFireDistance = std::stof(value);
+			continue;
+		}
+
+		if (key == "max chandelier distance") {
+			globals::maxChandelierDistance= std::stof(value);
+			continue;
+		}
+
+		if (key == "max chandelier z distance") {
+			globals::maxChandelierZDistance = std::stof(value);
+			continue;
+		}
+
+		if (key == "global coverage") {
+			globals::globalCoverage = std::stof(value);
+			continue;
+		}
+
 	}
 
 	iniFile.close();
@@ -762,7 +821,7 @@ inline std::string BuildRefIDAndModName(RE::TESObjectREFR* ref)
 		return "";
 	}
 
-	const auto runtimeID = ref->GetFormID();
+	const auto runtimeID = ref->GetFormID() & 0x00FFFFFF; 
 
 	if (refOriginFile->IsLight()) {
 		// Best option if available in your CommonLib version

@@ -5,6 +5,7 @@
 #include "LightAttachmentHooks.h"
 #include <chrono>
 #include <type_traits>
+#include <array>
 
 //ATTACH LIGHTS AT CORRECT MESH INDEX, USEFULL FOR TORCHES WHERE LIGHT MUST BE INSERTED TO SPECIFIC SPOT
 void LightManager::attachLightUsingAttachPath(
@@ -648,10 +649,13 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 			 }
 		 }
 
+		// bool isFire = p.winningConfig.flags & static_cast<uint32_t>(LIGHT_FLAGS::kFire); 
+
 		 //merge count 3 because pending merges includes ref a and we dont want to increase brightness for merges of only 2 light sources
-		 if (increaseBrightness && mergeCount >= 3) {
+		 if (increaseBrightness&& mergeCount >= 3) {
 			 float fadeMultiplier = 1.0f + globals::lightFadePerMerge * static_cast<float>(mergeCount - 2);
 			 float radiusMultiplier = 1.0f + globals::lightRadiusPerMerge * static_cast<float>(mergeCount - 2);
+
 
 			 // clamp to max
 			 fadeMultiplier = std::min(fadeMultiplier, globals::lightFadeMax);
@@ -659,6 +663,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 			 p.light->fade *= fadeMultiplier;
 			 p.light->radius *= radiusMultiplier;
+
 		 }
 
 		 RE::NiPoint3 worldMid{};
@@ -735,10 +740,15 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 			 logger::debug(
 				 "[LightMerge:AFTER] '{}' merged {} refs\n"
 				 "  refA {:08X} merged with refs [{}]\n"
+				 "  radius {}\n"
+				 "  fade {}\n"
 				 "  local.translate {}",
-				 p.light->name.c_str(), mergeCount,
+				 p.light->name.c_str(),
+				 mergeCount,
 				 refAFormID,
 				 mergedRefsHex,
+				 p.light->radius,
+				 p.light->fade,
 				 p.light->local.translate
 			 );
 
@@ -843,7 +853,7 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 
 					// chandeliers shouldent have such strict z compares as they are usually high in the air and otherwise would lose
 					// this check to get 7 closest lights every time.
-					dz *= 0.33f; 
+					dz *= 0.33f;
 					distXY2 = dx * dx + dy * dy + dz * dz;
 				}
 
@@ -853,33 +863,34 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 
 				//only a sky light or something equivalent would have such a large radius and should just make it on the list
 				if (light->light->radius.x >= 900) {
-				
-					distXY2 *= 0.1f; 
+
+					distXY2 *= 0.1f;
 				}
 
-
-				if (triRadius < 700) {
+				if (triRadius < globals::mediumSurfaceSize) {
 					switch (light->unk060)
 					{
 					case 1:
 
-						if (dz > 200.0f)
+						//block candle lights on surfaces below this threshold
+						if (dz > globals::maxCandleZDistance)
 							continue;
-					{
-						if (distXY2 > globals::minCandleCoverage * globals::minCandleCoverage) continue;
-						break;
-					}
+						{
+							if (distXY2 > globals::maxCandleDistance * globals::maxCandleDistance) continue;
+							break;
+						}
 					case 2:
 					{
-						if (std::abs(dz) > 350.0f)
+						//block chandelier lights on surfaces above or below this threshold
+						if (std::abs(dz) > globals::maxChandelierZDistance)
 							continue;
 
-						if (distXY2 > globals::minChandelierCoverage * globals::minChandelierCoverage) continue;
+						if (distXY2 > globals::maxChandelierDistance * globals::maxChandelierDistance) continue;
 						break;
 					}
 					case 3:
 					{
-						if (distXY2 > globals::minFireCoverage * globals::minFireCoverage) continue;
+						if (distXY2 > globals::maxFireDistance * globals::maxFireDistance) continue;
 						break;
 					}
 					default:
@@ -889,7 +900,7 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 				}
 				candidates.push_back({ light, distXY2 });
 			}
-     };
+		};
 
 	gatherLights(rt.activeLights);
 	gatherLights(rt.activeShadowLights);
@@ -900,51 +911,40 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 			return a.dist < b.dist;
 		});
 
-	int maxCandles = (triRadius < 350.0f) ? 4 : 6;
+	// here we enforce max light types per surface(closest), it should never really be more then 6 candles on 1 surface from 
+	// everything that ive tested, skyrim lets SO MANY LIGHTS ON  a surface that DOESENT NEED TO BE, this helps ALOT
+	int maxLightTypes =
+		(triRadius < globals::smallSurfaceSize)
+		? globals::maxLightTypesPerSurface
+		: globals::maxLightTypesPerSurfaceXL;
+
+	std::array<int, 4> typeCounts{}; // 1=candle, 2=chandelier, 3=fire
 
 	int outIndex = 0;
-	int candleCount = 0;
 
 	for (int i = 0; i < static_cast<int>(candidates.size()) && outIndex < 7; i++)
 	{
 		auto* light = candidates[i].light;
+		if (!light) {
+			continue;
+		}
 
-		if (light->unk060 == 1) {
-			if (candleCount < maxCandles) {
-				outLights[outIndex++] = light;
-				candleCount++;
+		const auto type = light->unk060;
+
+		if (type >= 1 && type <= 3) {
+			if (typeCounts[type] >= maxLightTypes) {
 				continue;
 			}
 
-			int farthestCandleIndex = -1;
-			float farthestCandleDist = -1.0f;
-
-			for (int j = 0; j < outIndex; j++) {
-				if (outLights[j] && outLights[j]->unk060 == 1 && outLights[j]->light) {
-					auto& selectedPos = outLights[j]->light->world.translate;
-					float sdx = selectedPos.x - center.x;
-					float sdy = selectedPos.y - center.y;
-					float selectedDist = sdx * sdx + sdy * sdy;
-
-					if (selectedDist > farthestCandleDist) {
-						farthestCandleDist = selectedDist;
-						farthestCandleIndex = j;
-					}
-				}
-			}
-
-			if (farthestCandleIndex != -1 && candidates[i].dist < farthestCandleDist) {
-				outLights[farthestCandleIndex] = light;
-			}
-
-			continue;
+			typeCounts[type]++;
 		}
 
 		outLights[outIndex++] = light;
 	}
 
-	for (int i = outIndex; i < 7; i++)
+	for (int i = outIndex; i < 7; i++) {
 		outLights[i] = nullptr;
+	}
 }
 
  void LightManager::UpdateLightParent(RE::NiLight* light)

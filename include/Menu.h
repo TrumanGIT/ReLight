@@ -11,6 +11,7 @@ namespace UI {
     void __stdcall RenderSettings();
     void __stdcall RenderLightEditor();
     void __stdcall  RenderLightFlickerPreventionMenu();
+    void __stdcall  RenderLightMergeMenu();
     void __stdcall RenderAttachRemove();
     inline MENU_WINDOW reLightMenuWindow;
 
@@ -192,7 +193,22 @@ namespace UI {
         outFile << "light radius increase per merge=" << globals::lightRadiusPerMerge << "\n";
         outFile << "light fade max=" << globals::lightFadeMax << "\n";
         outFile << "light radius max=" << globals::lightRadiusMax << "\n";
-        outFile << "light merge max lights=" << globals::lightMergeMaxLights << "\n";
+        outFile << "light merge max lights=" << globals::lightMergeMaxLights << "\n\n";
+        outFile << "\n;Light FlickerPrevention Settings\n";
+        outFile << ";trishapes with worldbound radius larger than this number will not participate in light flicker prevention\n";
+        outFile << "large surface size=" << globals::largeSurfaceSize << "\n";
+        outFile << ";trishapes with worldbound radius largeer then this number will not participate in light type distance checks\n";
+        outFile << "medium surface size=" << globals::mediumSurfaceSize << "\n";
+        outFile << ";trishapes with worldbound radius largeer then this number will not participate in max light types per surface checks\n";
+        outFile << "small surface size=" << globals::smallSurfaceSize << "\n";
+        outFile << "max candles per surface=" << globals::maxLightTypesPerSurface << "\n";
+        outFile << "max candles per surface xl=" << globals::maxLightTypesPerSurfaceXL << "\n";
+        outFile << "max candle distance=" << globals::maxCandleDistance << "\n";
+        outFile << "max candle z distance=" << globals::maxCandleZDistance << "\n";
+        outFile << "max fire distance=" << globals::maxFireDistance << "\n";
+        outFile << "max chandelier distance=" << globals::maxChandelierDistance << "\n";
+        outFile << "max chandelier z distance=" << globals::maxChandelierZDistance << "\n";
+        outFile << "global coverage=" << globals::globalCoverage << "\n\n";
 
         // dump the entire preserved block back verbatim - comments, formids, everything
         if (!preservedBlock.empty())
