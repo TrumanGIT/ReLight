@@ -169,8 +169,10 @@ namespace UI {
         }
         outFile << ";allow relight to disable all non relight lights(to start with a clean base)\n";
         outFile << "disableGameLights=" << (globals::disableGameLights ? "true" : "false") << "\n\n";
-        outFile << "; enable light flicker prevention (default = false)\n";
+        outFile << "; enable light flicker prevention (Not for CS users)\n";
         outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
+        outFile << ";Change brightness of all Relight lights\n";
+        outFile << "light brightness multiplier=" << std::clamp(globals::brightnessModifier, 0.1f, 2.0f) << "\n\n";
         outFile << "; remove fake glow orbs (default = true)\n";
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
         outFile << "; enable debug bulbs (default = false)\n";
@@ -179,7 +181,8 @@ namespace UI {
         outFile << "disableISL=" << (globals::disableISL ? "true" : "false") << "\n\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
         outFile << "loggingLevel=" << globals::loggingLevel << "\n";
-        outFile << "\n; Light merge settings\n";
+        outFile << "\n; Light merge settings\n\n";
+        outFile << "enableLightMerging="<< (globals::enableLightMerging ? "true" : "false") << "\n";
         outFile << "light merge distance=" << globals::lightMergeDistance << "\n";
         outFile << "shadow light merge distance=" << globals::shadowLightMergeDistance << "\n";
         outFile << "light merge distance increased=" << globals::lightMergeSeekingDistance << "\n";
@@ -189,7 +192,7 @@ namespace UI {
         outFile << "light radius increase per merge=" << globals::lightRadiusPerMerge << "\n";
         outFile << "light fade max=" << globals::lightFadeMax << "\n";
         outFile << "light radius max=" << globals::lightRadiusMax << "\n";
-        outFile << "light merge max lights=" << globals::lightMergeMaxLights << "\n\n";
+        outFile << "light merge max lights=" << globals::lightMergeMaxLights << "\n";
 
         // dump the entire preserved block back verbatim - comments, formids, everything
         if (!preservedBlock.empty())
@@ -463,17 +466,8 @@ namespace UI {
 
     // timing is a real issue, ive tried 4 or 5 different ways anjd lights dont intiialize 
     // properly and this was the way that i ended up on
-    inline void RefreshNonRuntimeSettings(uint32_t configID)
+    inline void RefreshNonRuntimeSettings(LightConfig cfg)
     {
-        //get config of light were trying to refresh
-        auto it = LightData::configIDToJsonCfg.find(configID);
-
-        if (it == LightData::configIDToJsonCfg.end()) {
-            logger::warn("configID {} not found in config map cant refresh lights", configID);
-            return;
-        }
-
-        LightConfig cfg = it->second;
 
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
         if (!ssNode) {
@@ -558,7 +552,7 @@ namespace UI {
             auto it2 = LightData::configIDToJsonCfg.find(l->light->unk138);
 
             if (it2 == LightData::configIDToJsonCfg.end()) {
-                logger::warn("configID {} not found in config map cant refresh lights", configID);
+                logger::warn("configID {} not found in config map cant refresh lights", cfg.configID);
                 return;
             }
 
@@ -585,7 +579,7 @@ namespace UI {
             auto it3 = LightData::configIDToJsonCfg.find(l->light->unk138);
 
             if (it3 == LightData::configIDToJsonCfg.end()) {
-                logger::warn("configID {} not found in config map cant refresh lights", configID);
+                logger::warn("configID {} not found in config map cant refresh lights", cfg.configID);
                 return;
             }
 
@@ -597,6 +591,7 @@ namespace UI {
             addLight(l->light);
         }
 
+        // reset tri light cache otherwise light flcker prevention mode wont let the light on.
         globals::secondAfterCellFullyLoaded.store(false);
         LightData::ResetTriLightCache();
     }

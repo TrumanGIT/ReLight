@@ -22,7 +22,7 @@ B(neverFades, true) \
 
 #define FOREACH_FLOAT(F) \
 F(brightness, 3.0f) \
-F(radius, 100.f) \
+F(radius, 250.f) \
 F(fov, 1.0f) \
 F(falloff, 1.f) \
 F(nearDistance, 5.f) \

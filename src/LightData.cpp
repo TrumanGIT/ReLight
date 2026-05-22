@@ -106,7 +106,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	logger::debug(" Setting Light Data for {} from Configs", lightName);
 
-	data.fade = cfg.brightness * scale;
+	data.fade = cfg.brightness * scale * globals::brightnessModifier;
 	data.radius = getNiPointLightRadius(cfg, scale);
 
 	// used for quick runtime acess in flicker calcs and the in game menu (quicker then string lookup)

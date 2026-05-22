@@ -12,6 +12,7 @@ namespace UI {
     static buttonTicker saveButton{};
     static buttonTicker saveINIButton{};
     static buttonTicker defaultButton{};
+    static buttonTicker deleteButton{};
     static vector<RE::NiPointer<RE::BSLight>> lights = {};
     static bool lightsLoaded = false;
     static bool enableLightEditor = false;
@@ -24,6 +25,8 @@ namespace UI {
     auto coordinatesIcon = FontAwesome::UnicodeToUtf8(0xf601);
 
     auto editorIcon = FontAwesome::UnicodeToUtf8(0xf044);
+
+    auto trashIcon = FontAwesome::UnicodeToUtf8(0xf1f8);
 
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
@@ -80,13 +83,25 @@ namespace UI {
   
         ImGuiMCP::Spacing();
 
-        if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 325), true,
+        if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 335), true,
             ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
         {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
             ImGuiMCP::Text("Light Merge");
             ImGuiMCP::PopStyleColor();
+
+            ImGuiMCP::SameLine(); 
+
+            if (ImGuiMCP::Checkbox("Enable Light Merging", &globals::enableLightMerging)) {
+            }
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Enable / Disable light merging");
+            }
+
+            ImGuiMCP::Spacing();
+
 
             ImGuiMCP::ImVec2 avail{};
             ImGuiMCP::GetContentRegionAvail(&avail);
@@ -200,7 +215,6 @@ namespace UI {
             debugLogAllLights();
         }
 
-        
         ImGuiMCP::Separator();
 
         ImGuiMCP::Checkbox("Disable Game Lights", &globals::disableGameLights);
@@ -213,6 +227,53 @@ namespace UI {
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Show Creation Kit Style Light Bulbs Where Lights Were Placed");
 
         ImGuiMCP::Separator();
+
+        if (ImGuiMCP::SliderFloat(
+            "Brightness Multiplier",
+            &globals::brightnessModifier,
+            0.1f,
+            2.0f,
+            "%.2f"))
+        {
+            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+            if (ssNode) {
+                auto& rt = ssNode->GetRuntimeData();
+
+                auto applyBrightness = [](auto& lights) {
+                    for (auto& light : lights) {
+                        if (!light || !light->light)
+                            continue;
+
+                        auto& lightRt = light->light->GetLightRuntimeData();
+
+                        const auto it = LightData::configIDToJsonCfg.find(lightRt.unk138);
+                        if (it == LightData::configIDToJsonCfg.end())
+                            continue;
+
+                        const auto& cfg = it->second;
+
+                        auto ref = light->light->GetUserData(); 
+
+                        if (ref) {
+                            lightRt.fade =
+                                cfg.brightness *
+                                ref->GetScale() *
+                                globals::brightnessModifier;
+                        }
+                        else {
+                            lightRt.fade =
+                                cfg.brightness *
+                                globals::brightnessModifier;
+                        }
+                    }
+                    };
+
+                applyBrightness(rt.activeLights);
+                applyBrightness(rt.activeShadowLights);
+            }
+        }
+
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Change brightness of all Relight lights, requires you to reload the area your in.");
 
         if (ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3)) {
             spdlog::level::level_enum lvl;
@@ -295,6 +356,13 @@ namespace UI {
         bool defaultClicked = ImGuiMCP::Button("Default");
 
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Restore the currently selected light template's settings to what they were at game start");
+
+        ImGuiMCP::SameLine(0, 10.0f);
+
+        bool deleteClicked =
+            ImGuiMCP::Button(trashIcon.c_str());
+
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Delete the Json file from Relight/Configs");
 
         ImGuiMCP::ImVec2 rectMax;
         ImGuiMCP::GetItemRectMax(&rectMax);
@@ -381,6 +449,106 @@ namespace UI {
             }
 
             defaultButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
+        }
+        if (deleteClicked) {
+            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
+                ImGuiMCP::OpenPopup("Confirm Delete Light Template");
+            }
+            else {
+                logger::warn("Delete clicked but no light selected");
+                deleteButton.set(buttonState::Fail, 2.0f);
+            }
+        }
+
+        if (ImGuiMCP::BeginPopupModal(
+            "Confirm Delete Light Template",
+            nullptr,
+            ImGuiMCP::ImGuiWindowFlags_AlwaysAutoResize))
+        {
+            ImGuiMCP::Text("Are you sure you want to delete this light template?");
+
+            ImGuiMCP::Spacing();
+
+            if (ImGuiMCP::Button("Delete")) {
+                bool ok = false;
+                deleteButton.set(buttonState::Working);
+
+                if (selectedIndex >= 0 && selectedIndex < lights.size()) {
+                    auto selectedLight = lights[selectedIndex];
+
+                    if (selectedLight && selectedLight->light) {
+                        auto niLight = selectedLight->light.get();
+
+                        auto it = LightData::configIDToJsonCfg.find(niLight->unk138);
+                        if (it != LightData::configIDToJsonCfg.end()) {
+                            auto& cfg = it->second;
+
+                            std::string configPath = cfg.configPath;
+
+                            if (!configPath.empty()) {
+                                ok = std::filesystem::remove(configPath);
+                                if (ok) {
+                                    std::string deletedPath = configPath;
+
+                                    auto removeByConfigPath = [&](auto& map) {
+                                        for (auto itMap = map.begin(); itMap != map.end(); ) {
+                                            auto& vec = itMap->second;
+
+                                            vec.erase(
+                                                std::remove_if(vec.begin(), vec.end(),
+                                                    [&](const LightConfig& c) {
+                                                        return c.configPath == deletedPath;
+                                                    }),
+                                                vec.end());
+
+                                            if (vec.empty()) {
+                                                itMap = map.erase(itMap);
+                                            }
+                                            else {
+                                                ++itMap;
+                                            }
+                                        }
+                                        };
+
+                                    for (auto itCfg = LightData::configIDToJsonCfg.begin();
+                                        itCfg != LightData::configIDToJsonCfg.end(); )
+                                    {
+                                        if (itCfg->second.configPath == deletedPath) {
+                                            itCfg = LightData::configIDToJsonCfg.erase(itCfg);
+                                        }
+                                        else {
+                                            ++itCfg;
+                                        }
+                                    }
+                                    // remove from runtime light attachement maps
+                                    removeByConfigPath(LightData::meshPathToJsonCfg);
+                                    removeByConfigPath(LightData::meshPathToJsonCfgExteriors);
+                                    removeByConfigPath(LightData::refFormIDToJsonCfg);
+                                    removeByConfigPath(LightData::refFormIDToJsonCfgExteriors);
+
+                                    logger::info("Deleted light template '{}'", deletedPath);
+                                    selectedIndex = -1;
+                                }
+                                else {
+                                    logger::warn("Failed to delete light template '{}'", configPath);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                deleteButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
+                ImGuiMCP::CloseCurrentPopup();
+                return;
+            }
+
+            ImGuiMCP::SameLine();
+
+            if (ImGuiMCP::Button("Cancel")) {
+                ImGuiMCP::CloseCurrentPopup();
+            }
+
+            ImGuiMCP::EndPopup();
         }
 
         renderDone(saveButton, iconX, iconY);
@@ -600,7 +768,7 @@ namespace UI {
 
                 bool isSpotLight = config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight);
 
-                float radiusToUse = isSpotLight ? 1000.0f : 500.0f; 
+                float radiusToUse = isSpotLight ? 5000.0f : 500.0f; 
 
                 bool isTorch = (selectedLight->light->name == "RLtorch");
 
@@ -938,7 +1106,7 @@ namespace UI {
                     ImGuiMCP::BeginDisabled(isTorch);
 
                     if (ImGuiMCP::Button("Refresh Lights")) {
-                        RefreshNonRuntimeSettings(selectedLight->light->unk138);
+                        RefreshNonRuntimeSettings(config);
                     }
 
                     if (ImGuiMCP::IsItemHovered()) {
@@ -963,6 +1131,10 @@ namespace UI {
                     }
 
                     ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f");
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("For Spotlights");
+                    }
+
                     ImGuiMCP::NextColumn();
  
                     ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
@@ -1049,6 +1221,9 @@ namespace UI {
         static RE::TESObject* baseObject = nullptr;
         static RE::TESModel* model = nullptr;
 
+        static char menuNameBuffer[128]{};
+        static bool menuNameBufferInitialized = false;
+
         static LightConfig newCfg;
 
         auto resetState = [&]() {
@@ -1079,15 +1254,17 @@ namespace UI {
             baseFormID = 0x0;
             newCfg = LightConfig{};
             step = AttachLightStep::SelectTarget;
-        };
 
+            menuNameBufferInitialized = false;
+            menuNameBuffer[0] = '\0';
+        };
 
         auto selected = RE::Console::GetSelectedRef().get();
 
         if (!selected) {
             resetState();
+            ImGuiMCP::Dummy({ 0.0f, 50.0f });
             centerNextItem(350.0f);
-            ImGuiMCP::Dummy({ 0.0f, 170.0f });
             ImGuiMCP::Text("Click on an object in the console to continue.");
             return;
         }
@@ -1640,13 +1817,13 @@ namespace UI {
         case AttachLightStep::ChooseScope:
         {
             ImGuiMCP::Dummy({ 0.0f, 50.0f });
-            centerNextItem(260.0f);
+            centerNextItem(290.0f);
             ImGuiMCP::Text("This object only, or all objects like it?");
 
             ImGuiMCP::Spacing();
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
 
-            centerNextItem(300.0f);
+            centerNextItem(330.0f);
 
             if (ImGuiMCP::Button("This object only")) {
 
@@ -1802,12 +1979,48 @@ namespace UI {
         case AttachLightStep::Done:
         {
             ImGuiMCP::Dummy({ 0.0f, 50.0f });
-            centerNextItem(495.0f);
+            centerNextItem(520.0f);
             ImGuiMCP::Text("Light attached. You MUST confirm before saving in the light editor.");
 
             ImGuiMCP::Spacing();
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
-            centerNextItem(170.0f);
+
+            bool showMenuNameBox =
+                createNewTemplate &&
+                !multiLight;
+
+            if (showMenuNameBox && !menuNameBufferInitialized) {
+                std::string initialName;
+
+                if (!createNewTemplate) {
+                    initialName = selectedCfgs[0].menuName;
+                }
+                else {
+                    initialName = newCfg.menuName;
+                }
+
+                std::strncpy(menuNameBuffer, initialName.c_str(), sizeof(menuNameBuffer) - 1);
+                menuNameBuffer[sizeof(menuNameBuffer) - 1] = '\0';
+
+                menuNameBufferInitialized = true;
+            }
+
+            if (showMenuNameBox) {
+                ImGuiMCP::SetCursorPosX(320.0f);
+                ImGuiMCP::Text("Set Menu Name: ");
+                ImGuiMCP::SameLine(); 
+               // centerNextItem(250.0f);
+                ImGuiMCP::SetNextItemWidth(250.0f);
+
+                ImGuiMCP::InputText(
+                    "##TemplateName",
+                    menuNameBuffer,
+                    sizeof(menuNameBuffer));
+            }
+
+            ImGuiMCP::Dummy({ 0.0f, 20.0f });
+
+            centerNextItem(180.0f);
 
             if (ImGuiMCP::Button("Confirm")) {
 
@@ -1891,6 +2104,7 @@ namespace UI {
                         break;
                     }
 
+                    // refid light
                     LightConfig refCfg = selectedCfgs[0];
 
                     std::string refFormIDAndModName = BuildRefIDAndModName(selected);
@@ -1913,6 +2127,10 @@ namespace UI {
                     break;
                 }
                 else {
+                    if (!multiLight) {
+                        newCfg.menuName = menuNameBuffer;
+                    }
+
                     if (!saveNewConfiguration(newCfg)) {
                         logger::error("Failed to save new template");
                     }

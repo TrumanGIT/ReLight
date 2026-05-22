@@ -295,6 +295,13 @@ inline void iniParser()
 			continue;
 		}
 
+		if (key == "light brightness multiplier") {
+			globals::brightnessModifier = std::stof(value);
+			logger::info("light brightness multiplier = {}", globals::brightnessModifier);
+			continue;
+		}
+
+
 		if (key == "removefakegloworbs") {
 			globals::removeFakeGlowOrbs = value == "true";
 			logger::info("removeFakeGlowOrbs = {}", globals::removeFakeGlowOrbs);
@@ -385,6 +392,12 @@ inline void iniParser()
 
 		if (key == "light merge max lights") {
 			globals::lightMergeMaxLights = std::stoi(value);
+			continue;
+		}
+
+		if (key == "enablelightmerging") {
+			globals::enableLightMerging = value == "true";
+			logger::info("enable Light Merging = {}", globals::enableLightMerging);
 			continue;
 		}
 	}

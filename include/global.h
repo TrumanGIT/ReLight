@@ -9,6 +9,7 @@
 namespace globals
 
 {
+    inline float brightnessModifier = 1.0f; 
     //Attach Misc Lights
     inline std::atomic_bool unDesiredMenuOpen = false;
 
@@ -43,7 +44,9 @@ namespace globals
 
     // Merge
 
-    inline int lightMergeMaxLights = 10;
+    inline bool enableLightMerging = true;
+
+    inline int lightMergeMaxLights = 12;
 
     inline float lightMergeSeekingDistance = 188;
 

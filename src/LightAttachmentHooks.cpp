@@ -146,8 +146,6 @@ void AddonNodes::thunk(
 		if (!ssNode || !a_node)
 			return;
 
-		auto& rt = ssNode->GetRuntimeData();
-
 		auto* torchFire = a_node->GetObjectByName("TorchFire");
 		if (!torchFire)
 			return;

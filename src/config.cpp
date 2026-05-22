@@ -136,7 +136,7 @@ bool saveConfiguration(const LightConfig& config) {
 			const bool isSpotLight =
 			(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
 
-		const float maxRadius = isSpotLight ? 1000.0f : 500.0f;
+		const float maxRadius = isSpotLight ? 5000.0f : 500.0f;
 
 			// brighness useses in game slider copy value for a more stable value
 		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
@@ -219,7 +219,7 @@ bool saveNewConfiguration(LightConfig& config)
 		const bool isSpotLight =
 		(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
 
-		const float maxRadius = isSpotLight ? 1000.0f : 500.0f;
+		const float maxRadius = isSpotLight ? 5000.0f : 500.0f;
 
 		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
 		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, maxRadius), 2);
