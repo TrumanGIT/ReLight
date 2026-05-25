@@ -51,27 +51,25 @@ namespace globals
     // used only to limit how many candles can be on a small surface (trishape world bounds) 
     inline int smallSurfaceSize = 350;
 
-    //candles
+    //fires
+    inline int maxFiresPerSurfaceSM = 4;
+    inline int maxFiresPerSurfaceM = 4;
 
-    inline int maxLightTypesPerSurface = 4;
-    inline int maxLightTypesPerSurfaceXL = 6;
+    //candles
+    inline int maxCandlesPerSurfaceSM = 4;
+    inline int maxCandlesPerSurfaceM = 6;
 
     // candles cant affect surfaces this far below them enforced in islightaffectingsurface hook
     inline float maxCandleZDistance = 200;
-
     inline float maxCandleDistance = 470;
 
-    // fire
-    inline float maxFireDistance = 1200;
-
     // Chandeliers
-
+    inline int maxChandeliersPerSurfaceSM = 3;
+    inline int maxChandeliersPerSurfaceM = 3;
     inline float maxChandelierDistance = 630;
 
     // chandeliers cant affect surfaces this far below them enforced in islightaffectingsurface hook
     inline float maxChandelierZDistance= 350;
-
-    inline float globalCoverage = 700;
 
     // Merge
 

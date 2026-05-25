@@ -173,7 +173,7 @@ namespace UI {
         outFile << "; enable light flicker prevention (Not for CS users)\n";
         outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
         outFile << ";Change brightness of all Relight lights\n";
-        outFile << "light brightness multiplier=" << std::clamp(globals::brightnessModifier, 0.1f, 2.0f) << "\n\n";
+        outFile << "lightBrightnessMultiplier=" << std::clamp(globals::brightnessModifier, 0.1f, 2.0f) << "\n\n";
         outFile << "; remove fake glow orbs (default = true)\n";
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
         outFile << "; enable debug bulbs (default = false)\n";
@@ -197,18 +197,20 @@ namespace UI {
         outFile << "\n;Light FlickerPrevention Settings\n";
         outFile << ";trishapes with worldbound radius larger than this number will not participate in light flicker prevention\n";
         outFile << "large surface size=" << globals::largeSurfaceSize << "\n";
-        outFile << ";trishapes with worldbound radius largeer then this number will not participate in light type distance checks\n";
+        outFile << ";trishapes with worldbound radius larger then this number will not participate in light type distance checks\n";
         outFile << "medium surface size=" << globals::mediumSurfaceSize << "\n";
-        outFile << ";trishapes with worldbound radius largeer then this number will not participate in max light types per surface checks\n";
+        outFile << ";trishapes with worldbound radius larger then this number will not participate in max light types per surface checks\n";
         outFile << "small surface size=" << globals::smallSurfaceSize << "\n";
-        outFile << "max candles per surface=" << globals::maxLightTypesPerSurface << "\n";
-        outFile << "max candles per surface xl=" << globals::maxLightTypesPerSurfaceXL << "\n";
+        outFile << "max candles per sm surface=" << globals::maxCandlesPerSurfaceSM << "\n";
+        outFile << "max chandeliers per sm surface=" << globals::maxChandeliersPerSurfaceSM << "\n";
+        outFile << "max fires per sm surface=" << globals::maxFiresPerSurfaceSM << "\n";
+        outFile << "max candles per m surface=" << globals::maxCandlesPerSurfaceM << "\n";
+        outFile << "max chandeliers per m surface=" << globals::maxChandeliersPerSurfaceM << "\n";
+        outFile << "max fires per m surface=" << globals::maxFiresPerSurfaceM << "\n";
         outFile << "max candle distance=" << globals::maxCandleDistance << "\n";
         outFile << "max candle z distance=" << globals::maxCandleZDistance << "\n";
-        outFile << "max fire distance=" << globals::maxFireDistance << "\n";
         outFile << "max chandelier distance=" << globals::maxChandelierDistance << "\n";
         outFile << "max chandelier z distance=" << globals::maxChandelierZDistance << "\n";
-        outFile << "global coverage=" << globals::globalCoverage << "\n\n";
 
         // dump the entire preserved block back verbatim - comments, formids, everything
         if (!preservedBlock.empty())

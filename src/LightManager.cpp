@@ -115,7 +115,7 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 	if (!ref)
 		return nullptr;
 
-	RE::FormID formID = ref->GetFormID() & 0x00FFFFFF;
+	RE::FormID formID = ref->GetFormID();
 
 	if (isInterior) {
 		auto it = LightData::refFormIDToJsonCfg.find(formID);
@@ -888,11 +888,6 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 						if (distXY2 > globals::maxChandelierDistance * globals::maxChandelierDistance) continue;
 						break;
 					}
-					case 3:
-					{
-						if (distXY2 > globals::maxFireDistance * globals::maxFireDistance) continue;
-						break;
-					}
 					default:
 
 						break;
@@ -913,12 +908,14 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 
 	// here we enforce max light types per surface(closest), it should never really be more then 6 candles on 1 surface from 
 	// everything that ive tested, skyrim lets SO MANY LIGHTS ON  a surface that DOESENT NEED TO BE, this helps ALOT
-	int maxLightTypes =
-		(triRadius < globals::smallSurfaceSize)
-		? globals::maxLightTypesPerSurface
-		: globals::maxLightTypesPerSurfaceXL;
+	bool isSmallSurface = (triRadius < globals::smallSurfaceSize);
 
-	std::array<int, 4> typeCounts{}; // 1=candle, 2=chandelier, 3=fire
+	std::array<int, 4> typeCounts{}; // 1=candle, 2=chandelier
+
+	const std::array<int, 4> typeMaxSM{7, globals::maxCandlesPerSurfaceSM, globals::maxChandeliersPerSurfaceSM, globals::maxFiresPerSurfaceSM };
+	const std::array<int, 4> typeMaxM{7, globals::maxCandlesPerSurfaceM, globals::maxChandeliersPerSurfaceM, globals::maxFiresPerSurfaceM}; 
+
+	const auto& arrayToUse = isSmallSurface ? typeMaxSM : typeMaxM;
 
 	int outIndex = 0;
 
@@ -929,19 +926,27 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 			continue;
 		}
 
+		// 1 = candle 2 = chandelier, 3 = fire
 		const auto type = light->unk060;
 
-		if (type >= 1 && type <= 3) {
-			if (typeCounts[type] >= maxLightTypes) {
+		if (type < 1 || type > 3)
+		{
+			// treat unknown types as uncategorized lights
+			outLights[outIndex++] = light;
+			continue;
+		}
+
+			if (typeCounts[type] >= arrayToUse[type]) {
 				continue;
 			}
 
 			typeCounts[type]++;
-		}
-
+		
+		//post increment
 		outLights[outIndex++] = light;
 	}
 
+	// fill remaining empty slots with nulls
 	for (int i = outIndex; i < 7; i++) {
 		outLights[i] = nullptr;
 	}

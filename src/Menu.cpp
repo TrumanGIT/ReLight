@@ -115,19 +115,44 @@ namespace UI {
             if (ImGuiMCP::IsItemHovered()) { 
                 ImGuiMCP::SetTooltip("Any surface (Trishape WorldBound) size larger will not have max light type per surface enforced on it");
             }
-
-            ImGuiMCP::SliderInt("Max Light Types Per SM Surface", &globals::maxLightTypesPerSurface, 0, 7);
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Maximum Light Type allowed to affect a small surface at once (only json files with kcandle, kchandelier, kfire)");
+            ImGuiMCP::SliderInt("Candles Per SM Surface", &globals::maxCandlesPerSurfaceSM, 0, 7);
+            if (ImGuiMCP::IsItemHovered())
+            {
+                ImGuiMCP::SetTooltip("Max candle lights allowed on small surfaces.");
             }
 
-            ImGuiMCP::SliderInt("Max Light Types Per M Surface", &globals::maxLightTypesPerSurfaceXL, 0, 7);
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Maximum Light Type allowed to affect a medium surface at once (only json files with kcandle, kchandelier, kfire)");
+            ImGuiMCP::SliderInt("Chandeliers Per SM Surface", &globals::maxChandeliersPerSurfaceSM, 0, 7);
+            if (ImGuiMCP::IsItemHovered())
+            {
+                ImGuiMCP::SetTooltip("Max chandelier lights allowed on small surfaces.");
+            }
+
+            ImGuiMCP::SliderInt("Fires Per SM Surface", &globals::maxFiresPerSurfaceSM, 0, 7);
+            if (ImGuiMCP::IsItemHovered())
+            {
+                ImGuiMCP::SetTooltip("Max fire lights allowed on small surfaces.");
             }
 
             ImGuiMCP::NextColumn(); 
             ImGuiMCP::PushItemWidth(colWidth);
+
+            ImGuiMCP::SliderInt("Candles Per M Surface", &globals::maxCandlesPerSurfaceM, 0, 10);
+            if (ImGuiMCP::IsItemHovered())
+            {
+                ImGuiMCP::SetTooltip("Max candle lights allowed on medium surfaces.");
+            }
+
+            ImGuiMCP::SliderInt("Chandeliers Per M Surface", &globals::maxChandeliersPerSurfaceM, 0, 10);
+            if (ImGuiMCP::IsItemHovered())
+            {
+                ImGuiMCP::SetTooltip("Max chandelier lights allowed on medium surfaces.");
+            }
+
+            ImGuiMCP::SliderInt("Fires Per M Surface", &globals::maxFiresPerSurfaceM, 0, 10);
+            if (ImGuiMCP::IsItemHovered())
+            {
+                ImGuiMCP::SetTooltip("Max fire lights allowed on medium surfaces.");
+            }
 
             ImGuiMCP::SliderFloat("Max Candle Distance", &globals::maxCandleDistance, 0, 1000);
 
@@ -140,11 +165,6 @@ namespace UI {
                 ImGuiMCP::SetTooltip("Maximum distance a candle can shine light on a medium and small surface below it (requires kCandle flag)");
             }
 
-            ImGuiMCP::SliderFloat("Max Fire Distance", &globals::maxFireDistance, 0, 2000);
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Max distance a fire can be to affect a medium and small surface (requires kFire flag)");
-            }
-
             ImGuiMCP::SliderFloat("Max Chandelier Distance", &globals::maxChandelierDistance, 0, 200);
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Max distance a chandelier can be to affect a medium and small surface (requires kChandelier flag)");
@@ -153,11 +173,6 @@ namespace UI {
             ImGuiMCP::SliderFloat("Max Chandelier Z Distance", &globals::maxChandelierZDistance, 0, 1000);
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Maximum vertical distance a chandelier can affect a medium and small surface (requires kChandelier flag)");
-            }
-
-            ImGuiMCP::SliderFloat("Global Coverage", &globals::globalCoverage, 0, 1500);
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Fallback/ max distance for lights to affect a medium and small surface that don't have kcandle, kfire, or kchandelier flag");
             }
   
             ImGuiMCP::PopItemWidth(); 
@@ -886,6 +901,8 @@ namespace UI {
 
                 float radiusToUse = isSpotLight ? 5000.0f : 500.0f; 
 
+                float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
+
                 bool isTorch = (selectedLight->light->name == "RLtorch");
 
                 bool isShadowLight = config.shadowLight; 
@@ -896,7 +913,6 @@ namespace UI {
                 ImGuiMCP::PushItemWidth(150.0f);
 
                 ImGuiMCP::Columns(2, nullptr, false);
-
 
                 if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, 200), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
@@ -909,7 +925,7 @@ namespace UI {
                     ImGuiMCP::PopStyleColor();
                     ImGuiMCP::Separator();
 
-                    if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, 10.0f, "%.1f")) {
+                    if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, brightnessToUse, "%.1f")) {
                         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                         if (ssNode) {
                             auto& rt = ssNode->GetRuntimeData();

@@ -650,35 +650,17 @@ void parseTemplates() {
 							continue;
 						}
 
-						const RE::TESFile* file = dataHandler->LookupLoadedModByName(modName);
-						bool isLightMod = false;
-
-						if (!file) {
-							file = dataHandler->LookupLoadedLightModByName(modName);
-							if (file) {
-								isLightMod = true;
-							}
-						}
+						// unified resolver (handles normal mods + light mods + vanilla fallback)
+						const RE::TESFile* file = ResolveTESFileWithFallback(dataHandler, modName);
 
 						if (!file) {
 							logger::warn("Invalid mod name '{}' in refID '{}'", modName, refID);
 							continue;
 						}
 
-						RE::FormID runtimeID = 0;
+						// parsedID is your local FormID key (keep as-is)
+						RE::FormID runtimeID = parsedID;
 
-						if (isLightMod) {
-							auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
-							if (!ref) {
-								logger::warn("Failed to resolve light plugin refID '{}' in {}", refID, p);
-								continue;
-							}
-
-							runtimeID = ref->GetFormID();
-						}
-						else {
-							runtimeID = parsedID;
-						}
 						// create one lightconfig object for each of these maps
 						if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
 							LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);

@@ -295,7 +295,7 @@ inline void iniParser()
 			continue;
 		}
 
-		if (key == "light brightness multiplier") {
+		if (key == "lightbrightnessmultiplier") {
 			globals::brightnessModifier = std::stof(value);
 			logger::info("light brightness multiplier = {}", globals::brightnessModifier);
 			continue;
@@ -419,13 +419,33 @@ inline void iniParser()
 			continue;
 		}
 
-		if (key == "max candles per surface") {
-			globals::maxLightTypesPerSurface = std::clamp(std::stoi(value), 0, 7);
+		if (key == "max candles per sm surface") {
+			globals::maxCandlesPerSurfaceSM = std::clamp(std::stoi(value), 0, 7);
 			continue;
 		}
 
-		if (key == "max candles per surface xl") {
-			globals::maxLightTypesPerSurfaceXL = std::clamp(std::stoi(value), 0, 7);
+		if (key == "max chandeliers per sm surface") {
+			globals::maxChandeliersPerSurfaceSM = std::clamp(std::stoi(value), 0, 7);
+			continue;
+		}
+
+		if (key == "max fires per sm surface") {
+			globals::maxFiresPerSurfaceSM = std::clamp(std::stoi(value), 0, 7);
+			continue;
+		}
+
+		if (key == "max candles per m surface") {
+			globals::maxCandlesPerSurfaceM = std::clamp(std::stoi(value), 0, 7);
+			continue;
+		}
+
+		if (key == "max chandeliers per m surface") {
+			globals::maxChandeliersPerSurfaceM = std::clamp(std::stoi(value), 0, 7);
+			continue;
+		}
+
+		if (key == "max fires per m surface") {
+			globals::maxFiresPerSurfaceM = std::clamp(std::stoi(value), 0, 7);
 			continue;
 		}
 
@@ -439,11 +459,6 @@ inline void iniParser()
 			continue;
 		}
 
-		if (key == "max fire distance") {
-			globals::maxFireDistance = std::stof(value);
-			continue;
-		}
-
 		if (key == "max chandelier distance") {
 			globals::maxChandelierDistance= std::stof(value);
 			continue;
@@ -451,11 +466,6 @@ inline void iniParser()
 
 		if (key == "max chandelier z distance") {
 			globals::maxChandelierZDistance = std::stof(value);
-			continue;
-		}
-
-		if (key == "global coverage") {
-			globals::globalCoverage = std::stof(value);
 			continue;
 		}
 
@@ -821,7 +831,7 @@ inline std::string BuildRefIDAndModName(RE::TESObjectREFR* ref)
 		return "";
 	}
 
-	const auto runtimeID = ref->GetFormID() & 0x00FFFFFF; 
+	const auto runtimeID = ref->GetFormID();
 
 	if (refOriginFile->IsLight()) {
 		// Best option if available in your CommonLib version
@@ -1128,4 +1138,40 @@ inline void UpdateRefRootTransforms(RE::TESObjectREFR* selected)
 	}
 
 	a_root->UpdateTransformAndBounds(updateData);
+}
+
+inline const RE::TESFile* ResolveTESFileWithFallback(
+	RE::TESDataHandler* dataHandler,
+	const std::string& modName)
+{
+
+	static const std::array<std::string, 4> kVanillaFallbacks =
+	{
+		"Skyrim.esm",
+		"Update.esm",
+		"Dawnguard.esm",
+		"Dragonborn.esm"
+	};
+
+	if (!dataHandler)
+		return nullptr;
+
+	// 1. Try exact mod name
+	if (auto* file = dataHandler->LookupLoadedModByName(modName))
+		return file;
+
+	if (auto* file = dataHandler->LookupLoadedLightModByName(modName))
+		return file;
+
+	// 2. Fallback to vanilla masters
+	for (const auto& master : kVanillaFallbacks)
+	{
+		if (auto* file = dataHandler->LookupLoadedModByName(master))
+			return file;
+
+		if (auto* file = dataHandler->LookupLoadedLightModByName(master))
+			return file;
+	}
+
+	return nullptr;
 }

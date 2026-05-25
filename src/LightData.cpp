@@ -102,6 +102,8 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	logger::debug(" Setting Light Data for {} from Configs", lightName);
 
+	//fireplace in whiterun dragons reach is 3.3x size so scaling light radius and brightness by scale is too much 
+	// however we still scale mini objects like the 2 small fires on windhelm throne
 	if (scale >= 1.0f) scale = 1.0f; 
 
 	data.fade = cfg.brightness * scale * globals::brightnessModifier;
@@ -143,10 +145,6 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
-
-	// Couldn't do it with a macro as not all config. variables can be used with LIGHT_CREATE_PARAMS.
-
-	//Truman -  sounds good homie idk how to use that shit anyway xD
 
 	p.dynamic = true;    // dynamic = game updates it every frame? 
 	p.shadowLight = cfg.shadowLight;   
