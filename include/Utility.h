@@ -481,6 +481,18 @@ inline void glowOrbRemover(RE::NiNode* node)
 	if (!node)
 		return;
 
+	auto user = node->GetUserData(); 
+
+	if (!user) return; 
+
+	auto* baseObj = user->GetBaseObject();
+	auto* isFlora = skyrim_cast<RE::TESFlora*>(baseObj);
+
+	if (isFlora) {
+		logger::info("Flora detected, not removing glow ");
+		return; 
+	}
+
 	// Copy raw pointers to avoid iterator invalidation
 	std::vector<RE::NiAVObject*> childrenCopy;
 	childrenCopy.reserve(node->GetChildren().size());
