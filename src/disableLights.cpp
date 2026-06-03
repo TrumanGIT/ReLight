@@ -50,15 +50,26 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     if (ContainsEditorID(edid, globals::disableByEditorID)) return true;
 
+    auto formID = ref->GetFormID();
+
+    auto rawIndex = (formID & 0xFF000000) >> 24;
+    bool isLight = rawIndex == 0xFE;
+
+    if (!isLight) {
+        formID &= 0x00FFFFFF;
+    }
+
+    // double use of this vector can also disable vanilla lights its also used to prevent refs from getting relights  
+                                                               //remove load order index 
+    if (globals::excludedRefFormIDs.contains(formID)) {
+        logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));
+        return false;
+    }
+
     if (!globals::disableGameLights) return false;
 
 	if (ContainsEditorID(edid, globals::enableByEditorID)) return false;
 
-                                                              //remove load order index 
-    if (globals::excludedRefFormIDs.contains(ref->GetFormID() & 0x00FFFFFF)) {
-        logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));
-        return false;
-    }
 
     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
     std::string modName = refOriginFile ? refOriginFile->fileName : "";

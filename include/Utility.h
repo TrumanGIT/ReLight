@@ -237,6 +237,9 @@ inline void iniParser()
 							static_cast<std::uint32_t>(parsedID));
 					}
 					else {
+
+						parsedID &= 0x00FFFFFF;
+
 						globals::excludedRefFormIDs.insert(parsedID);
 
 						logger::info(
