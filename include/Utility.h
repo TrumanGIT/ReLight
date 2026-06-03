@@ -843,7 +843,7 @@ inline std::string BuildRefIDAndModName(RE::TESObjectREFR* ref)
 		return "";
 	}
 
-	const auto runtimeID = ref->GetFormID();
+	 auto runtimeID = ref->GetFormID();
 
 	if (refOriginFile->IsLight()) {
 		// Best option if available in your CommonLib version
@@ -856,6 +856,10 @@ inline std::string BuildRefIDAndModName(RE::TESObjectREFR* ref)
 			static_cast<std::uint32_t>(runtimeID));
 
 		return std::format("0x{:X}~{}", static_cast<std::uint32_t>(localID), modName);
+	}
+
+	else {
+		runtimeID &= 0x00FFFFFF;
 	}
 
 	logger::info(
@@ -1157,6 +1161,7 @@ inline const RE::TESFile* ResolveTESFileWithFallback(
 	const std::string& modName)
 {
 
+	// I forget why i implemented this but I think the idea was 0004502~embersxd.esp did not work for 0004502~skyrim.esp so i just use the base game ids as a fall back
 	static const std::array<std::string, 4> kVanillaFallbacks =
 	{
 		"Skyrim.esm",

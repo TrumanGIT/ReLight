@@ -54,7 +54,8 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
 	if (ContainsEditorID(edid, globals::enableByEditorID)) return false;
 
-    if (globals::excludedRefFormIDs.contains(ref->GetFormID())) {
+                                                              //remove load order index 
+    if (globals::excludedRefFormIDs.contains(ref->GetFormID() & 0x00FFFFFF)) {
         logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));
         return false;
     }
@@ -123,7 +124,6 @@ void TreeActivateHook::Install()
 
     logger::info("Installed TREE::Activate hook");
 }
-
 
 //used to limit surfaces to 7 closest lights to prevent light flickering
 //what I do here is reimplement this base game func, and collect closest lights once 1 second after cell loaded (otherwise no lights yet)

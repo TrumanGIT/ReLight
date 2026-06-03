@@ -644,7 +644,7 @@ void parseTemplates() {
 
 						std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
 
-						auto* dataHandler = RE::TESDataHandler::GetSingleton();
+						auto* dataHandler = RE::TESDataHandler::GetSingleton(); 
 						if (!dataHandler) {
 							logger::warn("TESDataHandler was null while parsing refID '{}'", refID);
 							continue;
@@ -658,7 +658,12 @@ void parseTemplates() {
 							continue;
 						}
 
-						// parsedID is your local FormID key (keep as-is)
+						// remove load order index of non light plugins incase users load order changes
+						if (!file->IsLight()) {
+							parsedID &= 0x00FFFFFF;
+						}
+
+						// parsedID is local FormID key
 						RE::FormID runtimeID = parsedID;
 
 						// create one lightconfig object for each of these maps

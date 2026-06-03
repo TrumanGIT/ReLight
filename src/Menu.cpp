@@ -46,50 +46,34 @@ namespace UI {
 
     void __stdcall RenderLightFlickerPreventionMenu() {
 
-        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-
-        FontAwesome::PushSolid();
-
-        ImGuiMCP::Text("Light Flicker Prevention");
-        ImGuiMCP::PopStyleColor();
-
-        ImGuiMCP::SameLine();
-
-        bool saveINIClicked = ImGuiMCP::Button("Save INI");
-
-        ImGuiMCP::ImVec2 rectMax;
-        ImGuiMCP::GetItemRectMax(&rectMax);
-        ImGuiMCP::ImVec2 rectMin;
-        ImGuiMCP::GetItemRectMin(&rectMin);
-        ImGuiMCP::ImVec2 winPos;
-        ImGuiMCP::GetWindowPos(&winPos);
-
-        float iconX = (rectMax.x - winPos.x) + 10.0f;
-        float iconY = (rectMin.y - winPos.y) + 4.0f;
-        if (saveINIClicked) {
-            bool ok = false;
-            saveINIButton.set(buttonState::Working);
-            ok = saveSettingsToIni();
-            saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
-        }
-        renderDone(saveINIButton, iconX, iconY);
-
-        ImGuiMCP::Spacing();
-
-        if (ImGuiMCP::Checkbox("Enable Light flicker prevention", &globals::enableLightFlickerPreventionMeasures)) {
-        }
-
-        if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip("Only the 7 closest lights can affect a surface");
-        }
-
-        if (ImGuiMCP::BeginChild("Light Flicker Prevention", ImGuiMCP::ImVec2(0, 325), true,
+        if (ImGuiMCP::BeginChild("Light Flicker Prevention", ImGuiMCP::ImVec2(0, 380), true,
             ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
         {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
             ImGuiMCP::Text("Light Flicker Prevention");
             ImGuiMCP::PopStyleColor();
+
+            ImGuiMCP::SameLine(); 
+
+            bool saveINIClicked = ImGuiMCP::Button("Save INI");
+
+            ImGuiMCP::ImVec2 rectMax;
+            ImGuiMCP::GetItemRectMax(&rectMax);
+            ImGuiMCP::ImVec2 rectMin;
+            ImGuiMCP::GetItemRectMin(&rectMin);
+            ImGuiMCP::ImVec2 winPos;
+            ImGuiMCP::GetWindowPos(&winPos);
+
+            float iconX = (rectMax.x - winPos.x) + 10.0f;
+            float iconY = (rectMin.y - winPos.y) + 4.0f;
+            if (saveINIClicked) {
+                bool ok = false;
+                saveINIButton.set(buttonState::Working);
+                ok = saveSettingsToIni();
+                saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
+            }
+            renderDone(saveINIButton, iconX, iconY);
 
             ImGuiMCP::ImVec2 avail{};
             ImGuiMCP::GetContentRegionAvail(&avail);
@@ -100,6 +84,13 @@ namespace UI {
 
             float colWidth = avail.x * 0.25f;
             ImGuiMCP::PushItemWidth(colWidth);
+
+            if (ImGuiMCP::Checkbox("Enable Light flicker prevention", &globals::enableLightFlickerPreventionMeasures)) {
+            }
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Only the 7 closest lights can affect a surface");
+            }
 
             ImGuiMCP::SliderInt("Max Surface Size Flicker Prevention", &globals::largeSurfaceSize, 0, 5000);
             if (ImGuiMCP::IsItemHovered()) {
@@ -183,37 +174,8 @@ namespace UI {
     }
 
     void __stdcall RenderLightMergeMenu() {
-        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
-        FontAwesome::PushSolid();
-
-        ImGuiMCP::Text("Light Merge");
-        ImGuiMCP::PopStyleColor();
-
-        ImGuiMCP::SameLine();
-
-        bool saveINIClicked = ImGuiMCP::Button("Save INI");
-
-        ImGuiMCP::ImVec2 rectMax;
-        ImGuiMCP::GetItemRectMax(&rectMax);
-        ImGuiMCP::ImVec2 rectMin;
-        ImGuiMCP::GetItemRectMin(&rectMin);
-        ImGuiMCP::ImVec2 winPos;
-        ImGuiMCP::GetWindowPos(&winPos);
-
-        float iconX = (rectMax.x - winPos.x) + 10.0f;
-        float iconY = (rectMin.y - winPos.y) + 4.0f;
-        if (saveINIClicked) {
-            bool ok = false;
-            saveINIButton.set(buttonState::Working);
-            ok = saveSettingsToIni();
-            saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
-        }
-        renderDone(saveINIButton, iconX, iconY);
-
-        ImGuiMCP::Spacing();
-
-        if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 335), true,
+        if (ImGuiMCP::BeginChild("Light Merge", ImGuiMCP::ImVec2(0, 340), true,
             ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
         {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
@@ -223,12 +185,24 @@ namespace UI {
 
             ImGuiMCP::SameLine(); 
 
-            if (ImGuiMCP::Checkbox("Enable Light Merging", &globals::enableLightMerging)) {
-            }
+            bool saveINIClicked = ImGuiMCP::Button("Save INI");
 
-            if (ImGuiMCP::IsItemHovered()) {
-                ImGuiMCP::SetTooltip("Enable / Disable light merging");
+            ImGuiMCP::ImVec2 rectMax;
+            ImGuiMCP::GetItemRectMax(&rectMax);
+            ImGuiMCP::ImVec2 rectMin;
+            ImGuiMCP::GetItemRectMin(&rectMin);
+            ImGuiMCP::ImVec2 winPos;
+            ImGuiMCP::GetWindowPos(&winPos);
+
+            float iconX = (rectMax.x - winPos.x) + 10.0f;
+            float iconY = (rectMin.y - winPos.y) + 4.0f;
+            if (saveINIClicked) {
+                bool ok = false;
+                saveINIButton.set(buttonState::Working);
+                ok = saveSettingsToIni();
+                saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
             }
+            renderDone(saveINIButton, iconX, iconY);
 
             ImGuiMCP::Spacing();
 
@@ -242,6 +216,13 @@ namespace UI {
 
             float colWidth = avail.x * 0.25f;
             ImGuiMCP::PushItemWidth(colWidth);
+
+            if (ImGuiMCP::Checkbox("Enable Light Merging", &globals::enableLightMerging)) {
+            }
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::SetTooltip("Enable / Disable light merging");
+            }
 
             ImGuiMCP::SliderInt("Max lights to merge", &globals::lightMergeMaxLights, 0, 25);
 
@@ -260,12 +241,15 @@ namespace UI {
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Used for configs with the IncreasedMergeDistance flag");
             }
-
             ImGuiMCP::SliderFloat("Merge distance shadow light", &globals::shadowLightMergeDistance, 0, 300);
 
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("Don't turn this down its for fire meshes stacked on top of each other");
             }
+
+            ImGuiMCP::NextColumn();
+            ImGuiMCP::PushItemWidth(colWidth);
+
 
             ImGuiMCP::SliderFloat("Z distance allowed to merge", &globals::fMaxZDiffToMerge, 0, 300);
 
@@ -278,9 +262,6 @@ namespace UI {
             if (ImGuiMCP::IsItemHovered()) {
                 ImGuiMCP::SetTooltip("For configs with the IncreasedMergeDistance flag");
             }
-
-            ImGuiMCP::NextColumn();
-            ImGuiMCP::PushItemWidth(colWidth);
 
             ImGuiMCP::SliderFloat("Fade Boost per Merge", &globals::lightFadePerMerge, 0.0f, 1.0f);
             if (ImGuiMCP::IsItemHovered())
