@@ -573,7 +573,15 @@ inline bool isExcludedRef(const RE::TESObjectREFR* ref)
 		return false;
 	}
 
-	const RE::FormID runtimeFormID = ref->GetFormID();
+	RE::FormID runtimeFormID = ref->GetFormID();
+
+	auto rawIndex = (runtimeFormID & 0xFF000000) >> 24;
+
+	bool isLight = rawIndex == 0xFE;
+
+	if (!isLight) {
+		runtimeFormID &= 0x00FFFFFF;
+	}
 
 	//logger::info("runtimeFormID = 0x{:08X}", static_cast<std::uint32_t>(runtimeFormID));
 
