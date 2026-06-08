@@ -16,7 +16,7 @@ struct Load3D {
     static void Install();
 };
 
-
+// used for torches weapons / armors
 struct AddonNodes
 {
     static void thunk(
@@ -27,6 +27,24 @@ struct AddonNodes
         RE::BSTSmartPointer<RE::BipedAnim>& a_bipedAnim);
 
     static inline REL::Relocation<decltype(thunk)> func;
+
+    static void Install();
+};
+
+// used for scripted fires like castle volkihar that only turn on when activated
+struct Activate {
+
+    static bool thunk(
+        RE::TESObjectACTI* a_this,
+        RE::TESObjectREFR* a_targetRef,
+        RE::TESObjectREFR* a_activatorRef,
+        std::uint8_t a_arg3,
+        RE::TESBoundObject* a_object,
+        std::int32_t a_targetCount);
+
+    static inline REL::Relocation<decltype(thunk)> func;
+
+    static constexpr std::size_t idx{ 0x37 };
 
     static void Install();
 };

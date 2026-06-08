@@ -108,7 +108,8 @@ namespace globals
 
     inline std::unordered_set<RE::FormID> excludedRefFormIDs{};
 
-    inline std::unordered_set<RE::FormID> excludedLightFormIDs{};
+    inline std::unordered_set<RE::FormID> excludedBaseFormIDs{};
+
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
 
 

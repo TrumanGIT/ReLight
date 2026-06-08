@@ -187,3 +187,113 @@ void AddonNodes::Install()
 		func = trampoline.write_call<5>(target.address(), thunk);
 	}
 }
+
+bool Activate::thunk(
+	RE::TESObjectACTI* a_this,
+	RE::TESObjectREFR* a_targetRef,
+	RE::TESObjectREFR* a_activatorRef,
+	std::uint8_t a_arg3,
+	RE::TESBoundObject* a_object,
+	std::int32_t a_targetCount)
+{
+	logger::info("=== Activate Hook Entered ===");
+	bool result = func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount);
+	logger::info("Original Activate returned: {}", result);
+
+	if (!a_targetRef) {
+		logger::info("a_targetRef is nullptr");
+		return result;
+	}
+
+	auto baseObject = a_targetRef->GetBaseObject();
+	if (!baseObject) {
+		logger::info("baseObject is nullptr");
+		return result;
+	}
+
+	const auto baseFormID = baseObject->GetFormID();
+	logger::info("Base FormID: {:08X}", baseFormID);
+
+	auto bm = baseObject->As<RE::TESModel>();
+	if (!bm) {
+		logger::info("TESModel cast failed");
+		return result;
+	}
+	logger::info("TESModel cast succeeded");
+
+	auto modelPath = bm->GetModel();
+	if (!modelPath || modelPath[0] == '\0') {
+		logger::info("Model path is empty");
+		return result;
+	}
+	logger::info("Full model path: {}", modelPath);
+
+	auto currentModel = std::string(modelPath);
+	auto meshName = extractMeshName(currentModel);
+	logger::info("Extracted mesh name: {}", meshName);
+	toLower(meshName);
+	logger::info("Lowercase mesh name: {}", meshName);
+
+	auto niAVObject = a_targetRef->Get3D();
+	logger::info("Get3D returned: {:p}", (void*)niAVObject);
+	if (!niAVObject) {
+		logger::info("Activator has no 3D");
+		return result;
+	}
+
+	auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
+	logger::info("NiNode cast result: {:p}", (void*)a_root);
+	if (!a_root) {
+		logger::info("Root is not a NiNode");
+		return result;
+	}
+
+	auto player = RE::PlayerCharacter::GetSingleton();
+	if (!player) {
+		logger::info("Player singleton is nullptr");
+		return result;
+	}
+
+	auto cell = player->GetParentCell();
+	if (!cell) {
+		logger::info("Player cell is nullptr");
+		return result;
+	}
+
+	bool isInterior = cell->IsInteriorCell();
+	logger::info("Player interior: {}", isInterior);
+
+	logger::info("Calling processByFilePath()");
+	bool attached = LightManager::processByFilePath(
+		a_activatorRef,
+		meshName,
+		a_root,
+		isInterior);
+	logger::info("processByFilePath returned: {}", attached);
+
+	if (attached) {
+		logger::info("Adding form {:08X} to attached light set", baseFormID);
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
+		if (globals::removeFakeGlowOrbs) {
+			logger::info("removeFakeGlowOrbs enabled");
+			auto node = niAVObject->AsNode();
+			if (node) {
+				logger::info("Calling glowOrbRemover()");
+				glowOrbRemover(node);
+				logger::info("glowOrbRemover() completed");
+			}
+			else {
+				logger::info("AsNode failed");
+			}
+		}
+	}
+
+	logger::info("=== Activate Hook Exit ===");
+	return result;
+}
+void Activate::Install()
+{
+	func = REL::Relocation<std::uintptr_t>(RE::TESObjectACTI::VTABLE[0])
+		.write_vfunc(idx, thunk);
+	logger::info("Hooked TESObjectACTI::Activate");
+}

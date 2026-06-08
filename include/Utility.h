@@ -133,7 +133,8 @@ inline void iniParser()
 		meshPathExact,
 		meshPathPartial,
 		priority,
-		refid
+		refid,
+		baseid
 	} section = NONE;
 
 	while (std::getline(iniFile, line))
@@ -155,8 +156,10 @@ inline void iniParser()
 				section = meshPathPartial;
 			else if (line.find("priority") != std::string::npos)
 				section = priority;
-			else if (line.find("exclude by ref form id") != std::string::npos)
+			else if (line.find("exclude refs") != std::string::npos)
 				section = refid;
+			else if (line.find("exclude base") != std::string::npos)
+				section = baseid;
 			//else
 			//	section = NONE;
 
@@ -274,6 +277,94 @@ inline void iniParser()
 			}
 			catch (...) {
 				logger::warn("Failed to parse excluded runtime ref formID: {}", line);
+			}
+
+			continue;
+		}case baseid:
+		{
+			auto tildePos = line.find('~');
+			if (tildePos != std::string::npos) {
+				std::string formIDStr = trim(line.substr(0, tildePos));
+				std::string modName = trim(line.substr(tildePos + 1));
+
+				try {
+					if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+						formIDStr = formIDStr.substr(2);
+					}
+
+					RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+
+					auto dataHandler = RE::TESDataHandler::GetSingleton();
+					auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
+
+					if (mod && mod->IsLight()) {
+
+						auto baseObj =
+							dataHandler->LookupForm<RE::TESBoundObject>(
+								parsedID,
+								modName);
+
+						if (!baseObj) {
+							logger::warn(
+								"Failed to resolve light plugin base localID 0x{:X} from mod {}",
+								static_cast<std::uint32_t>(parsedID),
+								modName);
+							continue;
+						}
+
+						globals::excludedBaseFormIDs.insert(baseObj->GetFormID());
+
+						logger::info(
+							"Added excluded light plugin base runtime formID: 0x{:08X} from {} (local: 0x{:X})",
+							static_cast<std::uint32_t>(baseObj->GetFormID()),
+							modName,
+							static_cast<std::uint32_t>(parsedID));
+					}
+					else {
+
+						parsedID &= 0x00FFFFFF;
+
+						globals::excludedBaseFormIDs.insert(parsedID);
+
+						logger::info(
+							"Added excluded non-light base formID: 0x{:08X} from {}",
+							static_cast<std::uint32_t>(parsedID),
+							modName);
+					}
+				}
+				catch (...) {
+					logger::warn("Failed to parse excluded base entry: {}", line);
+				}
+
+				continue;
+			}
+
+			try {
+
+				std::string formIDStr = trim(line);
+
+				// lines added by the in-game menu
+				if (line.starts_with("[")) {
+					continue;
+				}
+
+				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+					formIDStr = formIDStr.substr(2);
+				}
+
+				RE::FormID runtimeID =
+					std::stoul(formIDStr, nullptr, 16);
+
+				globals::excludedBaseFormIDs.insert(runtimeID);
+
+				logger::info(
+					"Added excluded runtime base formID: 0x{:08X}",
+					static_cast<std::uint32_t>(runtimeID));
+			}
+			catch (...) {
+				logger::warn(
+					"Failed to parse excluded runtime base formID: {}",
+					line);
 			}
 
 			continue;
@@ -586,11 +677,39 @@ inline bool isExcludedRef(const RE::TESObjectREFR* ref)
 		runtimeFormID &= 0x00FFFFFF;
 	}
 
-	//logger::info("runtimeFormID = 0x{:08X}", static_cast<std::uint32_t>(runtimeFormID));
-
 	// old behavior still works
 	if (globals::excludedRefFormIDs.contains(runtimeFormID)) {
 		logger::debug("excluded ref runtime formID 0x{:08X} skipping light attachment",
+			static_cast<std::uint32_t>(runtimeFormID));
+		return true;
+	}
+
+	return false;
+}
+
+inline bool isExcludedBaseID(const RE::TESObjectREFR* ref)
+{
+	if (!ref) {
+		return false;
+	}
+
+	auto baseObject = ref->GetBaseObject(); 
+
+	if (!baseObject) return false; 
+
+	RE::FormID runtimeFormID = baseObject->GetFormID();
+
+	auto rawIndex = (runtimeFormID & 0xFF000000) >> 24;
+
+	bool isLight = rawIndex == 0xFE;
+
+	if (!isLight) {
+		runtimeFormID &= 0x00FFFFFF;
+	}
+
+	// old behavior still works
+	if (globals::excludedBaseFormIDs.contains(runtimeFormID)) {
+		logger::debug("excluded Base runtime formID 0x{:08X} skipping light attachment",
 			static_cast<std::uint32_t>(runtimeFormID));
 		return true;
 	}
@@ -616,7 +735,12 @@ inline bool isExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
 		}
 	}
 
+
 	if (isExcludedRef(ref)) {
+		return true;
+	}
+
+	if (isExcludedBaseID(ref)) {
 		return true;
 	}
 
