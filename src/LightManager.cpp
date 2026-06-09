@@ -7,6 +7,39 @@
 #include <type_traits>
 #include <array>
 
+
+bool LightManager::HasRelightLight(RE::NiAVObject* a_root)
+{
+	if (!a_root)
+		return false;
+
+	auto node = a_root->AsNode();
+	if (!node)
+		return false;
+
+	const auto& children = node->GetChildren();
+	for (auto& child : children)
+	{
+		if (!child)
+			continue;
+
+		const char* rawName = child->name.c_str();
+		if (!rawName)
+			continue;
+
+		std::string_view name(rawName);
+
+		// RL prefix filter (your rule)
+		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
+			continue;
+
+		if (netimmerse_cast<RE::NiPointLight*>(child.get()))
+			return true;
+	}
+
+	return false;
+}
+
 //ATTACH LIGHTS AT CORRECT MESH INDEX, USEFULL FOR TORCHES WHERE LIGHT MUST BE INSERTED TO SPECIFIC SPOT
 void LightManager::attachLightUsingAttachPath(
 	const LightConfig& cfg,

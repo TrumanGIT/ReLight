@@ -27,6 +27,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
         return &singleton;
     }
 
+    static bool HasRelightLight(RE::NiAVObject* a_root);
+
     static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::TESObjectREFR* a_this);
 
     static void registerEventSink();

@@ -29,7 +29,11 @@ std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
 void LightData::ResetTriLightCache()
 {
+	// this is turned true 1 second later in the update hook giving some needed time to allow 
+	// trichace to reflect the proper lighting scene.
+	globals::secondAfterCellFullyLoaded.store(false);
 	LightData::triLightCacheGeneration.fetch_add(1);
+	
 }
 
 RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg, const float scale)

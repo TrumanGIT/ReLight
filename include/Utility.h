@@ -841,35 +841,6 @@ inline void hasInverseSquareLighting()
 }
 
 
-inline bool HasRelightLight(RE::TESObjectREFR* ref)
-{
-	if (!ref)
-		return false;
-
-	auto* root = ref->Get3D();
-	if (!root)
-		return false;
-
-	auto* node = netimmerse_cast<RE::NiNode*>(root);
-	if (!node)
-		return false;
-
-	for (auto& child : node->GetChildren()) {
-		if (!child)
-			continue;
-
-		std::string_view name(child->name.c_str());
-		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
-			continue;
-
-		if (netimmerse_cast<RE::NiPointLight*>(child.get())) {
-			return true;
-		}
-	}
-
-	return false;
-}
-
 inline std::string extractMeshName(const std::string& path) {
 	auto lastSlash = path.find_last_of("/\\");
 	auto filename = (lastSlash != std::string::npos) ? path.substr(lastSlash + 1) : path;

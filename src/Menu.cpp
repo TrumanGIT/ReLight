@@ -1429,7 +1429,16 @@ namespace UI {
         {
         case AttachLightStep::SelectTarget:
         {
-            step = HasRelightLight(selected) ?
+
+            auto niAVObject = selected->Get3D();
+
+            if (!niAVObject) return; 
+
+            auto niNode = niAVObject->AsNode(); 
+
+            if (!niNode) return; 
+
+            step = LightManager::HasRelightLight(niNode) ?
                 AttachLightStep::AlreadyHasLight :
                 AttachLightStep::ChooseTemplateType;
             break;
@@ -1477,13 +1486,14 @@ namespace UI {
                
                     niLight = LightManager::AttachLight(newCfg, rootAsNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
 
-
                     refLight = true;
                     formID = selected->GetFormID();
 
                     SKSE::GetTaskInterface()->AddTask([]() {
                         LightData::ResetTriLightCache();
-                        });
+                    });
+
+                    UpdateRefRootTransforms(selected);
                 }
 
                 // else its a mesh path 
@@ -1535,7 +1545,9 @@ namespace UI {
 
                     SKSE::GetTaskInterface()->AddTask([]() {
                         LightData::ResetTriLightCache();
-                        });
+                    });
+
+                    UpdateRefRootTransforms(selected);
                 }
 
                 step = AttachLightStep::Done;
@@ -2037,9 +2049,12 @@ namespace UI {
                         niLight = LightManager::AttachLight(newCfg, attachNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
                         LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
 
+
                         SKSE::GetTaskInterface()->AddTask([]() {
                             LightData::ResetTriLightCache();
                             });
+
+                        UpdateRefRootTransforms(selected);
 
                         step = AttachLightStep::Done;
                         break;
