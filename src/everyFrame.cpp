@@ -47,6 +47,23 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 	ApplyLightFlicker(ssRt.activeLights, delta, false, playerPos);
 
 	ApplyLightFlicker(ssRt.activeShadowLights, delta, true, playerPos);
+
+	if (globals::skseMenuOpened) {
+		globals::skseMenuOpened = false;
+	}
+	else if (globals::debugLinesNeedClear) {
+		// menu just closed and there are lines to clear
+		auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
+		if (api) {
+		
+			std::unique_lock lock(api->mutex_);
+			for (auto* line : api->LinesToDraw) delete line;
+			api->LinesToDraw.clear();
+		
+		}
+		DebugAPI_IMPL::DebugAPI::GetSingleton()->Update();
+		globals::debugLinesNeedClear = false; // only clears once
+	}
 }
 
 void PlayerCharacter_Update::Install()

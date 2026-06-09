@@ -29,6 +29,11 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kPostLoadGame:
     {
+ 
+       // auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
+        //logger::info("api exists: {}", api != nullptr);
+        //auto hud = DebugAPI_IMPL::DebugAPI::GetHUD();
+        //logger::info("HUD menu found: {}", hud != nullptr);
     
         break;
     }
@@ -53,7 +58,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         LightManager::registerEventSink();
         getObjectFadeMult();
         logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);
-     
+
+        DebugAPI_IMPL::DebugOverlayMenu::Register();
         break;
     }
     default:
@@ -80,5 +86,9 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
    TreeActivateHook::Install(); 
    Activate::Install(); 
+
+
+
    return true;
 }
+

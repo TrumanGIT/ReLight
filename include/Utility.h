@@ -414,6 +414,12 @@ inline void iniParser()
 			continue;
 		}
 
+		if (key == "enabledebuglines") {
+			globals::enableDebugLines = value == "true";
+			logger::info("enableDebugLines = {}", globals::enableDebugLines);
+			continue;
+		}
+
 		if (key == "disableisl") {
 			globals::disableISL = value == "true";
 			logger::info("disableisl = {}", globals::disableISL);

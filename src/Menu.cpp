@@ -3,6 +3,7 @@
 #include "global.h"
 #include "disableLights.h"
 #include <format>
+#include "everyFrame.h"
 
 namespace logger = SKSE::log;
 
@@ -337,6 +338,9 @@ namespace UI {
 
         ImGuiMCP::Checkbox("Enable Debugging Light Bulbs", &globals::enableDebugLightBulbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Show Creation Kit Style Light Bulbs Where Lights Were Placed");
+
+        ImGuiMCP::Checkbox("Draw Debug Lines", &globals::enableDebugLines);
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Draw Lines Around Lights to make positioning easier");
 
         ImGuiMCP::Separator();
 
@@ -871,6 +875,7 @@ namespace UI {
 
                 Overlay* selectedIslRt;
 
+
                 if (globals::islInstalled) {
                     selectedIslRt = Overlay::Get(selectedLight->light.get());
 
@@ -887,6 +892,29 @@ namespace UI {
                 bool isTorch = (selectedLight->light->name == "RLtorch");
 
                 bool isShadowLight = config.shadowLight; 
+
+
+                if (globals::enableDebugLines &&!(config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight))) {
+
+                      auto player = RE::PlayerCharacter::GetSingleton();
+                      if (!player) return;
+
+                      auto playerPos = player->GetPosition();
+
+                      auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                      if (!ssNode) {
+                            logger::warn("ShadowSceneNode[0] is null!");
+                            return;
+                      }
+
+                      auto& ssRt = ssNode->GetRuntimeData();
+
+                      DrawLightDebugSpheres(ssRt.activeLights, playerPos, config.configID);
+
+                      DrawLightDebugSpheres(ssRt.activeShadowLights, playerPos, config.configID);
+
+                      DebugAPI_IMPL::DebugAPI::GetSingleton()->Update();
+                }
 
                 ImGuiMCP::PushID(selectedLight->light.get());
 

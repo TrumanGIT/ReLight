@@ -178,6 +178,8 @@ namespace UI {
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
         outFile << "; enable debug bulbs (default = false)\n";
         outFile << "enableDebugBulbs=" << (globals::enableDebugLightBulbs ? "true" : "false") << "\n\n";
+        outFile << "; enable debug lines (default = false)\n";
+        outFile << "enableDebugLines=" << (globals::enableDebugLines ? "true" : "false") << "\n\n";
         outFile << "; disable Inverse Squared Lighting (relight lights and menu will change to vanilla, Only works if ISL is disabled at boot in CS settings)\n";
         outFile << "disableISL=" << (globals::disableISL ? "true" : "false") << "\n\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
@@ -194,7 +196,7 @@ namespace UI {
         outFile << "light fade max=" << globals::lightFadeMax << "\n";
         outFile << "light radius max=" << globals::lightRadiusMax << "\n";
         outFile << "light merge max lights=" << globals::lightMergeMaxLights << "\n\n";
-        outFile << "\n;Light FlickerPrevention Settings\n";
+        outFile << "\n;Light FlickerPrevention Settings\n\n";
         outFile << ";trishapes with worldbound radius larger than this number will not participate in light flicker prevention\n";
         outFile << "large surface size=" << globals::largeSurfaceSize << "\n";
         outFile << ";trishapes with worldbound radius larger then this number will not participate in light type distance checks\n";

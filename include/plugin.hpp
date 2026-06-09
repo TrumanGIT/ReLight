@@ -12,7 +12,7 @@ using namespace std;
 
 SKSEPluginInfo(
 	.Version = REL::Version{ 5, 2, 0, 0 },
-	.Name = "Relightr",
+	.Name = "Relight",
 	.Author = "Truman",
 	.StructCompatibility = SKSE::StructCompatibility::Independent,
 	.RuntimeCompatibility = SKSE::VersionIndependence::AddressLibrary

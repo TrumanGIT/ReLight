@@ -9,6 +9,9 @@
 namespace globals
 
 {
+
+    inline bool enableDebugLines = true; 
+
     inline float brightnessModifier = 1.0f; 
     //Attach Misc Lights
     inline std::atomic_bool unDesiredMenuOpen = false;
@@ -39,6 +42,10 @@ namespace globals
     inline std::atomic_bool cellFullyLoaded = false;
 
     inline std::atomic_bool secondAfterCellFullyLoaded = false;
+
+    inline bool skseMenuOpened = false;
+
+    inline bool debugLinesNeedClear = false;
 
     inline std::chrono::steady_clock::time_point cellFullyLoadedTimerStart;
 

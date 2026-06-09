@@ -7,6 +7,7 @@
 #include "LightManager.h"
 #include "utility.h"
 #include "global.h"
+#include <CLibUtilsQTR/DrawDebug.hpp>
 
 inline float NiSinQImpl(float a_value)
 {
@@ -724,7 +725,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 //TODO:: Redo whatever the fuck this is 
 inline void handlePendingMerges() {
 
-	constexpr int maxPerFrame = 10;
+	constexpr int maxPerFrame = 2;
 	int processedThisFrame = 0;
 
     std::lock_guard lock(LightManager::pendingMergesMutex);
@@ -865,3 +866,41 @@ inline bool OneSecondPassed(const std::chrono::steady_clock::time_point& timerSt
 
     return elapsed >= 1;
 }
+
+template <class T>
+static void DrawLightDebugSpheres(T& lights, RE::NiPoint3 playerPos, uint32_t configID)
+{
+	constexpr float maxDist = 800.0f;
+	constexpr float maxDistSq = maxDist * maxDist;
+
+	auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
+	if (!api) return;
+
+	for (auto& light : lights) {
+		if (!light || !light->light) continue;
+
+		// only draw the selected light
+		if (light->light->unk138 != configID) continue;
+
+		// Name filter — only RL lights
+		auto name = std::string_view(light->light->name.c_str());
+		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') continue;
+
+		// Distance check
+		auto diff = light->light->world.translate - playerPos;
+		float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
+		if (distSq > maxDistSq) continue;
+
+		RE::NiPoint3 worldPos = light->light->world.translate;
+		float radius = light->light->radius.x;
+
+		// 3 circles for a full sphere wireframe
+		api->DrawCircle(worldPos, radius, RE::NiPoint3(0.0f, 0.0f, 0.0f), 1); // XY
+		api->DrawCircle(worldPos, radius, RE::NiPoint3(RE::NI_HALF_PI, 0.0f, 0.0f), 1); // XZ
+		api->DrawCircle(worldPos, radius, RE::NiPoint3(0.0f, RE::NI_HALF_PI, 0.0f), 1); // YZ
+		logger::info("debug line drawn"); 
+	}
+}
+
+
+
