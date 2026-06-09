@@ -896,6 +896,9 @@ namespace UI {
 
                 if (globals::enableDebugLines &&!(config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight))) {
 
+                    globals::skseMenuOpened = true;      // menu is open this frame
+                    globals::debugLinesNeedClear = true; 
+
                       auto player = RE::PlayerCharacter::GetSingleton();
                       if (!player) return;
 

@@ -870,7 +870,7 @@ inline bool OneSecondPassed(const std::chrono::steady_clock::time_point& timerSt
 template <class T>
 static void DrawLightDebugSpheres(T& lights, RE::NiPoint3 playerPos, uint32_t configID)
 {
-	constexpr float maxDist = 800.0f;
+	constexpr float maxDist = 450.0f;
 	constexpr float maxDistSq = maxDist * maxDist;
 
 	auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
