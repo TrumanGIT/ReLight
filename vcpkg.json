@@ -12,7 +12,8 @@
     "directxmath",
     "directxtk",
     "boost-stl-interfaces",
-    "clib-util"
+    "clib-util",
+     "clib-utils-qtr"
   ],
   "overrides": [
     {

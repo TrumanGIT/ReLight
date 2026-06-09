@@ -15,6 +15,8 @@ endif()
 #               Imports and definitions                #
 # ---------------------------------------------------- #
 
+set(VCPKG_OVERLAY_PORTS "${CMAKE_CURRENT_SOURCE_DIR}/cmake/ports")
+
 include(cmake/lib/copyOutputs.cmake)
 include(cmake/lib/automaticGameFolderOutput.cmake)
 include(cmake/lib/autoCollectSources.cmake)
@@ -62,6 +64,7 @@ add_custom_target(Resource ALL DEPENDS ${RESOURCE_OUTPUT})
 #                Plugin Configuration                  #
 # ---------------------------------------------------- #
 
+
 include(FetchContent)
 
 set(ENABLE_SKYRIM_SE ON CACHE BOOL " " FORCE)
@@ -86,6 +89,8 @@ file(
     ImGuiMCP/imgui_tables.cpp
     ImGuiMCP/imgui_widgets.cpp
 )
+
+find_path(ClibUtilsQTR_INCLUDE_DIRS "ClibUtilsQTR/utils.hpp")
 
 source_group(
   TREE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -137,6 +142,7 @@ target_include_directories(
 	PRIVATE
     ${header_dirs}
     ${CLIB_UTIL_INCLUDE_DIRS}
+    ${ClibUtilsQTR_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGuiMCP
     ${CMAKE_CURRENT_SOURCE_DIR}/ImGuiMCP/backends
