@@ -12,8 +12,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-	if (a_this->IsDisabled()) return niAVObject; 
-
 	RE::FormID refFormID = a_this->GetFormID();
 
 	// ref already has a light placed, introduced to skip over refs that got a merged light
@@ -43,16 +41,16 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	bool isInterior = cell->IsInteriorCell();
 
+	// skip harvested plants
+	if (a_this->formFlags & (1 << 13)) {
+		logger::debug("skip attaching light to harvested plant");
+		return false;
+	}
+
 	// this looks for refs
 	if (auto* refCfgs = LightManager::findConfigsForRef(a_this, isInterior)) {
 
 		bool alreadyAttachedDebugMarker = false;
-
-		// skip harvested plants
-		if (a_this->formFlags & (1 << 13)) {
-			logger::debug("skip attaching light to harvested plant");
-			return niAVObject;
-		}
 
 		for (const auto& cfg : *refCfgs) {
 
@@ -67,59 +65,20 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 			if (!light) {
 				logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
 			}
-		
+	
 		}
 
 		if (globals::removeFakeGlowOrbs) {
-
-			auto node = niAVObject->AsNode();
-
-			if (node) {
-				glowOrbRemover(node);
-			}
+				glowOrbRemover(a_root);
 		}
-
+		
 		return niAVObject;
 	}
 
 	const auto baseObject = a_this->GetBaseObject();
 	if (!baseObject) return niAVObject;
 
-	const auto baseFormID = baseObject->GetFormID(); 
-
-	// handle scripted fires 1. skyhaven chain actiated, 2. castle volkihar  
-	if (baseFormID == 0x000AA71C || baseFormID == 0x0201838F) {
-		auto handle = a_this->GetHandle();
-		auto rootPtr = a_root; // capture the node
-		bool isInteriorCapture = isInterior;
-		SKSE::GetTaskInterface()->AddTask([handle, rootPtr, isInteriorCapture]() {
-			auto ref = handle.get();
-			if (!ref) return;
-
-			float val = 0.f;
-			ref->GetGraphVariableFloat("fToggleBlend", val);
-			if (val == 0.0f) {
-				logger::info("scripted Fire Skipped");
-				return;
-			}
-
-			// puzzle already solved, attach light
-			auto* niObj = ref->Get3D();
-			if (!niObj) return;
-			auto* root = netimmerse_cast<RE::NiNode*>(niObj);
-			if (!root) return;
-
-			auto* base = ref->GetBaseObject();
-			if (!base) return;
-			auto* bm = base->As<RE::TESModel>();
-			if (!bm) return;
-			auto meshName = extractMeshName(std::string(bm->GetModel()));
-			toLower(meshName);
-
-			LightManager::processByFilePath(ref.get(), meshName, root, isInteriorCapture);
-			});
-		return niAVObject; // return immediately, task handles it async
-	}
+	const auto baseFormID = baseObject->GetFormID();
 		
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return niAVObject;
@@ -131,22 +90,21 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	//mutable
 	toLower(meshName);
 
+	//async task to handle scritped fires, looks to see if animations are shut off
+	if (LightManager::HandleScriptedFires(a_this, baseFormID, meshName, isInterior)) {
+		return niAVObject;
+	}
+
 	// check file paths first, they will win over loose partial node name matches
 	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
-
-		if (globals::removeFakeGlowOrbs) {
-
-			auto node = niAVObject->AsNode();
-
-			if (node) {
-				glowOrbRemover(node);
+			if (globals::removeFakeGlowOrbs) {
+				glowOrbRemover(a_root);
 			}
-		}
 		
 		return niAVObject;
-	 }
+	}
 
 	return niAVObject;
 }

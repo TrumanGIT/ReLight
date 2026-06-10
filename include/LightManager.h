@@ -27,6 +27,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
         return &singleton;
     }
 
+    static bool HandleScriptedFires(RE::TESObjectREFR* a_this, RE::FormID baseFormID, std::string& meshname, bool isInterior);
+
     static void HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetRef);
 
     static void HandleSkyHavenTempleScriptedFires(RE::TESObjectREFR* a_targetRef);

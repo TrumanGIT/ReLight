@@ -7,6 +7,39 @@
 #include <type_traits>
 #include <array>
 
+bool LightManager::HandleScriptedFires(RE::TESObjectREFR* a_this, RE::FormID baseFormID, std::string& meshName, bool isInterior) {
+
+	// handle scripted fires 1. skyhaven chain actiated, 2. castle volkihar  
+	if (baseFormID == 0x000AA71C || baseFormID == 0x0201838F) {
+		auto handle = a_this->GetHandle();
+
+		bool isInteriorCapture = isInterior;
+		SKSE::GetTaskInterface()->AddTask([handle,  isInteriorCapture, meshName]() {
+			auto ref = handle.get();
+			if (!ref) return;
+			
+			//check if animations of fire is turned off (then doesent need light_
+			float val = 0.f;
+			ref->GetGraphVariableFloat("fToggleBlend", val);
+			if (val == 0.0f) {
+				logger::info("scripted Fire Skipped");
+				return;
+			}
+
+			// puzzle already solved, attach light
+			// get 3d fresh
+			auto* niObj = ref->Get3D();
+			if (!niObj) return;
+			auto* root = netimmerse_cast<RE::NiNode*>(niObj);
+			if (!root) return;
+
+			LightManager::processByFilePath(ref.get(), meshName, root, isInteriorCapture);
+			});
+		return true; // return immediately, task handles it async
+	}
+	return false;
+}
+
 void LightManager::HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetRef) {
 	{
 		if (!a_targetRef)
@@ -373,13 +406,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 		 //logger::info("found no match for {} ", meshName);
 		 return false;
 	 } 
-
-	 // skip harvested plants
-	 if (a_this->formFlags & (1 << 13)) {
-		 logger::debug("skip attaching light to harvested plant");
-		 return false;
-	 }
-
 
 	 if (!skipExcludes && isExclude(meshName, a_this)) return true;
 
