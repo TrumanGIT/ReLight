@@ -27,6 +27,10 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
         return &singleton;
     }
 
+    static void HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetRef);
+
+    static void HandleSkyHavenTempleScriptedFires(RE::TESObjectREFR* a_targetRef);
+
     static bool HasRelightLight(RE::NiAVObject* a_root);
 
     static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::TESObjectREFR* a_this);
@@ -37,7 +41,7 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
     static std::vector<LightConfig>* findConfigsForRef(RE::TESObjectREFR* ref, bool isInterior);
 
-   static bool processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior);
+   static bool processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior, bool skipExcludes = false);
 
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 

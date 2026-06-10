@@ -741,7 +741,6 @@ inline bool isExclude(const std::string& meshPath, RE::TESObjectREFR* ref)
 		}
 	}
 
-
 	if (isExcludedRef(ref)) {
 		return true;
 	}

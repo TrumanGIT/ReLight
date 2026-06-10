@@ -87,8 +87,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    TreeActivateHook::Install(); 
    Activate::Install(); 
 
-
-
    return true;
 }
 

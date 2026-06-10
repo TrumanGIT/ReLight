@@ -7,6 +7,179 @@
 #include <type_traits>
 #include <array>
 
+void LightManager::HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetRef) {
+	{
+		if (!a_targetRef)
+			return;
+
+		constexpr RE::FormID targetBaseID = 0x0201838F;
+
+		auto* player = RE::PlayerCharacter::GetSingleton();
+		if (!player)
+			return;
+
+		auto* cell = player->GetParentCell();
+		if (!cell)
+			return;
+
+		bool isInterior = cell->IsInteriorCell();
+
+		auto* base = a_targetRef->GetBaseObject();
+		if (!base || base->GetFormID() != targetBaseID)
+			return ;
+
+		auto* niObj = a_targetRef->Get3D();
+		if (!niObj)
+			return;
+
+		auto* root = netimmerse_cast<RE::NiNode*>(niObj);
+		if (!root)
+			return;
+
+		if (LightManager::HasRelightLight(root))
+			return;
+
+		auto* model = base->As<RE::TESModel>();
+		if (!model)
+			return;
+
+		std::string meshName = extractMeshName(model->GetModel());
+		toLower(meshName);
+
+		bool attached =
+			LightManager::processByFilePath(
+				a_targetRef,
+				meshName,
+				root,
+				isInterior, true);
+
+		if (attached) {
+			logger::info(
+				"Activated contents light attached to {:08X}",
+				a_targetRef->GetFormID());
+
+			globals::baseFormsWithAttachedLights.emplace(
+				base->GetFormID());
+
+			if (globals::removeFakeGlowOrbs) {
+				if (auto* node = niObj->AsNode()) {
+					glowOrbRemover(node);
+				}
+			}
+		}
+
+		RE::TES::GetSingleton()->ForEachReferenceInRange(
+			player,
+			500.0f,
+			[&](RE::TESObjectREFR* ref)
+			{
+				if (!ref)
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				auto* base = ref->GetBaseObject();
+				if (!base || base->GetFormID() != targetBaseID)
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				auto* niObj = ref->Get3D();
+				if (!niObj)
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				auto* root = netimmerse_cast<RE::NiNode*>(niObj);
+				if (!root)
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				if (LightManager::HasRelightLight(root))
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				auto* model = base->As<RE::TESModel>();
+				if (!model)
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				std::string meshName = extractMeshName(model->GetModel());
+				toLower(meshName);
+
+				bool attached =
+					LightManager::processByFilePath(
+						ref,
+						meshName,
+						root,
+						isInterior, true);
+
+				if (attached) {
+					logger::info(
+						"Activated contents light attached to {:08X}",
+						ref->GetFormID());
+
+					globals::baseFormsWithAttachedLights.emplace(
+						base->GetFormID());
+
+					if (globals::removeFakeGlowOrbs) {
+						if (auto* node = niObj->AsNode()) {
+							glowOrbRemover(node);
+						}
+					}
+				}
+
+				return RE::BSContainer::ForEachResult::kContinue;
+			});
+	}
+
+	//light flicker prevention will block otherwise
+	LightData::ResetTriLightCache(); 
+}
+
+void LightManager::HandleSkyHavenTempleScriptedFires(RE::TESObjectREFR* a_targetRef)
+{
+	constexpr RE::FormID skyHavenLeverRefID = 0x000511A4;
+	constexpr RE::FormID skyHavenFlameBaseID = 0x000AA71C;
+
+	if (a_targetRef->GetFormID() != skyHavenLeverRefID)
+		return;
+
+	auto* player = RE::PlayerCharacter::GetSingleton();
+	if (!player) return;
+
+	auto* cell = player->GetParentCell();
+	if (!cell) return;
+
+	bool isInterior = cell->IsInteriorCell();
+
+	RE::TES::GetSingleton()->ForEachReferenceInRange(player, 10000.0f, [&](RE::TESObjectREFR* ref) {
+		if (!ref) return RE::BSContainer::ForEachResult::kContinue;
+
+		auto* base = ref->GetBaseObject();
+		if (!base || base->GetFormID() != skyHavenFlameBaseID)
+			return RE::BSContainer::ForEachResult::kContinue;
+
+		auto* niObj = ref->Get3D();
+		if (!niObj) return RE::BSContainer::ForEachResult::kContinue;
+
+		auto* root = netimmerse_cast<RE::NiNode*>(niObj);
+		if (!root) return RE::BSContainer::ForEachResult::kContinue;
+
+		auto* bm = base->As<RE::TESModel>();
+		if (!bm) return RE::BSContainer::ForEachResult::kContinue;
+
+		auto meshName = extractMeshName(std::string(bm->GetModel()));
+		toLower(meshName);
+
+		bool attached = LightManager::processByFilePath(ref, meshName, root, isInterior);
+		if (attached) {
+			logger::info("Sky Haven flame activated, attaching light to ref: {:08X}", ref->GetFormID());
+			globals::baseFormsWithAttachedLights.emplace(base->GetFormID());
+			if (globals::removeFakeGlowOrbs) {
+				auto* node = niObj->AsNode();
+				if (node) glowOrbRemover(node);
+			}
+		}
+
+		return RE::BSContainer::ForEachResult::kContinue;
+	});
+
+
+	//light flicker prevention will block otherwise
+	LightData::ResetTriLightCache();
+}
 
 bool LightManager::HasRelightLight(RE::NiAVObject* a_root)
 {
@@ -189,7 +362,7 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 	return nullptr;
 }
 
-bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string meshName, RE::NiNode* a_root, bool isInterior) {
+bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string meshName, RE::NiNode* a_root, bool isInterior, bool skipExcludes) {
 
 
 	 std::string meshNameMatch = findPriorityMatch(meshName);
@@ -207,7 +380,8 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 		 return false;
 	 }
 
-	if (isExclude(meshName, a_this)) return true; 
+
+	 if (!skipExcludes && isExclude(meshName, a_this)) return true;
 
 	auto cfgs = findConfigsForMeshPath(meshNameMatch, isInterior);
 
@@ -491,7 +665,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 	bool increasedMergeDistance = false;
 
 	RE::TES::GetSingleton()->ForEachReferenceInRange(refA, globals::lightMergeSeekingDistance, [&](RE::TESObjectREFR* otherRef) {
-		if (!otherRef || otherRef == refA) return RE::BSContainer::ForEachResult::kContinue;
+		if (!otherRef || otherRef == refA || otherRef->IsDisabled()) return RE::BSContainer::ForEachResult::kContinue;
 		if (potentialMergeCount >= globals::lightMergeMaxLights) return RE::BSContainer::ForEachResult::kStop;
 
 		const RE::FormID refBFormID = otherRef->GetFormID();

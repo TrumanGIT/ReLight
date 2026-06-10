@@ -12,6 +12,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
+	if (a_this->IsDisabled()) return niAVObject; 
+
 	RE::FormID refFormID = a_this->GetFormID();
 
 	// ref already has a light placed, introduced to skip over refs that got a merged light
@@ -85,6 +87,40 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	const auto baseFormID = baseObject->GetFormID(); 
 
+	// handle scripted fires 1. skyhaven chain actiated, 2. castle volkihar  
+	if (baseFormID == 0x000AA71C || baseFormID == 0x0201838F) {
+		auto handle = a_this->GetHandle();
+		auto rootPtr = a_root; // capture the node
+		bool isInteriorCapture = isInterior;
+		SKSE::GetTaskInterface()->AddTask([handle, rootPtr, isInteriorCapture]() {
+			auto ref = handle.get();
+			if (!ref) return;
+
+			float val = 0.f;
+			ref->GetGraphVariableFloat("fToggleBlend", val);
+			if (val == 0.0f) {
+				logger::info("scripted Fire Skipped");
+				return;
+			}
+
+			// puzzle already solved, attach light
+			auto* niObj = ref->Get3D();
+			if (!niObj) return;
+			auto* root = netimmerse_cast<RE::NiNode*>(niObj);
+			if (!root) return;
+
+			auto* base = ref->GetBaseObject();
+			if (!base) return;
+			auto* bm = base->As<RE::TESModel>();
+			if (!bm) return;
+			auto meshName = extractMeshName(std::string(bm->GetModel()));
+			toLower(meshName);
+
+			LightManager::processByFilePath(ref.get(), meshName, root, isInteriorCapture);
+			});
+		return niAVObject; // return immediately, task handles it async
+	}
+		
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return niAVObject;
 
@@ -204,86 +240,14 @@ bool Activate::thunk(
 		return result;
 	}
 
-	RE::FormID id = a_targetRef->GetFormID();
 
-	auto baseObject = a_targetRef->GetBaseObject();
-	if (!baseObject) {
-		//logger::info("baseObject is nullptr");
-		return result;
-	}
+	LightManager::HandleSkyHavenTempleScriptedFires(a_targetRef); 
 
-	const auto baseFormID = baseObject->GetFormID();
-	//logger::info("Base FormID: {:08X}", baseFormID);
 
-	auto bm = baseObject->As<RE::TESModel>();
-	if (!bm) {
-	//	logger::info("TESModel cast failed");
-		return result;
-	}
-
-	auto modelPath = bm->GetModel();
-	if (!modelPath || modelPath[0] == '\0') {
-		//logger::info("Model path is empty");
-		return result;
-	}
-
-	auto currentModel = std::string(modelPath);
-
-	auto meshName = extractMeshName(currentModel);
-
-	toLower(meshName);
-
-	auto niAVObject = a_targetRef->Get3D();
-
-	if (!niAVObject) {
-		return result;
-	}
-
-	auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
-
-	if (!a_root) {
-		return result;
-	}
-
-	auto player = RE::PlayerCharacter::GetSingleton();
-	if (!player) {
-		return result;
-	}
-
-	auto cell = player->GetParentCell();
-	if (!cell) {
-		return result;
-	}
-
-	bool isInterior = cell->IsInteriorCell();
-
-	if (!LightManager::HasRelightLight(a_root)) return result; 
-
-	bool attached = LightManager::processByFilePath(
-		a_activatorRef,
-		meshName,
-		a_root,
-		isInterior);
+	LightManager::HandleDLC1VCDungeonScriptedFires(a_targetRef); 
 
 
 
-	if (attached) {
-		logger::info(
-			"mesh that needs light activated, ataching light to ref: {:08X}",
-			id
-		);
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		if (globals::removeFakeGlowOrbs) {
-			logger::info("removeFakeGlowOrbs enabled");
-			auto node = niAVObject->AsNode();
-			if (node) {
-				glowOrbRemover(node);
-			}
-			else {
-				logger::info("AsNode failed");
-			}
-		}
-	}
 
 	return result;
 }
