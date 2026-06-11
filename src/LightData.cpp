@@ -32,6 +32,7 @@ void LightData::ResetTriLightCache()
 	// this is turned true 1 second later in the update hook giving some needed time to allow 
 	// trichace to reflect the proper lighting scene.
 	globals::secondAfterCellFullyLoaded.store(false);
+	globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
 	LightData::triLightCacheGeneration.fetch_add(1);
 	
 }
