@@ -127,6 +127,18 @@ bool saveConfiguration(const LightConfig& config) {
 			}
 		}
 
+		if (originalEntry.contains("baseID")) {
+			newEntry["baseID"] = originalEntry["baseID"];
+		}
+		else if (!config.baseFormIDsAndModNames.empty()) {
+			if (config.baseFormIDsAndModNames.size() == 1) {
+				newEntry["baseID"] = config.baseFormIDsAndModNames.front();
+			}
+			else {
+				newEntry["baseID"] = config.baseFormIDsAndModNames;
+			}
+		}
+
 		newEntry["menuName"] = config.menuName;
 
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
@@ -507,6 +519,122 @@ bool saveNewConfiguration(LightConfig& config)
 	 }
  }
 
+  inline void parseFormIDs(json& json, const std::string& p, uint16_t jsonIndex, const std::string& key, bool isBaseID)
+  {
+	  std::vector<std::string> formIDs;
+	  if (json.contains(key)) {
+		  if (json[key].is_string()) {
+			  formIDs.push_back(json[key]);
+		  }
+		  else if (json[key].is_array()) {
+			  formIDs = json[key].get<std::vector<std::string>>();
+		  }
+	  }
+
+	  if (formIDs.empty()) {
+		  return;
+	  }
+
+	  LightConfig cfg;
+	  loadConfiguration(cfg, json);
+
+	  cfg.configPath = p;
+	  cfg.configID = globals::nextID++;
+	  cfg.jsonIndex = jsonIndex;
+
+	  if (isBaseID) {
+		  cfg.baseFormIDsAndModNames = formIDs;
+	  }
+	  else {
+		  cfg.refFormIDsAndModNames = formIDs;
+	  }
+
+	  auto& idsAndModNames = isBaseID ? cfg.baseFormIDsAndModNames : cfg.refFormIDsAndModNames;
+
+	  for (auto& id : idsAndModNames) {
+		  toLower(id);
+	  }
+
+	  for (const auto& id : idsAndModNames) {
+		  if (id.empty()) {
+			  continue;
+		  }
+
+		  auto tildePos = id.find('~');
+		  if (tildePos == std::string::npos) {
+			  logger::warn("Invalid {} format '{}', expected FormID~ModName", key, id);
+			  continue;
+		  }
+
+		  std::string formIDStr = trim(id.substr(0, tildePos));
+		  std::string modName = trim(id.substr(tildePos + 1));
+		  toLower(modName);
+
+		  try {
+			  if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+				  formIDStr = formIDStr.substr(2);
+			  }
+
+			  std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
+
+			  auto* dataHandler = RE::TESDataHandler::GetSingleton();
+			  if (!dataHandler) {
+				  logger::warn("TESDataHandler was null while parsing {} '{}'", key, id);
+				  continue;
+			  }
+
+			  // unified resolver (handles normal mods + light mods + vanilla fallback)
+			  const RE::TESFile* file = ResolveTESFileWithFallback(dataHandler, modName);
+
+			  if (!file) {
+				  logger::warn("Invalid mod name '{}' in {} '{}'", modName, key, id);
+				  continue;
+			  }
+
+			  // remove load order index of non light plugins incase users load order changes
+			  if (!file->IsLight()) {
+				  parsedID &= 0x00FFFFFF;
+			  }
+
+			  // parsedID is local FormID key
+			  RE::FormID runtimeID = parsedID;
+
+			  if (isBaseID) {
+				  if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+					  LightData::baseFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
+					  logger::info("adding base ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+				  }
+				  else {
+					  LightData::baseFormIDToJsonCfg[runtimeID].push_back(cfg);
+					  logger::info("adding base ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+				  }
+			  }
+			  else {
+				  if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+					  LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
+					  logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+				  }
+				  else {
+					  LightData::refFormIDToJsonCfg[runtimeID].push_back(cfg);
+					  logger::info("adding ref ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
+				  }
+			  }
+		  }
+		  catch (...) {
+			  logger::warn("Failed to parse {} '{}' in {}", key, id, p);
+			  continue;
+		  }
+	  }
+
+	  // only create one lightconfig object for these maps
+	  LightData::configIDToJsonCfg[cfg.configID] = cfg;
+	  LightData::defaultConfigs[cfg.configID] = cfg;
+
+	  cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
+  }
+
+
+
 inline uint32_t ParseFlags(const nlohmann::json& j)
 {
 	uint32_t mask = 0;
@@ -567,7 +695,7 @@ void sortInPriorityList(const LightConfig& cfg)
 void parseTemplates() {
 	logger::info("Parsing light templates..");
 	std::vector<std::string> paths = GetConfigPaths();
-	
+
 
 	for (const auto& p : paths) {
 		logger::info(" reading.. {}", p);
@@ -598,96 +726,8 @@ void parseTemplates() {
 
 		for (json json : entries) {
 
-			std::vector<std::string> refFormIDs;
-			if (json.contains("refID")) {
-				if (json["refID"].is_string()) {
-					refFormIDs.push_back(json["refID"]);
-				}
-				else if (json["refID"].is_array()) {
-					refFormIDs = json["refID"].get<std::vector<std::string>>();
-				}
-			}
-
-			// create ONE config for all refIDs listed
-			if (!refFormIDs.empty()) {
-				LightConfig cfg;
-				loadConfiguration(cfg, json);
-
-				cfg.configPath = p;
-				cfg.configID = globals::nextID++;
-				cfg.jsonIndex = jsonIndex;
-				cfg.refFormIDsAndModNames = refFormIDs;
-
-				for (auto& refID : cfg.refFormIDsAndModNames) {
-					toLower(refID);
-				}
-
-				for (const auto& refID : cfg.refFormIDsAndModNames) {
-					if (refID.empty()) {
-						continue;
-					}
-
-					auto tildePos = refID.find('~');
-					if (tildePos == std::string::npos) {
-						logger::warn("Invalid refID format '{}', expected FormID~ModName", refID);
-						continue;
-					}
-
-					std::string formIDStr = trim(refID.substr(0, tildePos));
-					std::string modName = trim(refID.substr(tildePos + 1));
-					toLower(modName);
-
-					try {
-						if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
-							formIDStr = formIDStr.substr(2);
-						}
-
-						std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
-
-						auto* dataHandler = RE::TESDataHandler::GetSingleton(); 
-						if (!dataHandler) {
-							logger::warn("TESDataHandler was null while parsing refID '{}'", refID);
-							continue;
-						}
-
-						// unified resolver (handles normal mods + light mods + vanilla fallback)
-						const RE::TESFile* file = ResolveTESFileWithFallback(dataHandler, modName);
-
-						if (!file) {
-							logger::warn("Invalid mod name '{}' in refID '{}'", modName, refID);
-							continue;
-						}
-
-						// remove load order index of non light plugins incase users load order changes
-						if (!file->IsLight()) {
-							parsedID &= 0x00FFFFFF;
-						}
-
-						// parsedID is local FormID key
-						RE::FormID runtimeID = parsedID;
-
-						// create one lightconfig object for each of these maps
-						if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-							LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
-							logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
-						}
-						else {
-							LightData::refFormIDToJsonCfg[runtimeID].push_back(cfg);
-							logger::info("adding ref ID config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
-						}
-					}
-					catch (...) {
-						logger::warn("Failed to parse refID '{}' in {}", refID, p);
-						continue;
-					}
-				}
-
-				// only create one lightconfig object for these maps
-				LightData::configIDToJsonCfg[cfg.configID] = cfg;
-				LightData::defaultConfigs[cfg.configID] = cfg;
-
-				cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
-			}
+			parseFormIDs(json, p, jsonIndex, "refID", false);
+			parseFormIDs(json, p, jsonIndex, "baseID", true);
 
 			// create a config for each mesh file path
 			std::vector<std::string> meshFilePaths;

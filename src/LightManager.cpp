@@ -349,6 +349,47 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 	//else bsLight->unk060 = 4; 
 }
 
+std::vector<LightConfig>* LightManager::findConfigsForBase(RE::FormID formID, bool isInterior)
+{
+
+	auto rawIndex = (formID & 0xFF000000) >> 24;
+	bool isLight = rawIndex == 0xFE;
+	if (!isLight) {
+		formID &= 0x00FFFFFF;
+	}
+
+	if (isInterior) {
+		auto it = LightData::baseFormIDToJsonCfg.find(formID);
+		if (it != LightData::baseFormIDToJsonCfg.end()) {
+			logger::debug("Found interior config for base 0x{:08X} ({} configs)",
+				static_cast<std::uint32_t>(formID),
+				it->second.size());
+			return &it->second;
+		}
+	}
+	else {
+		auto it = LightData::baseFormIDToJsonCfgExteriors.find(formID);
+		if (it != LightData::baseFormIDToJsonCfgExteriors.end()) {
+			logger::debug("Found exterior config for base 0x{:08X} ({} configs)",
+				static_cast<std::uint32_t>(formID),
+				it->second.size());
+			return &it->second;
+		}
+
+		auto it2 = LightData::baseFormIDToJsonCfg.find(formID);
+		if (it2 != LightData::baseFormIDToJsonCfg.end()) {
+			logger::debug("Fell back to interior config for exterior base 0x{:08X} ({} configs)",
+				static_cast<std::uint32_t>(formID),
+				it2->second.size());
+			return &it2->second;
+		}
+	}
+
+	// logger::debug("No config found for base 0x{:08X}", static_cast<std::uint32_t>(formID));
+	return nullptr;
+}
+
+
 std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref, bool isInterior)
 {
 	if (!ref)

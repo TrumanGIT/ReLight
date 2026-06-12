@@ -269,6 +269,14 @@ inline void iniParser()
 				}
 
 				RE::FormID runtimeID = std::stoul(formIDStr, nullptr, 16);
+
+				if ((runtimeID >> 24) == 0xFE) {
+					logger::warn(
+						"Excluded ref formID 0x{:08X} looks like a light plugin form but no ~modname was given - skipping",
+						static_cast<std::uint32_t>(runtimeID));
+					continue;
+				}
+
 				globals::excludedRefFormIDs.insert(runtimeID);
 
 				logger::info(
@@ -340,20 +348,22 @@ inline void iniParser()
 			}
 
 			try {
-
 				std::string formIDStr = trim(line);
 
-				// lines added by the in-game menu
-				if (line.starts_with("[")) {
-					continue;
-				}
+				if (line.starts_with("[")) continue;
 
 				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
 					formIDStr = formIDStr.substr(2);
 				}
 
-				RE::FormID runtimeID =
-					std::stoul(formIDStr, nullptr, 16);
+				RE::FormID runtimeID = std::stoul(formIDStr, nullptr, 16);
+
+				if ((runtimeID >> 24) == 0xFE) {
+					logger::warn(
+						"Excluded base formID 0x{:08X} looks like a light plugin form but no ~modname was given - skipping",
+						static_cast<std::uint32_t>(runtimeID));
+					continue;
+				}
 
 				globals::excludedBaseFormIDs.insert(runtimeID);
 
@@ -362,9 +372,7 @@ inline void iniParser()
 					static_cast<std::uint32_t>(runtimeID));
 			}
 			catch (...) {
-				logger::warn(
-					"Failed to parse excluded runtime base formID: {}",
-					line);
+				logger::warn("Failed to parse excluded runtime base formID: {}", line);
 			}
 
 			continue;
@@ -580,31 +588,16 @@ inline void iniParser()
 	logger::info("ReLight.ini parsed successfully!");
 }
 
-//removes unsightly glow orbs from meshes
-inline void glowOrbRemover(RE::NiNode* node)
+
+inline void glowOrbRemoverImpl(RE::NiNode* node)
 {
 	if (!node)
 		return;
 
-	auto user = node->GetUserData(); 
-
-	if (!user) return; 
-
-	auto* baseObj = user->GetBaseObject();
-	auto* isFlora = skyrim_cast<RE::TESFlora*>(baseObj);
-
-	if (isFlora) {
-		logger::info("Flora detected, not removing glow ");
-		return; 
-	}
-
-	// Copy raw pointers to avoid iterator invalidation
 	std::vector<RE::NiAVObject*> childrenCopy;
 	childrenCopy.reserve(node->GetChildren().size());
-
-	for (auto& c : node->GetChildren()) {
+	for (auto& c : node->GetChildren())
 		childrenCopy.push_back(c.get());
-	}
 
 	for (auto& child : childrenCopy) {
 		if (!child)
@@ -622,9 +615,32 @@ inline void glowOrbRemover(RE::NiNode* node)
 			continue;
 		}
 
-		// Recursive call to handle nested nodes
-		glowOrbRemover(childAsNode);
+		glowOrbRemoverImpl(childAsNode);
 	}
+}
+
+inline void glowOrbRemover(RE::NiNode* node)
+{
+	if (!node)
+		return;
+
+	std::string name = node->name.c_str();
+	toLower(name);
+
+	if (name.find("tel") != std::string::npos)
+		return;
+
+	auto user = node->GetUserData();
+	if (!user)
+		return;
+
+	auto* baseObj = user->GetBaseObject();
+	if (skyrim_cast<RE::TESFlora*>(baseObj)) {
+		logger::info("Flora detected, not removing glow");
+		return;
+	}
+
+	glowOrbRemoverImpl(node);
 }
 
 inline bool ContainsEditorID(

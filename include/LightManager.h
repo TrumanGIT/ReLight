@@ -43,6 +43,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
     static std::vector<LightConfig>* findConfigsForRef(RE::TESObjectREFR* ref, bool isInterior);
 
+	static std::vector<LightConfig>* findConfigsForBase(RE::FormID formID, bool isInterior);
+
    static bool processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior, bool skipExcludes = false);
 
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 

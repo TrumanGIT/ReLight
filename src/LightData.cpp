@@ -24,6 +24,9 @@ std::unordered_map<std::string, std::vector<LightConfig>> LightData::meshPathToJ
 std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfg;
 std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::refFormIDToJsonCfgExteriors;
 
+std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::baseFormIDToJsonCfg;
+std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::baseFormIDToJsonCfgExteriors;
+
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
