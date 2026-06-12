@@ -174,6 +174,8 @@ namespace UI {
         outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
         outFile << ";Change brightness of all Relight lights\n";
         outFile << "lightBrightnessMultiplier=" << std::clamp(globals::brightnessModifier, 0.1f, 2.0f) << "\n\n";
+        outFile << ";Change brightness of all non SKSE lights\n";
+        outFile << "nonSKSELightsBrightnessMultiplier=" << std::clamp(globals::vanillaBrightnessModifier, 0.1f, 2.0f) << "\n\n";
         outFile << "; remove fake glow orbs (default = true)\n";
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
         outFile << "; enable debug bulbs (default = false)\n";

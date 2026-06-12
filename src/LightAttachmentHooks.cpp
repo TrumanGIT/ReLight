@@ -44,7 +44,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	// skip harvested plants
 	if (a_this->formFlags & (1 << 13)) {
 		logger::debug("skip attaching light to harvested plant");
-		return false;
+		return niAVObject;
 	}
 
 	// this looks for refs

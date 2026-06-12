@@ -395,6 +395,11 @@ inline void iniParser()
 			continue;
 		}
 
+		if (key == "nonskselightsbrightnessmultiplier") {
+			globals::vanillaBrightnessModifier = std::stof(value);
+			logger::info("light brightness multiplier = {}", globals::brightnessModifier);
+			continue;
+		}
 
 		if (key == "removefakegloworbs") {
 			globals::removeFakeGlowOrbs = value == "true";
