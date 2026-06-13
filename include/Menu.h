@@ -264,7 +264,7 @@ namespace UI {
         lightData.radius = LightData::getNiPointLightRadius(backupCfg, ref->GetScale());
         lightData.fade = backupCfg.brightness;
         LightData::setNiPointLightAmbientAndDiffuse(light.get(), backupCfg);
-        LightData::setNiPointLightPos(light.get(), backupCfg);
+        LightData::setNiPointLightPos(light.get(), backupCfg, ref->GetScale());
 
         //update the parent or sometimes it doesent work.
         if (auto* parent = light->parent) {
