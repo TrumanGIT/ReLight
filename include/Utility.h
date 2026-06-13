@@ -206,165 +206,97 @@ inline void iniParser()
 		case refid:
 		{
 			auto tildePos = line.find('~');
-			if (tildePos != std::string::npos) {
-				std::string formIDStr = trim(line.substr(0, tildePos));
-				std::string modName = trim(line.substr(tildePos + 1));
-
-				try {
-					if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
-						formIDStr = formIDStr.substr(2);
-					}
-
-					RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
-
-					auto dataHandler = RE::TESDataHandler::GetSingleton();
-					auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
-
-					if (mod && mod->IsLight()) {
-						auto ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
-
-						if (!ref) {
-							logger::warn(
-								"Failed to resolve light plugin ref localID 0x{:X} from mod {}",
-								static_cast<std::uint32_t>(parsedID),
-								modName);
-							continue;
-						}
-
-						globals::excludedRefFormIDs.insert(ref->GetFormID());
-
-						logger::info(
-							"Added excluded light plugin ref runtime formID: 0x{:08X} from {} (local: 0x{:X})",
-							static_cast<std::uint32_t>(ref->GetFormID()),
-							modName,
-							static_cast<std::uint32_t>(parsedID));
-					}
-					else {
-
-						parsedID &= 0x00FFFFFF;
-
-						globals::excludedRefFormIDs.insert(parsedID);
-
-						logger::info(
-							"Added excluded non-light runtime ref formID: 0x{:08X} from {}",
-							static_cast<std::uint32_t>(parsedID),
-							modName);
-					}
-				}
-				catch (...) {
-					logger::warn("Failed to parse excluded ref entry: {}", line);
-				}
-
+			if (tildePos == std::string::npos) {
+				logger::warn("Excluded ref entry missing ~modname, skipping: {}", line);
 				continue;
 			}
 
+			std::string formIDStr = trim(line.substr(0, tildePos));
+			std::string modName = trim(line.substr(tildePos + 1));
+
 			try {
-				std::string formIDStr = trim(line);
-
-				//lines added by the in game menu apply this header that should be skipped to prevent error
-				if (line.starts_with("[")) continue; 
-
 				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
 					formIDStr = formIDStr.substr(2);
 				}
 
-				RE::FormID runtimeID = std::stoul(formIDStr, nullptr, 16);
-				globals::excludedRefFormIDs.insert(runtimeID);
+				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
 
-				logger::info(
-					"Added excluded runtime ref formID: 0x{:08X}",
-					static_cast<std::uint32_t>(runtimeID));
+				auto dataHandler = RE::TESDataHandler::GetSingleton();
+				auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
+
+				if (mod && mod->IsLight()) {
+					auto ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
+					if (!ref) {
+						logger::warn(
+							"Failed to resolve light plugin ref localID 0x{:X} from mod {}",
+							static_cast<std::uint32_t>(parsedID), modName);
+						continue;
+					}
+					globals::excludedRefFormIDs.insert(ref->GetFormID());
+					logger::info(
+						"Added excluded light plugin ref runtime formID: 0x{:08X} from {} (local: 0x{:X})",
+						static_cast<std::uint32_t>(ref->GetFormID()), modName,
+						static_cast<std::uint32_t>(parsedID));
+				}
+				else {
+					parsedID &= 0x00FFFFFF;
+					globals::excludedRefFormIDs.insert(parsedID);
+					logger::info(
+						"Added excluded non-light runtime ref formID: 0x{:08X} from {}",
+						static_cast<std::uint32_t>(parsedID), modName);
+				}
 			}
 			catch (...) {
-				logger::warn("Failed to parse excluded runtime ref formID: {}", line);
+				logger::warn("Failed to parse excluded ref entry: {}", line);
 			}
 
 			continue;
-		}case baseid:
+		}
+		case baseid:
 		{
 			auto tildePos = line.find('~');
-			if (tildePos != std::string::npos) {
-				std::string formIDStr = trim(line.substr(0, tildePos));
-				std::string modName = trim(line.substr(tildePos + 1));
-
-				try {
-					if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
-						formIDStr = formIDStr.substr(2);
-					}
-
-					RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
-
-					auto dataHandler = RE::TESDataHandler::GetSingleton();
-					auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
-
-					if (mod && mod->IsLight()) {
-
-						auto baseObj =
-							dataHandler->LookupForm<RE::TESBoundObject>(
-								parsedID,
-								modName);
-
-						if (!baseObj) {
-							logger::warn(
-								"Failed to resolve light plugin base localID 0x{:X} from mod {}",
-								static_cast<std::uint32_t>(parsedID),
-								modName);
-							continue;
-						}
-
-						globals::excludedBaseFormIDs.insert(baseObj->GetFormID());
-
-						logger::info(
-							"Added excluded light plugin base runtime formID: 0x{:08X} from {} (local: 0x{:X})",
-							static_cast<std::uint32_t>(baseObj->GetFormID()),
-							modName,
-							static_cast<std::uint32_t>(parsedID));
-					}
-					else {
-
-						parsedID &= 0x00FFFFFF;
-
-						globals::excludedBaseFormIDs.insert(parsedID);
-
-						logger::info(
-							"Added excluded non-light base formID: 0x{:08X} from {}",
-							static_cast<std::uint32_t>(parsedID),
-							modName);
-					}
-				}
-				catch (...) {
-					logger::warn("Failed to parse excluded base entry: {}", line);
-				}
-
+			if (tildePos == std::string::npos) {
+				logger::warn("Excluded base entry missing ~modname, skipping: {}", line);
 				continue;
 			}
 
+			std::string formIDStr = trim(line.substr(0, tildePos));
+			std::string modName = trim(line.substr(tildePos + 1));
+
 			try {
-
-				std::string formIDStr = trim(line);
-
-				// lines added by the in-game menu
-				if (line.starts_with("[")) {
-					continue;
-				}
-
 				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
 					formIDStr = formIDStr.substr(2);
 				}
 
-				RE::FormID runtimeID =
-					std::stoul(formIDStr, nullptr, 16);
+				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
 
-				globals::excludedBaseFormIDs.insert(runtimeID);
+				auto dataHandler = RE::TESDataHandler::GetSingleton();
+				auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
 
-				logger::info(
-					"Added excluded runtime base formID: 0x{:08X}",
-					static_cast<std::uint32_t>(runtimeID));
+				if (mod && mod->IsLight()) {
+					auto baseObj = dataHandler->LookupForm<RE::TESBoundObject>(parsedID, modName);
+					if (!baseObj) {
+						logger::warn(
+							"Failed to resolve light plugin base localID 0x{:X} from mod {}",
+							static_cast<std::uint32_t>(parsedID), modName);
+						continue;
+					}
+					globals::excludedBaseFormIDs.insert(baseObj->GetFormID());
+					logger::info(
+						"Added excluded light plugin base runtime formID: 0x{:08X} from {} (local: 0x{:X})",
+						static_cast<std::uint32_t>(baseObj->GetFormID()), modName,
+						static_cast<std::uint32_t>(parsedID));
+				}
+				else {
+					parsedID &= 0x00FFFFFF;
+					globals::excludedBaseFormIDs.insert(parsedID);
+					logger::info(
+						"Added excluded non-light base formID: 0x{:08X} from {}",
+						static_cast<std::uint32_t>(parsedID), modName);
+				}
 			}
 			catch (...) {
-				logger::warn(
-					"Failed to parse excluded runtime base formID: {}",
-					line);
+				logger::warn("Failed to parse excluded base entry: {}", line);
 			}
 
 			continue;
@@ -395,6 +327,11 @@ inline void iniParser()
 			continue;
 		}
 
+		if (key == "nonskselightsbrightnessmultiplier") {
+			globals::vanillaBrightnessModifier = std::stof(value);
+			logger::info("light brightness multiplier = {}", globals::brightnessModifier);
+			continue;
+		}
 
 		if (key == "removefakegloworbs") {
 			globals::removeFakeGlowOrbs = value == "true";
@@ -575,31 +512,16 @@ inline void iniParser()
 	logger::info("ReLight.ini parsed successfully!");
 }
 
-//removes unsightly glow orbs from meshes
-inline void glowOrbRemover(RE::NiNode* node)
+
+inline void glowOrbRemoverImpl(RE::NiNode* node)
 {
 	if (!node)
 		return;
 
-	auto user = node->GetUserData(); 
-
-	if (!user) return; 
-
-	auto* baseObj = user->GetBaseObject();
-	auto* isFlora = skyrim_cast<RE::TESFlora*>(baseObj);
-
-	if (isFlora) {
-		logger::info("Flora detected, not removing glow ");
-		return; 
-	}
-
-	// Copy raw pointers to avoid iterator invalidation
 	std::vector<RE::NiAVObject*> childrenCopy;
 	childrenCopy.reserve(node->GetChildren().size());
-
-	for (auto& c : node->GetChildren()) {
+	for (auto& c : node->GetChildren())
 		childrenCopy.push_back(c.get());
-	}
 
 	for (auto& child : childrenCopy) {
 		if (!child)
@@ -617,9 +539,32 @@ inline void glowOrbRemover(RE::NiNode* node)
 			continue;
 		}
 
-		// Recursive call to handle nested nodes
-		glowOrbRemover(childAsNode);
+		glowOrbRemoverImpl(childAsNode);
 	}
+}
+
+inline void glowOrbRemover(RE::NiNode* node)
+{
+	if (!node)
+		return;
+
+	std::string name = node->name.c_str();
+	toLower(name);
+
+	if (name.find("tel") != std::string::npos)
+		return;
+
+	auto user = node->GetUserData();
+	if (!user)
+		return;
+
+	auto* baseObj = user->GetBaseObject();
+	if (skyrim_cast<RE::TESFlora*>(baseObj)) {
+		logger::info("Flora detected, not removing glow");
+		return;
+	}
+
+	glowOrbRemoverImpl(node);
 }
 
 inline bool ContainsEditorID(

@@ -12,6 +12,8 @@ namespace globals
 
     inline bool enableDebugLines = true; 
 
+    inline float vanillaBrightnessModifier = 1.0f;
+
     inline float brightnessModifier = 1.0f; 
     //Attach Misc Lights
     inline std::atomic_bool unDesiredMenuOpen = false;
@@ -115,7 +117,11 @@ namespace globals
 
     inline std::unordered_set<RE::FormID> excludedRefFormIDs{};
 
-    inline std::unordered_set<RE::FormID> excludedBaseFormIDs{};
+    inline std::unordered_set<RE::FormID> excludedBaseFormIDs{
+     0x0003BD2E,
+     0x001092E2,
+     0x0001838F  
+    };
 
     inline std::unordered_set<RE::FormID> baseFormsWithAttachedLights{};
 

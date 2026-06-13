@@ -76,6 +76,7 @@ struct LightConfig {
     std::vector<std::string> meshPaths;
     std::string menuName{};
     std::vector<std::string> refFormIDsAndModNames;
+    std::vector<std::string> baseFormIDsAndModNames;
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
     std::array<float, POS_SIZE> position{0, 0, 30};       // RE::NiPointLight->local.translate.x, y z
     std::array<float, POS_SIZE> rotation{ 0, 0, 0 };       // RE::NiPointLight->local.rotation
@@ -202,8 +203,6 @@ bool AddMeshPathToAllEntries(const std::string& filePath, const std::string& mes
 bool AddRefIDToAllEntries(const std::string& configPath, const std::string& refID);
 
 std::size_t CountJsonEntriesInFile(const std::string& configPath); 
-
-//bool RemoveMeshPathFromAllEntriesInConfiguration(const std::string& configPath, const std::string& meshPathToRemove);
 
 uint32_t ParseFlags(const nlohmann::json& j);
 

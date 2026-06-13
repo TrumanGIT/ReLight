@@ -389,7 +389,15 @@ namespace UI {
             }
         }
 
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Change brightness of all Relight lights, requires you to reload the area your in.");
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Change brightness of all Relight lights.");
+
+        if (ImGuiMCP::SliderFloat(
+            "Non SKSE Lights Brightness Multiplier",
+            &globals::vanillaBrightnessModifier,
+            0.1f,
+            2.0f,
+            "%.2f")) {
+        }
 
         if (ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3)) {
             spdlog::level::level_enum lvl;

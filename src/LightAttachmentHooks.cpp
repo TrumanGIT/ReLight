@@ -47,6 +47,12 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
+
+	const auto baseObject = a_this->GetBaseObject();
+	if (!baseObject) return niAVObject;
+
+	const auto baseFormID = baseObject->GetFormID();
+
 	// this looks for refs
 	if (auto* refCfgs = LightManager::findConfigsForRef(a_this, isInterior)) {
 
@@ -65,7 +71,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 			if (!light) {
 				logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
 			}
-	
+
+			globals::baseFormsWithAttachedLights.emplace(baseFormID);
 		}
 
 		if (globals::removeFakeGlowOrbs) {
@@ -75,10 +82,37 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-	const auto baseObject = a_this->GetBaseObject();
-	if (!baseObject) return niAVObject;
 
-	const auto baseFormID = baseObject->GetFormID();
+	// this looks for base
+	if (auto* baseCfgs = LightManager::findConfigsForBase(baseFormID, isInterior)) {
+
+		bool alreadyAttachedDebugMarker = false;
+
+		for (const auto& cfg : *baseCfgs) {
+
+			auto* light = LightManager::AttachLight(
+				cfg,
+				a_root,
+				a_this,
+				cfg.menuName,
+				refFormID,
+				alreadyAttachedDebugMarker);
+
+			if (!light) {
+				logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
+			}
+
+			globals::baseFormsWithAttachedLights.emplace(baseFormID);
+
+		}
+
+		if (globals::removeFakeGlowOrbs) {
+			glowOrbRemover(a_root);
+		}
+
+		return niAVObject;
+	}
+
 		
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return niAVObject;

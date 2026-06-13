@@ -31,7 +31,7 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 		globals::mergedRefs.clear();
 
 		// idk if need to make this false again but anyway why not
-		globals::cellFullyLoaded.store(false);
+		//globals::cellFullyLoaded.store(false);
 	}
 
 	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];

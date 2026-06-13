@@ -76,6 +76,9 @@ struct LightData {
 	static std::unordered_map<RE::FormID, std::vector<LightConfig>> refFormIDToJsonCfg;
 	static std::unordered_map<RE::FormID, std::vector<LightConfig>> refFormIDToJsonCfgExteriors;
 
+	static std::unordered_map<RE::FormID, std::vector<LightConfig>> baseFormIDToJsonCfg;
+	static std::unordered_map<RE::FormID, std::vector<LightConfig>> baseFormIDToJsonCfgExteriors;
+
 	static std::unordered_map<uint32_t, LightConfig> defaultConfigs;
 
 	static void ResetTriLightCache();

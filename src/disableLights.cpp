@@ -20,7 +20,14 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 	if (shouldDisableLight(light, ref))
 		return nullptr;
 
-	return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    light->fade *= globals::vanillaBrightnessModifier; 
+
+    auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    if (niLight) {
+        niLight->fade *= globals::vanillaBrightnessModifier;
+    }
+
+    return niLight;
 }
 
 void TESObjectLIGH_GenDynamic::Install() {
