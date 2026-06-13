@@ -357,6 +357,9 @@ std::vector<LightConfig>* LightManager::findConfigsForBase(RE::FormID formID, bo
 	if (!isLight) {
 		formID &= 0x00FFFFFF;
 	}
+	else {
+		formID &= 0xFFF;
+	}
 
 	if (isInterior) {
 		auto it = LightData::baseFormIDToJsonCfg.find(formID);
@@ -402,6 +405,9 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 		bool isLight = rawIndex == 0xFE;
 		if (!isLight) {
 			formID &= 0x00FFFFFF;
+		}
+		else {
+			formID &= 0xFFF;
 		}
 
 	if (isInterior) {
