@@ -29,6 +29,10 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 			config.menuName = data["menuName"].get<std::string>();
 		}
 
+		if (data.contains("menuCategory")) {
+			config.menuCategory = data["menuCategory"].get<std::string>();
+		}
+
 		FOREACH_BOOL(BOOL2JSON_READ)
 		FOREACH_FLOAT(FLOAT2JSON_READ)
 
@@ -141,6 +145,13 @@ bool saveConfiguration(const LightConfig& config) {
 
 		newEntry["menuName"] = config.menuName;
 
+		// Checks if the template already had a group name to re-apply it
+		if (!config.menuCategory.empty()) {
+
+			newEntry["menuCategory"] = config.menuCategory;
+
+		}
+
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
 
 		FOREACH_BOOL(JSON_WRITE)
@@ -223,6 +234,7 @@ bool saveNewConfiguration(LightConfig& config)
 			newEntry["refID"] = config.refFormIDsAndModNames;
 		}
 
+		newEntry["menuCategory"] = config.menuCategory;
 		newEntry["menuName"] = config.menuName;
 
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
@@ -848,6 +860,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
  bool AppendNewConfigEntryFromLight(
 	 const std::string& configPath,
 	 std::uint16_t jsonIndex,
+	 const std::string& menuCategory,
 	 const std::string& menuName,
 	 RE::NiLight* niLight,
 	 const std::string& refIDAndModName,
@@ -874,6 +887,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 cfg.configPath = configPath;
 		 cfg.jsonIndex = jsonIndex;
 		 cfg.configID = preserveConfigID ? baseCfg.configID : globals::nextID++;
+		 cfg.menuCategory = menuCategory;
 		 cfg.menuName = menuName;
 		 cfg.refFormIDsAndModNames.clear(); // clear copied baseCfg refs since were adding a new json object to json file
 		 if (!refIDAndModName.empty()) {
@@ -916,6 +930,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 			 }
 		 }
 
+		 newEntry["menuCategory"] = cfg.menuCategory;
 		 newEntry["menuName"] = cfg.menuName;
 
 #define JSON_WRITE(C, I) newEntry[#C] = cfg.C;
@@ -947,9 +962,9 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 };
 
 		 newEntry["rotation"] = {
-	 truncateDecimals(cfg.rotation[0], 2),
-	 truncateDecimals(cfg.rotation[1], 2),
-	 truncateDecimals(cfg.rotation[2], 2)
+			 truncateDecimals(cfg.rotation[0], 2),
+			 truncateDecimals(cfg.rotation[1], 2),
+			 truncateDecimals(cfg.rotation[2], 2)
 		 };
 
 		 newEntry["flags"] = FlagsToJson(cfg.flags);
@@ -991,6 +1006,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 			 logger::info(
 				 "AppendNewConfigEntryFromLight: added ref config '{}' at {} index {}",
 				 cfg.menuName,
+				 cfg.menuCategory,
 				 cfg.configPath,
 				 cfg.jsonIndex);
 		 }
@@ -1011,6 +1027,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 			 logger::info(
 				 "AppendNewConfigEntryFromLight: added mesh config '{}' at {} index {}",
 				 cfg.menuName,
+				 cfg.menuCategory,
 				 cfg.configPath,
 				 cfg.jsonIndex);
 		 }

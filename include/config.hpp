@@ -74,6 +74,7 @@ struct LightConfig {
     FOREACH_FLOAT(FLOAT2DEF);
     std::string configPath{};                     // save the path from where this config is loaded
     std::vector<std::string> meshPaths;
+    std::string menuCategory{};
     std::string menuName{};
     std::vector<std::string> refFormIDsAndModNames;
     std::vector<std::string> baseFormIDsAndModNames;
@@ -217,6 +218,7 @@ bool saveNewConfiguration(LightConfig& config);
 bool AppendNewConfigEntryFromLight(
     const std::string& configPath,
     std::uint16_t jsonIndex,
+    const std::string& menuCategory,
     const std::string& menuName,
     RE::NiLight* niLight,
     const std::string& refIDsAndModNames,
