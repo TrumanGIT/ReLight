@@ -329,7 +329,7 @@ inline void iniParser()
 
 		if (key == "nonskselightsbrightnessmultiplier") {
 			globals::vanillaBrightnessModifier = std::stof(value);
-			logger::info("light brightness multiplier = {}", globals::brightnessModifier);
+			logger::info("nonskse Light brightness multiplier = {}", globals::brightnessModifier);
 			continue;
 		}
 
@@ -348,6 +348,12 @@ inline void iniParser()
 		if (key == "enabledebugbulbs") {
 			globals::enableDebugLightBulbs = value == "true";
 			logger::info("enableDebugLightBulbs = {}", globals::enableDebugLightBulbs);
+			continue;
+		}
+
+		if (key == "maxdistancefordrawdebuglines") {
+			globals::distanceForDrawDebugLines = std::stoi(value);
+			logger::info("max distance for draw debug lines = {}", globals::distanceForDrawDebugLines);
 			continue;
 		}
 

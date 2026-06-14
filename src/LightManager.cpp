@@ -444,7 +444,7 @@ std::vector<LightConfig>* LightManager::findConfigsForRef(RE::TESObjectREFR* ref
 
 bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string meshName, RE::NiNode* a_root, bool isInterior, bool skipExcludes) {
 
-
+	// get prioirty match from priority list since we use parital matching this prevents unintended matches
 	 std::string meshNameMatch = findPriorityMatch(meshName);
 
 	 const auto refFormID = a_this->GetFormID();

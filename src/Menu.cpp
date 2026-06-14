@@ -342,6 +342,15 @@ namespace UI {
         ImGuiMCP::Checkbox("Draw Debug Lines", &globals::enableDebugLines);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Draw Lines Around Lights to make positioning easier");
 
+        ImGuiMCP::SliderInt(
+            "Max distance from light to draw debug lights",
+            &globals::distanceForDrawDebugLines,
+            0,
+            10000,
+            "%d");
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("any light futher then this value will not draw debug lines");
+            
+
         ImGuiMCP::Separator();
 
         if (ImGuiMCP::SliderFloat(
@@ -949,7 +958,7 @@ namespace UI {
                                                 parent->UpdateTransformAndBounds(updateData);
                                             }
                                         }
-                                    };
+                                };
 
                                 applyRotation(rt.activeLights);
                                 applyRotation(rt.activeShadowLights);
@@ -1055,7 +1064,12 @@ namespace UI {
                     {
                         if (isSpot) {
                             config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
-                            config.fov = 45.0f;
+                            
+                            // set fov if its not lower then 45
+                            if (config.fov > 45.0f) {
+                                config.fov = 45.0f;
+                            }
+                         
                         }
                         else {
                             config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
@@ -1119,7 +1133,7 @@ namespace UI {
         static RE::FormID lastSelected = 0;
         static RE::FormID previewRef = 0;
         static int previewSelectedIndex = -1;
-        static std::vector<std::pair<std::string, LightConfig>> configDisplay;
+        static std::vector<std::tuple<std::string, LightConfig, bool>> configDisplay;
         static std::unordered_set<std::string> seenMenuNames;
         static int selectedIndex = -1;
         static std::vector<LightConfig> selectedCfgs;
@@ -1652,94 +1666,79 @@ namespace UI {
             ImGuiMCP::Spacing();
 
             if (configDisplay.empty()) {
-                configDisplay.clear();
+
                 seenMenuNames.clear();
 
-                auto tryAdd = [&](const std::string& key, const std::vector<LightConfig>& cfgVec) {
-                    if (cfgVec.empty()) {
-                        return;
-                    }
-
+                auto tryAdd = [&](const std::string& key, const std::vector<LightConfig>& cfgVec, bool isExterior) {
+                    if (cfgVec.empty()) return;
                     const auto& cfg = cfgVec[0];
-
                     std::string name = cfg.menuName.empty() ? key : cfg.menuName;
                     std::string nameLower = toLowerImmut(name);
-
                     if (seenMenuNames.insert(nameLower).second) {
-                        configDisplay.emplace_back(key, cfg);
+                        configDisplay.push_back({ key, cfg, isExterior });
                     }
-                };
+                    };
 
-                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfg) {
-                    tryAdd(key, cfgVec);
-                }
+                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfg)
+                    tryAdd(key, cfgVec, false);
+                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfgExteriors)
+                    tryAdd(key, cfgVec, true);
 
-                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfgExteriors) {
-                    tryAdd(key, cfgVec);
-                }
-
-                // alphabetize
                 std::sort(configDisplay.begin(), configDisplay.end(),
                     [](const auto& a, const auto& b)
                     {
                         return compareLightNames(
-                            a.second.menuName.c_str(),
-                            b.second.menuName.c_str()
+                            std::get<1>(a).menuName.c_str(),
+                            std::get<1>(b).menuName.c_str()
                         );
                     });
             }
 
-            for (int i = 0; i < static_cast<int>(configDisplay.size()); i++) {
-                const auto& [key, cfg] = configDisplay[i];
+                for (int i = 0; i < static_cast<int>(configDisplay.size()); i++) {
+                    const auto& [key, cfg, isExterior] = configDisplay[i];
 
-                if (ImGuiMCP::Selectable(cfg.menuName.c_str(), selectedIndex == i)) {
-                    selectedIndex = i;
+                    if (ImGuiMCP::Selectable(cfg.menuName.c_str(), selectedIndex == i)) {
+                        selectedIndex = i;
+                    }
                 }
-            }
 
-            if (selectedIndex == -1) {
-                centerNextItem(60.0f);
+                if (selectedIndex == -1) {
+                    centerNextItem(60.0f);
+                    if (ImGuiMCP::Button("Cancel")) {
+                        resetState();
+                    }
+                    break;
+                }
+                const auto& [selectedKey, selectedCfg, isExterior] = configDisplay[selectedIndex];
+                selectedCfgs.clear();
+                auto& map = isExterior
+                    ? LightData::meshPathToJsonCfgExteriors
+                    : LightData::meshPathToJsonCfg;
+                if (auto it = map.find(selectedKey); it != map.end())
+                    selectedCfgs = it->second;
+
+                if (selectedCfgs.empty()) {
+                    centerNextItem(220.0f);
+                    logger::error("Selected config was empty or not found.");
+                    step = AttachLightStep::ChooseTemplateType;
+                    selectedIndex = -1;
+                    break;
+                }
+
+                centerNextItem(170.0f);
+
+                if (ImGuiMCP::Button("Confirm")) {
+                    step = AttachLightStep::ChooseScope;
+                }
+
+                ImGuiMCP::SameLine();
+
                 if (ImGuiMCP::Button("Cancel")) {
                     resetState();
                 }
+
                 break;
-            }
-
-            const std::string& selectedKey = configDisplay[selectedIndex].first;
-            selectedCfgs.clear();
-
-            if (auto itCfg = LightData::meshPathToJsonCfg.find(selectedKey);
-                itCfg != LightData::meshPathToJsonCfg.end()) {
-                selectedCfgs = itCfg->second;
-            }
-            else if (auto itExt = LightData::meshPathToJsonCfgExteriors.find(selectedKey);
-                itExt != LightData::meshPathToJsonCfgExteriors.end()) {
-                selectedCfgs = itExt->second;
-            }
-
-            if (selectedCfgs.empty()) {
-                centerNextItem(220.0f);
-                logger::error("Selected config was empty or not found.");
-                step = AttachLightStep::ChooseTemplateType;
-                selectedIndex = -1;
-                break;
-            }
-
-            centerNextItem(170.0f);
-
-            if (ImGuiMCP::Button("Confirm")) {
-                step = AttachLightStep::ChooseScope;
-            }
-
-            ImGuiMCP::SameLine();
-
-            if (ImGuiMCP::Button("Cancel")) {
-                resetState();
-            }
-
-            break;
         }
-
         case AttachLightStep::ChooseScope:
         {
             ImGuiMCP::Dummy({ 0.0f, 50.0f });
@@ -1809,12 +1808,6 @@ namespace UI {
                     SKSE::GetTaskInterface()->AddTask([]() {
                         LightData::ResetTriLightCache();
                     });
-
-                    std::string refIDandModName = BuildRefIDAndModName(selected);
-
-                    RemoveFromIniExcludeRefID(selected, refIDandModName);
-
-                    refIDandModName.clear();
                 }
                 step = AttachLightStep::Done;
                 break;
@@ -1938,7 +1931,6 @@ namespace UI {
                 ImGuiMCP::SetCursorPosX(320.0f);
                 ImGuiMCP::Text("Set Menu Name: ");
                 ImGuiMCP::SameLine(); 
-               // centerNextItem(250.0f);
                 ImGuiMCP::SetNextItemWidth(250.0f);
 
                 ImGuiMCP::InputText(
@@ -2040,6 +2032,7 @@ namespace UI {
                     LightConfig refCfg = selectedCfgs[0];
 
                     std::string refFormIDAndModName = BuildRefIDAndModName(selected);
+                    RemoveFromIniExcludeRefID(selected, refFormIDAndModName);
                     refCfg.configPath = filePath;
                     refCfg.jsonIndex = static_cast<std::uint16_t>(CountJsonEntriesInFile(filePath));
                     refCfg.menuName = selectedCfgs[0].menuName;

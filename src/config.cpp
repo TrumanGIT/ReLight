@@ -472,14 +472,14 @@ bool saveNewConfiguration(LightConfig& config)
 				 continue;
 			 }
 
-			 if (!entry.contains("refFormIDsAndModNames")) {
-				 entry["refFormIDsAndModNames"] = json::array();
-				 entry["refFormIDsAndModNames"].push_back(refID);
+			 if (!entry.contains("refID")) {
+				 entry["refID"] = json::array();
+				 entry["refID"].push_back(refID);
 				 changed = true;
 				 continue;
 			 }
 
-			 auto& refField = entry["refFormIDsAndModNames"];
+			 auto& refField = entry["refID"];
 
 			 if (refField.is_string()) {
 				 std::string existing = refField.get<std::string>();
@@ -505,7 +505,7 @@ bool saveNewConfiguration(LightConfig& config)
 				 }
 			 }
 			 else {
-				 logger::warn("refFormIDsAndModNames in {} was neither string nor array", configPath);
+				 logger::warn("refID in {} was neither string nor array", configPath);
 			 }
 		 }
 

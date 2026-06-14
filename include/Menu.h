@@ -180,7 +180,6 @@ namespace UI {
             }
         }
 
-
         std::ofstream outFile(path, std::ios::trunc);
         if (!outFile.is_open())
         {
@@ -199,8 +198,10 @@ namespace UI {
         outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
         outFile << "; enable debug bulbs (default = false)\n";
         outFile << "enableDebugBulbs=" << (globals::enableDebugLightBulbs ? "true" : "false") << "\n\n";
-        outFile << "; enable debug lines (default = false)\n";
+        outFile << "; enable debug lines (default = true)\n";
         outFile << "enableDebugLines=" << (globals::enableDebugLines ? "true" : "false") << "\n\n";
+        outFile << "; max distance for debug lines (default = false)\n";
+        outFile << "maxDistanceForDrawDebuglines=" << globals::distanceForDrawDebugLines << "\n\n";
         outFile << "; disable Inverse Squared Lighting (relight lights and menu will change to vanilla, Only works if ISL is disabled at boot in CS settings)\n";
         outFile << "disableISL=" << (globals::disableISL ? "true" : "false") << "\n\n";
         outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
@@ -637,98 +638,6 @@ namespace UI {
         LightData::ResetTriLightCache();
     }
 
-   
-    //RenderAttachRemove FUNTIONS
-    ///////////////////////////////
-
-    inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
-    {
-        if (!selected) {
-            logger::error("no selected ref, cannot refresh nearby objects");
-            return;
-        }
-
-        logger::debug("refresh lights called with mesh name, {}", extractedMeshName);
-
-        auto* player = RE::PlayerCharacter::GetSingleton();
-        auto* tes = RE::TES::GetSingleton();
-
-        if (!player || !tes) {
-            logger::error("No Player or TES in refresh nearby objects, cant refresh");
-            return;
-        }
-
-        tes->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects,
-            [selected, extractedMeshName](RE::TESObjectREFR* ref)
-            {
-                if (!ref || ref == selected) {
-                    return RE::BSContainer::ForEachResult::kContinue;
-                }
-
-                const auto base = ref->GetBaseObject();
-
-                auto model = base ? base->As<RE::TESModel>() : nullptr;
-                if (!model) {
-                    //  logger::warn(" coldent get model in refresh Nearby objects");
-                    return RE::BSContainer::ForEachResult::kContinue;
-                }
-
-                auto  refBMeshPath = extractMeshName(model->GetModel());
-
-                toLower(refBMeshPath);
-
-                if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
-
-                logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
-
-                RE::ObjectRefHandle handle{ ref };
-                SKSE::GetTaskInterface()->AddTask([handle]() {
-                    if (auto resolvedRef = handle.get()) {
-                        resolvedRef->Disable();
-                        resolvedRef->Enable(false);
-                    }
-                    });
-
-                return RE::BSContainer::ForEachResult::kContinue;
-            });
-    }
-
-    inline std::vector<std::string> GetAllConfigKeys()
-    {
-        std::vector<std::string> result;
-        result.reserve(256);
-
-        std::unordered_set<std::string> seen;
-
-        auto collect = [&](const auto& map)
-            {
-                for (const auto& [key, _] : map) {
-                    if (seen.insert(key).second) {
-                        result.push_back(key);
-                    }
-                }
-            };
-
-        collect(LightData::meshPathToJsonCfg);
-        collect(LightData::meshPathToJsonCfgExteriors);
-
-        return result;
-    }
-
-    inline void RemoveFromIniExcludeRefID(RE::TESObjectREFR* ref, std::string& refIDandModName)
-    {
-
-        if (refIDandModName.empty()) {
-            logger::warn("RemoveFromIniExcludeRefID: Failed to build refID string.");
-            return;
-        }
-
-        if (!RemoveMenuExcludedRefFromINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
-            logger::info("No Ref {} Found in Ini Excludes to Remove", refIDandModName);
-        }
-
-        globals::excludedRefFormIDs.erase(ref->GetFormID());
-    }
 
     inline std::string ResolveMenuName(const LightConfig& cfg)
     {
@@ -1044,6 +953,99 @@ namespace UI {
             DrawCatagoryGroup(configPath, groupData, lights, selectedIndex);
     }
 
+
+   
+    //RenderAttachRemove FUNTIONS
+    ///////////////////////////////
+
+    inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
+    {
+        if (!selected) {
+            logger::error("no selected ref, cannot refresh nearby objects");
+            return;
+        }
+
+        logger::debug("refresh lights called with mesh name, {}", extractedMeshName);
+
+        auto* player = RE::PlayerCharacter::GetSingleton();
+        auto* tes = RE::TES::GetSingleton();
+
+        if (!player || !tes) {
+            logger::error("No Player or TES in refresh nearby objects, cant refresh");
+            return;
+        }
+
+        tes->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects,
+            [selected, extractedMeshName](RE::TESObjectREFR* ref)
+            {
+                if (!ref || ref == selected) {
+                    return RE::BSContainer::ForEachResult::kContinue;
+                }
+
+                const auto base = ref->GetBaseObject();
+
+                auto model = base ? base->As<RE::TESModel>() : nullptr;
+                if (!model) {
+                    //  logger::warn(" coldent get model in refresh Nearby objects");
+                    return RE::BSContainer::ForEachResult::kContinue;
+                }
+
+                auto  refBMeshPath = extractMeshName(model->GetModel());
+
+                toLower(refBMeshPath);
+
+                if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
+
+                logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
+
+                RE::ObjectRefHandle handle{ ref };
+                SKSE::GetTaskInterface()->AddTask([handle]() {
+                    if (auto resolvedRef = handle.get()) {
+                        resolvedRef->Disable();
+                        resolvedRef->Enable(false);
+                    }
+                    });
+
+                return RE::BSContainer::ForEachResult::kContinue;
+            });
+    }
+
+    inline std::vector<std::string> GetAllConfigKeys()
+    {
+        std::vector<std::string> result;
+        result.reserve(256);
+
+        std::unordered_set<std::string> seen;
+
+        auto collect = [&](const auto& map)
+            {
+                for (const auto& [key, _] : map) {
+                    if (seen.insert(key).second) {
+                        result.push_back(key);
+                    }
+                }
+            };
+
+        collect(LightData::meshPathToJsonCfg);
+        collect(LightData::meshPathToJsonCfgExteriors);
+
+        return result;
+    }
+
+    inline void RemoveFromIniExcludeRefID(RE::TESObjectREFR* ref, std::string& refIDandModName)
+    {
+
+        if (refIDandModName.empty()) {
+            logger::warn("RemoveFromIniExcludeRefID: Failed to build refID string.");
+            return;
+        }
+
+        if (!RemoveMenuExcludedRefFromINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
+            logger::info("No Ref {} Found in Ini Excludes to Remove", refIDandModName);
+        }
+
+        globals::excludedRefFormIDs.erase(ref->GetFormID());
+    }
 
 
 }

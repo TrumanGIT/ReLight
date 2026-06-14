@@ -119,17 +119,17 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	auto currentModel = std::string(bm->GetModel());
 
+	//turn mesh name from //statics//whiterun//objects//fires.nif -> fires
 	auto meshName = extractMeshName(currentModel);
 
 	//mutable
 	toLower(meshName);
 
-	//async task to handle scritped fires, looks to see if animations are shut off
+	//async task to handle scritped fires, skips if animations are shut off
 	if (LightManager::HandleScriptedFires(a_this, baseFormID, meshName, isInterior)) {
 		return niAVObject;
 	}
 
-	// check file paths first, they will win over loose partial node name matches
 	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
