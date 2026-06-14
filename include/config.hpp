@@ -36,7 +36,6 @@ F(startingFade, 0.f) \
 F(size, 2.0f) \
 F(cutoffOverride , 0.05f) \
 
-
 #define BOOL2DEF(B, I) bool B{I};
 #define FLOAT2DEF(B, I) float B{I};
 #define BOOL2PRINT(C, I) logger::info(" {:30s} : {:s}", #C, C ? "true" : "false");

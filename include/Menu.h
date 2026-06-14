@@ -7,6 +7,25 @@
 
 namespace UI {
 
+    struct LightGroupData
+    {
+        // All lights in the scene, keyed by their index in the global `lights` vector.
+        std::unordered_map<std::string, std::vector<int>> byConfigPath;
+
+        // configPath groups that belong to a named menuCategory.
+        std::unordered_map<std::string, std::vector<std::string>> byCategory;
+
+        // configPath groups with no menuCategory.
+        std::vector<std::string> uncategorized;
+
+        // configPaths in alphabetical display order (by resolved menu name).
+        std::vector<std::string> sortedConfigPaths;
+
+        // How many lights share the same resolved menu name (used to disambiguate
+        // with a mesh path suffix).
+        std::unordered_map<std::string, int> menuNameCounts;
+    };
+
     void Register();
     void __stdcall RenderSettings();
     void __stdcall RenderLightEditor();
@@ -710,6 +729,321 @@ namespace UI {
 
         globals::excludedRefFormIDs.erase(ref->GetFormID());
     }
+
+    inline std::string ResolveMenuName(const LightConfig& cfg)
+    {
+        if (!cfg.menuName.empty())
+            return cfg.menuName;
+        if (!cfg.meshPaths.empty())
+            return cfg.meshPaths[0];
+        return "Unknown Light";
+    }
+
+    inline bool DeleteSelectedLightTemplate(int& selectedIndex, std::vector<RE::NiPointer<RE::BSLight>>& lights)
+    {
+        if (selectedIndex < 0 || selectedIndex >= lights.size())
+            return false;
+
+        auto selectedLight = lights[selectedIndex];
+
+        if (!selectedLight || !selectedLight->light)
+            return false;
+
+        auto niLight = selectedLight->light.get();
+
+        auto it = LightData::configIDToJsonCfg.find(niLight->unk138);
+        if (it == LightData::configIDToJsonCfg.end())
+            return false;
+
+        const std::string deletedPath = it->second.configPath;
+
+        if (deletedPath.empty())
+            return false;
+
+        if (!std::filesystem::remove(deletedPath))
+            return false;
+
+        auto removeByConfigPath = [&](auto& map)
+            {
+                for (auto itMap = map.begin(); itMap != map.end();) {
+                    auto& vec = itMap->second;
+
+                    vec.erase(
+                        std::remove_if(
+                            vec.begin(),
+                            vec.end(),
+                            [&](const LightConfig& c)
+                            {
+                                return c.configPath == deletedPath;
+                            }),
+                        vec.end());
+
+                    if (vec.empty()) {
+                        itMap = map.erase(itMap);
+                    }
+                    else {
+                        ++itMap;
+                    }
+                }
+            };
+
+        for (auto itCfg = LightData::configIDToJsonCfg.begin();
+            itCfg != LightData::configIDToJsonCfg.end();)
+        {
+            if (itCfg->second.configPath == deletedPath) {
+                itCfg = LightData::configIDToJsonCfg.erase(itCfg);
+            }
+            else {
+                ++itCfg;
+            }
+        }
+
+        removeByConfigPath(LightData::meshPathToJsonCfg);
+        removeByConfigPath(LightData::meshPathToJsonCfgExteriors);
+        removeByConfigPath(LightData::refFormIDToJsonCfg);
+        removeByConfigPath(LightData::refFormIDToJsonCfgExteriors);
+
+        logger::info("Deleted light template '{}'", deletedPath);
+
+        selectedIndex = -1;
+
+        return true;
+    }
+
+    inline LightGroupData BuildCatagorizedLights(
+        const std::vector<RE::NiPointer<RE::BSLight>>& lights)
+    {
+        LightGroupData out;
+
+        // --- group indices by config path -----------------------------------
+        for (int i = 0; i < static_cast<int>(lights.size()); ++i)
+        {
+            auto& light = lights[i];
+            if (!light || !light->light)
+                continue;
+
+            auto configID = light->light->GetLightRuntimeData().unk138;
+            auto it = LightData::configIDToJsonCfg.find(configID);
+            if (it == LightData::configIDToJsonCfg.end())
+                continue;
+
+            const std::string& path =
+                it->second.configPath.empty() ? "Unknown Config"
+                : it->second.configPath;
+
+            out.byConfigPath[path].push_back(i);
+        }
+
+        // --- count duplicate menu names -------------------------------------
+        for (auto& [configPath, indices] : out.byConfigPath)
+        {
+            if (indices.empty())
+                continue;
+
+            auto& firstLight = lights[indices.front()];
+            if (!firstLight || !firstLight->light)
+                continue;
+
+            auto configID = firstLight->light->GetLightRuntimeData().unk138;
+            auto it = LightData::configIDToJsonCfg.find(configID);
+            if (it == LightData::configIDToJsonCfg.end())
+                continue;
+
+            out.menuNameCounts[ResolveMenuName(it->second)]++;
+        }
+
+        // --- sort config paths by resolved display name ---------------------
+        for (auto& [path, _] : out.byConfigPath)
+            out.sortedConfigPaths.push_back(path);
+
+        std::sort(
+            out.sortedConfigPaths.begin(),
+            out.sortedConfigPaths.end(),
+            [&](const std::string& a, const std::string& b)
+            {
+                auto ResolveName = [&](const std::string& configPath) -> std::string
+                    {
+                        auto& indices = out.byConfigPath[configPath];
+                        if (indices.empty())
+                            return {};
+
+                        auto& light = lights[indices.front()];
+                        if (!light || !light->light)
+                            return {};
+
+                        auto configID = light->light->GetLightRuntimeData().unk138;
+                        auto it = LightData::configIDToJsonCfg.find(configID);
+                        if (it == LightData::configIDToJsonCfg.end())
+                            return {};
+
+                        return ResolveMenuName(it->second);
+                    };
+
+                return compareLightNames(
+                    ResolveName(a).c_str(),
+                    ResolveName(b).c_str());
+            });
+
+        // --- bucket into categories -----------------------------------------
+        for (const auto& configPath : out.sortedConfigPaths)
+        {
+            auto& indices = out.byConfigPath[configPath];
+            if (indices.empty())
+                continue;
+
+            auto& light = lights[indices.front()];
+            if (!light || !light->light)
+                continue;
+
+            auto configID = light->light->GetLightRuntimeData().unk138;
+            auto it = LightData::configIDToJsonCfg.find(configID);
+            if (it == LightData::configIDToJsonCfg.end())
+                continue;
+
+            const std::string& category = it->second.menuCategory;
+            if (category.empty())
+                out.uncategorized.push_back(configPath);
+            else
+                out.byCategory[category].push_back(configPath);
+        }
+
+        return out;
+    }
+
+    inline void DrawCatagoryGroup(
+        const std::string& configPath,
+        const LightGroupData& groupData,
+        const std::vector<RE::NiPointer<RE::BSLight>>& lights,
+        int& selectedIndex)
+    {
+        auto pathIt = groupData.byConfigPath.find(configPath);
+        if (pathIt == groupData.byConfigPath.end() || pathIt->second.empty())
+            return;
+
+        const auto& indices = pathIt->second;
+        int          firstIdx = indices.front();
+
+        auto& firstLight = lights[firstIdx];
+        if (!firstLight || !firstLight->light)
+            return;
+
+        auto firstConfigID = firstLight->light->GetLightRuntimeData().unk138;
+        auto cfgIt = LightData::configIDToJsonCfg.find(firstConfigID);
+        if (cfgIt == LightData::configIDToJsonCfg.end())
+            return;
+
+        // Resolve the group's display name, disambiguating with mesh path when
+        // multiple groups share the same menu name.
+        std::string groupMenuName = ResolveMenuName(cfgIt->second);
+        if (groupMenuName == "Unknown Light" && cfgIt->second.meshPaths.empty())
+            groupMenuName = "Unknown Light";
+
+        auto nameIt = groupData.menuNameCounts.find(groupMenuName);
+        if (nameIt != groupData.menuNameCounts.end() &&
+            nameIt->second > 1 &&
+            !cfgIt->second.meshPaths.empty())
+        {
+            groupMenuName += " (" + cfgIt->second.meshPaths[0] + ")";
+        }
+
+        const bool multiEntry =
+            (CountJsonEntriesInFile(cfgIt->second.configPath) > 1);
+
+        if (multiEntry)
+        {
+            // Collapsible group showing each light individually
+            std::string header =
+                groupMenuName + " (" + std::to_string(indices.size()) + ")";
+
+            ImGuiMCP::PushID(configPath.c_str());
+
+            if (ImGuiMCP::TreeNode(header.c_str()))
+            {
+                for (int i : indices)
+                {
+                    auto& light = lights[i];
+                    if (!light || !light->light)
+                        continue;
+
+                    auto configID = light->light->GetLightRuntimeData().unk138;
+                    auto it = LightData::configIDToJsonCfg.find(configID);
+
+                    std::string itemName = (it != LightData::configIDToJsonCfg.end())
+                        ? ResolveMenuName(it->second)
+                        : "Unknown Light";
+
+                    if (it != LightData::configIDToJsonCfg.end())
+                    {
+                        auto countIt = groupData.menuNameCounts.find(itemName);
+                        if (countIt != groupData.menuNameCounts.end() &&
+                            countIt->second > 1 &&
+                            !it->second.meshPaths.empty())
+                        {
+                            itemName += " (" + it->second.meshPaths[0] + ")";
+                        }
+                    }
+
+                    ImGuiMCP::PushID(i);
+                    if (ImGuiMCP::Selectable(itemName.c_str(), i == selectedIndex))
+                        selectedIndex = i;
+                    ImGuiMCP::PopID();
+                }
+
+                ImGuiMCP::TreePop();
+            }
+
+            ImGuiMCP::PopID();
+        }
+        else
+        {
+            // Single entry — just a flat selectable
+            ImGuiMCP::PushID(firstIdx);
+            if (ImGuiMCP::Selectable(groupMenuName.c_str(), firstIdx == selectedIndex))
+                selectedIndex = firstIdx;
+            ImGuiMCP::PopID();
+        }
+    }
+
+    inline void RenderLightList(
+        const std::vector<RE::NiPointer<RE::BSLight>>& lights,
+        int& selectedIndex)
+    {
+        if (!ImGuiMCP::CollapsingHeader("Loaded Light Templates"))
+            return;
+
+        LightGroupData groupData = BuildCatagorizedLights(lights);
+
+        // Sort categories alphabetically
+        std::vector<std::string> sortedCategories;
+        sortedCategories.reserve(groupData.byCategory.size());
+        for (auto& [cat, _] : groupData.byCategory)
+            sortedCategories.push_back(cat);
+
+        std::sort(
+            sortedCategories.begin(),
+            sortedCategories.end(),
+            [](const std::string& a, const std::string& b)
+            {
+                return compareLightNames(a.c_str(), b.c_str());
+            });
+
+        // Render categorized groups under collapsible TreeNodes
+        for (const auto& category : sortedCategories)
+        {
+            if (ImGuiMCP::TreeNode(category.c_str()))
+            {
+                for (const auto& configPath : groupData.byCategory.at(category))
+                    DrawCatagoryGroup(configPath, groupData, lights, selectedIndex);
+
+                ImGuiMCP::TreePop();
+            }
+        }
+
+        // Render uncategorized groups at the top level
+        for (const auto& configPath : groupData.uncategorized)
+            DrawCatagoryGroup(configPath, groupData, lights, selectedIndex);
+    }
+
 
 
 }

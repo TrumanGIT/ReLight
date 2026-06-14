@@ -593,75 +593,16 @@ namespace UI {
 
             ImGuiMCP::Spacing();
 
-            if (ImGuiMCP::Button("Delete")) {
-                bool ok = false;
+            if (ImGuiMCP::Button("Delete"))
+            {
                 deleteButton.set(buttonState::Working);
 
-                if (selectedIndex >= 0 && selectedIndex < lights.size()) {
-                    auto selectedLight = lights[selectedIndex];
+                bool ok = DeleteSelectedLightTemplate(selectedIndex, lights);
 
-                    if (selectedLight && selectedLight->light) {
-                        auto niLight = selectedLight->light.get();
+                deleteButton.set(
+                    ok ? buttonState::Success : buttonState::Fail,
+                    2.0f);
 
-                        auto it = LightData::configIDToJsonCfg.find(niLight->unk138);
-                        if (it != LightData::configIDToJsonCfg.end()) {
-                            auto& cfg = it->second;
-
-                            std::string configPath = cfg.configPath;
-
-                            if (!configPath.empty()) {
-                                ok = std::filesystem::remove(configPath);
-                                if (ok) {
-                                    std::string deletedPath = configPath;
-
-                                    auto removeByConfigPath = [&](auto& map) {
-                                        for (auto itMap = map.begin(); itMap != map.end(); ) {
-                                            auto& vec = itMap->second;
-
-                                            vec.erase(
-                                                std::remove_if(vec.begin(), vec.end(),
-                                                    [&](const LightConfig& c) {
-                                                        return c.configPath == deletedPath;
-                                                    }),
-                                                vec.end());
-
-                                            if (vec.empty()) {
-                                                itMap = map.erase(itMap);
-                                            }
-                                            else {
-                                                ++itMap;
-                                            }
-                                        }
-                                        };
-
-                                    for (auto itCfg = LightData::configIDToJsonCfg.begin();
-                                        itCfg != LightData::configIDToJsonCfg.end(); )
-                                    {
-                                        if (itCfg->second.configPath == deletedPath) {
-                                            itCfg = LightData::configIDToJsonCfg.erase(itCfg);
-                                        }
-                                        else {
-                                            ++itCfg;
-                                        }
-                                    }
-                                    // remove from runtime light attachement maps
-                                    removeByConfigPath(LightData::meshPathToJsonCfg);
-                                    removeByConfigPath(LightData::meshPathToJsonCfgExteriors);
-                                    removeByConfigPath(LightData::refFormIDToJsonCfg);
-                                    removeByConfigPath(LightData::refFormIDToJsonCfgExteriors);
-
-                                    logger::info("Deleted light template '{}'", deletedPath);
-                                    selectedIndex = -1;
-                                }
-                                else {
-                                    logger::warn("Failed to delete light template '{}'", configPath);
-                                }
-                            }
-                        }
-                    }
-                }
-
-                deleteButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
                 ImGuiMCP::CloseCurrentPopup();
                 return;
             }
@@ -685,324 +626,9 @@ namespace UI {
             didRefreshThisFrame = !didRefreshThisFrame;
         }
 
-        if (ImGuiMCP::CollapsingHeader("Loaded Light Templates"))
-        {
-            std::unordered_map<std::string, std::vector<int>> groupedLights;
+        // catagorizies lights based on user defined catagories, alphabetizes ect
+            RenderLightList(lights, selectedIndex);
 
-            for (int i = 0; i < lights.size(); i++)
-            {
-                auto& light = lights[i];
-
-                if (!light || !light->light)
-                    continue;
-
-                auto configID = light->light->GetLightRuntimeData().unk138;
-
-                auto it = LightData::configIDToJsonCfg.find(configID);
-                if (it == LightData::configIDToJsonCfg.end())
-                    continue;
-
-                std::string groupName = it->second.configPath;
-
-                if (groupName.empty())
-                    groupName = "Unknown Config";
-
-                groupedLights[groupName].push_back(i);
-            }
-
-            std::unordered_map<std::string, int> nameCounts;
-
-            for (auto& [configPath, indices] : groupedLights)
-            {
-                for (int i : indices)
-                {
-                    auto& light = lights[i];
-
-                    if (!light || !light->light)
-                        continue;
-
-                    auto configID = light->light->GetLightRuntimeData().unk138;
-
-                    auto it = LightData::configIDToJsonCfg.find(configID);
-                    if (it == LightData::configIDToJsonCfg.end())
-                        continue;
-
-                    std::string menuName = it->second.menuName;
-
-                    if (menuName.empty() && !it->second.meshPaths.empty())
-                        menuName = it->second.meshPaths[0];
-
-                    nameCounts[menuName]++;
-                }
-            }
-
-            std::vector<std::string> sortedConfigPaths;
-
-            for (auto& [configPath, indices] : groupedLights)
-                sortedConfigPaths.push_back(configPath);
-
-            std::sort(
-                sortedConfigPaths.begin(),
-                sortedConfigPaths.end(),
-                [&](const std::string& a, const std::string& b)
-                {
-                    auto getGroupMenuName =
-                        [&](const std::string& configPath) -> std::string
-                        {
-                            auto& indices = groupedLights[configPath];
-
-                            if (indices.empty())
-                                return "";
-
-                            auto& light = lights[indices.front()];
-
-                            if (!light || !light->light)
-                                return "";
-
-                            auto configID =
-                                light->light->GetLightRuntimeData().unk138;
-
-                            auto it =
-                                LightData::configIDToJsonCfg.find(configID);
-
-                            if (it == LightData::configIDToJsonCfg.end())
-                                return "";
-
-                            if (!it->second.menuName.empty())
-                                return it->second.menuName;
-
-                            if (!it->second.meshPaths.empty())
-                                return it->second.meshPaths[0];
-
-                            return "";
-                        };
-
-                    return compareLightNames(
-                        getGroupMenuName(a).c_str(),
-                        getGroupMenuName(b).c_str());
-                });
-
-            // ----------------------------------------------------
-            // Grouping by menuCategory
-            // ----------------------------------------------------
-
-            std::unordered_map<std::string, std::vector<std::string>> categoryGroups;
-            std::vector<std::string> uncategorizedGroups;
-
-            for (const auto& configPath : sortedConfigPaths)
-            {
-                auto& indices = groupedLights[configPath];
-
-                if (indices.empty())
-                    continue;
-
-                auto& light = lights[indices.front()];
-
-                if (!light || !light->light)
-                    continue;
-
-                auto configID = light->light->GetLightRuntimeData().unk138;
-
-                auto it = LightData::configIDToJsonCfg.find(configID);
-
-                if (it == LightData::configIDToJsonCfg.end())
-                    continue;
-
-                const std::string& category = it->second.menuCategory;
-
-                if (category.empty())
-                    uncategorizedGroups.push_back(configPath);
-                else
-                    categoryGroups[category].push_back(configPath);
-            }
-
-            // ----------------------------------------------------
-            // Group Display Function
-            // ----------------------------------------------------
-
-            auto DrawConfigGroup = [&](const std::string& configPath)
-                {
-                    auto& indices = groupedLights[configPath];
-
-                    if (indices.empty())
-                        return;
-
-                    int firstIndex = indices.front();
-
-                    auto& firstLight = lights[firstIndex];
-
-                    if (!firstLight || !firstLight->light)
-                        return;
-
-                    auto firstConfigID =
-                        firstLight->light->GetLightRuntimeData().unk138;
-
-                    auto firstIt =
-                        LightData::configIDToJsonCfg.find(firstConfigID);
-
-                    if (firstIt == LightData::configIDToJsonCfg.end())
-                        return;
-
-                    std::string groupMenuName =
-                        firstIt->second.menuName;
-
-                    if (groupMenuName.empty())
-                    {
-                        if (!firstIt->second.meshPaths.empty())
-                            groupMenuName =
-                            firstIt->second.meshPaths[0];
-                        else
-                            groupMenuName = "Unknown Light";
-                    }
-
-                    if (nameCounts[groupMenuName] > 1 &&
-                        !firstIt->second.meshPaths.empty())
-                    {
-                        groupMenuName +=
-                            " (" + firstIt->second.meshPaths[0] + ")";
-                    }
-
-                    std::size_t jsonCount =
-                        CountJsonEntriesInFile(
-                            firstIt->second.configPath);
-
-                    if (jsonCount > 1)
-                    {
-                        std::string headerName =
-                            groupMenuName +
-                            " (" +
-                            std::to_string(indices.size()) +
-                            ")";
-
-                        ImGuiMCP::PushID(configPath.c_str());
-
-                        if (ImGuiMCP::TreeNode(headerName.c_str()))
-                        {
-                            for (int i : indices)
-                            {
-                                auto& light = lights[i];
-
-                                if (!light || !light->light)
-                                    continue;
-
-                                bool selected =
-                                    (i == selectedIndex);
-
-                                auto configID =
-                                    light->light->GetLightRuntimeData().unk138;
-
-                                std::string menuName;
-
-                                auto it =
-                                    LightData::configIDToJsonCfg.find(configID);
-
-                                if (it !=
-                                    LightData::configIDToJsonCfg.end())
-                                {
-                                    menuName = it->second.menuName;
-
-                                    if (menuName.empty())
-                                    {
-                                        if (!it->second.meshPaths.empty())
-                                            menuName =
-                                            it->second.meshPaths[0];
-                                        else
-                                            menuName =
-                                            "Unknown Light";
-                                    }
-
-                                    if (nameCounts[menuName] > 1 &&
-                                        !it->second.meshPaths.empty())
-                                    {
-                                        menuName +=
-                                            " (" +
-                                            it->second.meshPaths[0] +
-                                            ")";
-                                    }
-                                }
-                                else
-                                {
-                                    menuName = "Unknown Light";
-                                }
-
-                                ImGuiMCP::PushID(i);
-
-                                if (ImGuiMCP::Selectable(
-                                    menuName.c_str(),
-                                    selected))
-                                {
-                                    selectedIndex = i;
-                                }
-
-                                ImGuiMCP::PopID();
-                            }
-
-                            ImGuiMCP::TreePop();
-                        }
-
-                        ImGuiMCP::PopID();
-                    }
-                    else
-                    {
-                        bool selected =
-                            (firstIndex == selectedIndex);
-
-                        ImGuiMCP::PushID(firstIndex);
-
-                        if (ImGuiMCP::Selectable(
-                            groupMenuName.c_str(),
-                            selected))
-                        {
-                            selectedIndex = firstIndex;
-                        }
-
-                        ImGuiMCP::PopID();
-                    }
-                };
-
-            // ----------------------------------------------------
-            // menuCategory exist
-            // ----------------------------------------------------
-
-                std::vector<std::string> sortedCategories;
-
-                for (auto& [category, _] : categoryGroups)
-                {
-                    sortedCategories.push_back(category);
-                }
-
-                std::sort(
-                    sortedCategories.begin(),
-                    sortedCategories.end(),
-                    [](const std::string& a, const std::string& b)
-                    {
-                        return compareLightNames(a.c_str(), b.c_str());
-                    });
-
-                for (const auto& category : sortedCategories)
-                {
-                    auto& configPaths = categoryGroups[category];
-
-                    if (ImGuiMCP::TreeNode(category.c_str()))
-                    {
-                        for (const auto& configPath : configPaths)
-                        {
-                            DrawConfigGroup(configPath);
-                        }
-
-                        ImGuiMCP::TreePop();
-                    }
-                }
-
-            // ----------------------------------------------------
-            // No menuCategory found
-            // ----------------------------------------------------
-
-            for (auto& configPath : uncategorizedGroups)
-            {
-                DrawConfigGroup(configPath);
-            }
-        }
             if (selectedIndex >= 0 && selectedIndex < lights.size()) {
                 RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
                 auto& lightData = selectedLight->light->GetLightRuntimeData();
@@ -1013,7 +639,6 @@ namespace UI {
                 auto& config = it->second;
 
                 Overlay* selectedIslRt;
-
 
                 if (globals::islInstalled) {
                     selectedIslRt = Overlay::Get(selectedLight->light.get());
@@ -1031,7 +656,6 @@ namespace UI {
                 bool isTorch = (selectedLight->light->name == "RLtorch");
 
                 bool isShadowLight = config.shadowLight; 
-
 
                 if (globals::enableDebugLines &&!(config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight))) {
 
@@ -1170,7 +794,6 @@ namespace UI {
                 {
                     // ----- Flicker Header -----
 
-                    // ICON (dynamic)
                     if (didRefreshThisFrame && config.flickersPerSecond != 0.0f) {
                         FontAwesome::PushSolid();
                         ImGuiMCP::PushStyleColor(
@@ -1189,7 +812,6 @@ namespace UI {
                     ImGuiMCP::PopStyleColor();
                     FontAwesome::Pop();
 
-                    // TEXT (static)
                     ImGuiMCP::SameLine();
                     ImGuiMCP::PushStyleColor(
                         ImGuiMCP::ImGuiCol_Text,
@@ -1199,7 +821,6 @@ namespace UI {
 
                     ImGuiMCP::Separator();
 
-                    // ----- Controls -----
                     ImGuiMCP::BeginDisabled(isTorch);
                     ImGuiMCP::SliderFloat(
                         "Flicker Intensity",
@@ -1285,30 +906,32 @@ namespace UI {
                             }
                         }
                     }
-                  if (isSpotLight){
-                    if (ImGuiMCP::SliderFloat3(
-                        "Rotation",
-                        &config.rotation[0],
-                        -180.0f,
-                        180.0f,
-                        "%.3f"))
+                    if (isSpotLight && !isTorch)
                     {
-                        if (!isTorch) {
+                        if (ImGuiMCP::SliderFloat3(
+                            "Rotation",
+                            &config.rotation[0],
+                            -180.0f,
+                            180.0f,
+                            "%.3f"))
+                        {
                             auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 
-                            if (ssNode) {
+                            if (ssNode)
+                            {
                                 auto& rt = ssNode->GetRuntimeData();
 
                                 auto applyRotation = [&](auto& lights)
                                     {
-                                        for (auto& l : lights) {
-                                            if (!l) continue;
+                                        for (auto& l : lights)
+                                        {
+                                            if (!l)
+                                                continue;
 
                                             if (l->light->GetLightRuntimeData().unk138 != lightData.unk138)
                                                 continue;
 
                                             RE::NiMatrix3 rot;
-
                                             rot.SetEulerAnglesXYZ(
                                                 RE::deg_to_rad(config.rotation[0]),
                                                 RE::deg_to_rad(config.rotation[1]),
@@ -1317,7 +940,8 @@ namespace UI {
 
                                             l->light->local.rotate = rot;
 
-                                            if (auto* parent = l->light->parent) {
+                                            if (auto* parent = l->light->parent)
+                                            {
                                                 RE::NiUpdateData updateData{};
                                                 updateData.time = 0.0f;
                                                 updateData.flags = RE::NiUpdateData::Flag::kDirty;
@@ -1332,7 +956,6 @@ namespace UI {
                             }
                         }
                     }
-                  }
 
                     ImGuiMCP::EndDisabled();
                 }
