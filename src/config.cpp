@@ -145,10 +145,18 @@ bool saveConfiguration(const LightConfig& config) {
 
 		newEntry["menuName"] = config.menuName;
 
-		// Checks if the template already had a group name to re-apply it
+		// Checks if the template already had a group name to re-apply it, otherwise applies an empty menuCategory
 		if (!config.menuCategory.empty()) {
 
 			newEntry["menuCategory"] = config.menuCategory;
+
+			logger::info("configuration saved with menu category: {}", newEntry["menuCategory"].get<std::string>());
+
+		} else {
+
+			newEntry["menuCategory"] = "";
+
+			logger::info("configuration saved with an empty menu category.");
 
 		}
 
@@ -234,8 +242,10 @@ bool saveNewConfiguration(LightConfig& config)
 			newEntry["refID"] = config.refFormIDsAndModNames;
 		}
 
-		newEntry["menuCategory"] = config.menuCategory;
+		newEntry["menuCategory"] = "";
 		newEntry["menuName"] = config.menuName;
+
+		logger::info("New configuration saved with an empty menu category by default in the JSON for the user to be free to tweak if he wants to unclutter the menu.");
 
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
 		FOREACH_BOOL(JSON_WRITE)
@@ -271,9 +281,9 @@ bool saveNewConfiguration(LightConfig& config)
 		};
 
 		newEntry["rotation"] = {
-		truncateDecimals(config.rotation[0], 2),
-		truncateDecimals(config.rotation[1], 2),
-		truncateDecimals(config.rotation[2], 2)
+			truncateDecimals(config.rotation[0], 2),
+			truncateDecimals(config.rotation[1], 2),
+			truncateDecimals(config.rotation[2], 2)
 		};
 
 		newEntry["flags"] = FlagsToJson(config.flags);
@@ -1005,8 +1015,8 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 
 			 logger::info(
 				 "AppendNewConfigEntryFromLight: added ref config '{}' at {} index {}",
-				 cfg.menuName,
 				 cfg.menuCategory,
+				 cfg.menuName,
 				 cfg.configPath,
 				 cfg.jsonIndex);
 		 }
@@ -1026,8 +1036,8 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 
 			 logger::info(
 				 "AppendNewConfigEntryFromLight: added mesh config '{}' at {} index {}",
-				 cfg.menuName,
 				 cfg.menuCategory,
+				 cfg.menuName,
 				 cfg.configPath,
 				 cfg.jsonIndex);
 		 }
