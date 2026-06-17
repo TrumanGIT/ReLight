@@ -301,6 +301,8 @@ namespace UI {
         cfg.flickersPerSecond = backupCfg.flickersPerSecond;
         cfg.flickerAmplitude = backupCfg.flickerAmplitude;
         cfg.flags = backupCfg.flags;
+        cfg.menuName = backupCfg.menuName;
+        cfg.menuCategory = backupCfg.menuCategory;
 
         // Propagate to active lights in the shader node
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];

@@ -29,6 +29,8 @@ namespace UI {
 
     auto trashIcon = FontAwesome::UnicodeToUtf8(0xf1f8);
 
+    auto plusIcon = FontAwesome::UnicodeToUtf8(0xf055);
+
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
 
@@ -694,6 +696,191 @@ namespace UI {
                 ImGuiMCP::PushID(selectedLight->light.get());
 
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
+
+                // This is where the template editor starts.
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////////
+                // We create a child for the other 4 main parameters (name, category, add flag, remove flag)
+                //////////////////////////////////////////////////////////////////////////////////////////////////////
+
+                if (ImGuiMCP::BeginChild("TemplateEditor", ImGuiMCP::ImVec2(0, 0), true,
+                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                {
+
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+                    // Template Name
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+                    static char newTemplateName[255];
+
+                    strncpy(newTemplateName, config.menuName.c_str(), sizeof(newTemplateName));
+                    newTemplateName[sizeof(newTemplateName) - 1] = '\0';
+
+                    ImGuiMCP::Text("Name:");
+                    ImGuiMCP::SameLine();
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(35.0f, 0.0f));
+                    ImGuiMCP::SameLine();
+                    ImGuiMCP::InputText("##templateName", newTemplateName, sizeof(newTemplateName));
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("This updates how the template name appears in the light editor.");
+                    }
+
+                    if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuName != newTemplateName)
+                    {
+                        config.menuName = newTemplateName;
+                    }
+
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
+
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+                    // RETRIEVE ALL AVAILABLE FLAGS (using enum system)
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+                    static int selectedActiveFlagIndex = 0;
+                    static int selectedMissingFlagIndex = 0;
+
+                    // helper containers
+                    std::vector<LIGHT_FLAGS> activeFlags;
+                    std::vector<LIGHT_FLAGS> missingFlags;
+
+                    // build ACTIVE + MISSING lists (excluding SpotLight)
+                    for (const auto& [flag, name] : LightFlagNames)
+                    {
+                        if (flag == LIGHT_FLAGS::kSpotLight)
+                            continue; // 🚫 excluded from both UI lists
+
+                        if (config.flags & static_cast<uint32_t>(flag))
+                            activeFlags.push_back(flag);
+                        else
+                            missingFlags.push_back(flag);
+                    }
+
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+                    // CATEGORY EDITOR
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+                    static char newTemplateCategory[255];
+
+                    strncpy(newTemplateCategory, config.menuCategory.c_str(), sizeof(newTemplateCategory));
+                    newTemplateCategory[sizeof(newTemplateCategory) - 1] = '\0';
+
+                    ImGuiMCP::Text("Category:");
+                    ImGuiMCP::SameLine();
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(10.0f, 0.0f));
+                    ImGuiMCP::SameLine();
+                    ImGuiMCP::InputText("##templateCategory", newTemplateCategory, sizeof(newTemplateCategory));
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("This organizes templates into a dropdown for a cleaner layout.");
+                    }
+
+                    if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuCategory != newTemplateCategory)
+                    {
+                        config.menuCategory = newTemplateCategory;
+                    }
+
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
+
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+                    // ACTIVE FLAGS DROPDOWN (REMOVE)
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+                    std::vector<const char*> activeNames;
+                    std::vector<LIGHT_FLAGS> activeMap;
+
+                    // DEFAULT ENTRY
+                    activeNames.push_back("Delete a flag");
+                    activeMap.push_back(static_cast<LIGHT_FLAGS>(-1));
+
+                    for (auto f : activeFlags)
+                    {
+                        activeNames.push_back(LightFlagNames.at(f).c_str());
+                        activeMap.push_back(f);
+                    }
+
+                    if (activeNames.empty())
+                    {
+                        activeNames.push_back("No flags attached");
+                        activeMap.push_back(static_cast<LIGHT_FLAGS>(-1));
+                    }
+
+                    if (selectedActiveFlagIndex >= activeNames.size())
+                        selectedActiveFlagIndex = 0;
+
+                    if (ImGuiMCP::Combo("##flagDropdown",
+                        &selectedActiveFlagIndex,
+                        activeNames.data(),
+                        (int)activeNames.size()))
+                    {
+                        auto flag = activeMap[selectedActiveFlagIndex];
+
+                        if (flag != static_cast<LIGHT_FLAGS>(-1))
+                        {
+                            // REMOVE flag
+                            config.flags &= ~static_cast<uint32_t>(flag);
+
+                            // RESET dropdown to default entry
+                            selectedActiveFlagIndex = 0;
+                        }
+                    }
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("Use this to add one or more flags to the selected template.");
+                    }
+
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
+
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+                    // MISSING FLAGS DROPDOWN (ADD)
+                    //////////////////////////////////////////////////////////////////////////////////////////////////
+
+                    std::vector<const char*> missingNames;
+                    std::vector<LIGHT_FLAGS> missingMap;
+
+                    // DEFAULT ENTRY
+                    missingNames.push_back("Add a flag");
+                    missingMap.push_back(static_cast<LIGHT_FLAGS>(-1));
+
+                    for (auto f : missingFlags)
+                    {
+                        missingNames.push_back(LightFlagNames.at(f).c_str());
+                        missingMap.push_back(f);
+                    }
+
+                    if (missingNames.empty())
+                    {
+                        missingNames.push_back("All flags attached");
+                        missingMap.push_back(static_cast<LIGHT_FLAGS>(-1));
+                    }
+
+                    if (selectedMissingFlagIndex >= missingNames.size())
+                    {
+                        selectedMissingFlagIndex = 0;
+                    }
+
+                    if (ImGuiMCP::Combo("##flagAddDropdown",
+                        &selectedMissingFlagIndex,
+                        missingNames.data(),
+                        (int)missingNames.size()))
+                    {
+                        auto flag = missingMap[selectedMissingFlagIndex];
+
+                        if (flag != static_cast<LIGHT_FLAGS>(-1))
+                        {
+                            // ADD flag
+                            config.flags |= static_cast<uint32_t>(flag);
+
+                            // RESET dropdown to default entry
+                            selectedMissingFlagIndex = 0;
+                        }
+                    }
+
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("Use this to remove one or more flags from the selected template.");
+                    }
+
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 30.0f));
+
+                }
+
                 ImGuiMCP::PushItemWidth(150.0f);
 
                 ImGuiMCP::Columns(2, nullptr, false);
