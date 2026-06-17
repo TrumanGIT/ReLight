@@ -668,6 +668,9 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 				NiSinQ(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity)
 			* globals::brightnessModifier;
 
+		// stop movement if flickers per second is off
+		if (!dataExt.flickersPerSecond > 0.0f) continue; 
+
 		// oscillation
 		if (pointLight->constAttenuation == 0.0f &&
 			pointLight->linearAttenuation == 0.0f &&

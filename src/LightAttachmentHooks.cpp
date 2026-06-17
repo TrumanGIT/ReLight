@@ -47,7 +47,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-
 	const auto baseObject = a_this->GetBaseObject();
 	if (!baseObject) return niAVObject;
 
@@ -82,7 +81,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 		return niAVObject;
 	}
 
-
 	// this looks for base
 	if (auto* baseCfgs = LightManager::findConfigsForBase(baseFormID, isInterior)) {
 
@@ -112,8 +110,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 		return niAVObject;
 	}
-
-		
+	
 	const auto bm = baseObject->As<RE::TESModel>();
 	if (!bm) return niAVObject;
 
@@ -232,14 +229,10 @@ bool Activate::thunk(
 		return result;
 	}
 
-
 	LightManager::HandleSkyHavenTempleScriptedFires(a_targetRef); 
 
 
 	LightManager::HandleDLC1VCDungeonScriptedFires(a_targetRef); 
-
-
-
 
 	return result;
 }

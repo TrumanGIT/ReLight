@@ -831,20 +831,24 @@ namespace UI {
                     ImGuiMCP::Separator();
 
                     ImGuiMCP::BeginDisabled(isTorch);
-                    ImGuiMCP::SliderFloat(
-                        "Flicker Intensity",
-                        &config.flickerIntensity,
-                        0.0f, 1.0f, "%.2f");
 
                     ImGuiMCP::SliderFloat(
                         "Flickers / Second",
                         &config.flickersPerSecond,
                         0.0f, 5.0f, "%.2f");
 
+                    ImGuiMCP::BeginDisabled(config.flickersPerSecond == 0.0);
+
+                    ImGuiMCP::SliderFloat(
+                        "Flicker Intensity",
+                        &config.flickerIntensity,
+                        0.0f, 1.0f, "%.2f");
+               
                     ImGuiMCP::SliderFloat(
                         "Movement",
                         &config.flickerAmplitude,
                         0.0f, 1.0f, "%.2f");
+                    ImGuiMCP::EndDisabled();
                     ImGuiMCP::EndDisabled();
                 }
                 ImGuiMCP::EndChild();

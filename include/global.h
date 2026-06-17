@@ -12,7 +12,7 @@ namespace globals
 
     inline bool enableDebugLines = true; 
 
-    inline int distanceForDrawDebugLines = 4500; 
+    inline int distanceForDrawDebugLines = 500; 
 
     inline float vanillaBrightnessModifier = 1.0f;
 
