@@ -676,15 +676,14 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 
 		}
 
-		scale += delta * (dataExt.flickerRandomness - r) * std::numbers::pi_v<float>;
-
 		rt.fade =
 			(dataExt.startingFade +
 				NiSinQ(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity)
 			* globals::brightnessModifier;
 
 		// stop movement if flickers per second is off
-		if (!dataExt.flickersPerSecond > 0.0f) continue; 
+		if (dataExt.flickersPerSecond <= 0.0f)
+			continue;
 
 		// oscillation
 		if (pointLight->constAttenuation == 0.0f &&
