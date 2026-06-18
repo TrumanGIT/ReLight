@@ -300,6 +300,7 @@ namespace UI {
         cfg.flickerIntensity = backupCfg.flickerIntensity;
         cfg.flickersPerSecond = backupCfg.flickersPerSecond;
         cfg.flickerAmplitude = backupCfg.flickerAmplitude;
+        cfg.flickerRandomness = backupCfg.flickerRandomness;
         cfg.flags = backupCfg.flags;
         cfg.menuName = backupCfg.menuName;
         cfg.menuCategory = backupCfg.menuCategory;

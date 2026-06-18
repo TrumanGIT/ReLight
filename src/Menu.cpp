@@ -825,13 +825,8 @@ namespace UI {
                     {
                         config.menuCategory = newTemplateCategory;
                     }
-
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
-
-              
-
     
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 30.0f));
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 20.0f));
 
                 }
 
