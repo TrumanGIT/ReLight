@@ -87,7 +87,7 @@ struct LightData {
 
 	static void setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const LightConfig& cfg, float scale);
 
-	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg, float scale);
+	static void setNiPointLightPos(RE::NiLight* light, const LightConfig& cfg);
 
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg, const float scale);
 

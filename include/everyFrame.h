@@ -658,8 +658,7 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 			static_cast<uint32_t>(
 				reinterpret_cast<std::uintptr_t>(light.get()) & 0xFFFFFFFF);
 
-        // r could add more randomness but we already do that with the seed so I dont use r actually lmao
-		const float r = getRandomFloat(-0.1f, 0.1f, seed);
+		float r = 0.0f; 
 
 		// Flicker Randomness
 		// Check if the param flickerRandomness exist. If not, applies a default value that will be saved with the template next time the user saves it in the light editor.
@@ -667,14 +666,14 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		// Since I don't know how you handle existing code when adding new values I made this check. 
 		// Tell me if there's another way to prevent the code from being weird when ReLight tries to inject a value that doesn't exist already in the configs...
 		if (dataExt.flickerRandomness) {
-
-			scale += delta * (dataExt.flickerRandomness - r) * std::numbers::pi_v<float>;
+			r = getRandomFloat(-dataExt.flickerRandomness ,dataExt.flickerRandomness, seed);
 
 		} else {
 
-			scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
-
+			r = getRandomFloat(-0.1f, 0.1f, seed);
 		}
+
+		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
 
 		rt.fade =
 			(dataExt.startingFade +

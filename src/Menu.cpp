@@ -284,8 +284,6 @@ namespace UI {
             if (ImGuiMCP::IsItemHovered())
                 ImGuiMCP::SetTooltip("Max radius mult after merging.");
 
-
-
             ImGuiMCP::PopItemWidth();
         }
 
@@ -747,8 +745,6 @@ namespace UI {
                     if (showFlagWindow) {
                         ImGuiMCP::Begin("Flag Window", &showFlagWindow, ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None);
 
-                        static uint32_t lightFlags = 0;
-
                         auto FlagCheckbox = [](const char* label, uint32_t& flags, LIGHT_FLAGS flag, const char* tooltip)
                             {
                                 bool checked = (flags & static_cast<uint32_t>(flag)) != 0;
@@ -766,34 +762,34 @@ namespace UI {
                                 }
                             };
 
-                        FlagCheckbox("Candle", lightFlags, LIGHT_FLAGS::kCandle,
+                        FlagCheckbox("Candle", config.flags, LIGHT_FLAGS::kCandle,
                             "Important for light flicker prevention. Also allows the light to merge with any other "
                             "light created from a relight json file which also has the Candle flag.");
 
-                        FlagCheckbox("Chandelier", lightFlags, LIGHT_FLAGS::kChandelier,
+                        FlagCheckbox("Chandelier", config.flags, LIGHT_FLAGS::kChandelier,
                             "Important for light flicker prevention.");
 
-                        FlagCheckbox("Fire", lightFlags, LIGHT_FLAGS::kFire,
+                        FlagCheckbox("Fire", config.flags, LIGHT_FLAGS::kFire,
                             "Important for light flicker prevention. Also allows the light to merge with any other "
                             "light created from a relight json file which also has the Fire flag.");
 
-                        FlagCheckbox("Giant Campfire", lightFlags, LIGHT_FLAGS::kGiantCampfire,
-                            "Allows merging with any other light created by a relight json config with the Fire flag.");
+                        FlagCheckbox("Giant Campfire", config.flags, LIGHT_FLAGS::kGiantCampfire,
+                            "Allows merging with any other light created by a relight json config with the Fire flag (needed).");
 
-                        FlagCheckbox("Other", lightFlags, LIGHT_FLAGS::kOther,
+                        FlagCheckbox("Other", config.flags, LIGHT_FLAGS::kOther,
                             "Allows merging with any other light created by a relight json config with the Other flag.");
 
-                        FlagCheckbox("Increased Merge Distance", lightFlags, LIGHT_FLAGS::kIncreasedMergeDistance,
+                        FlagCheckbox("Increased Merge Distance", config.flags, LIGHT_FLAGS::kIncreasedMergeDistance,
                             "Grants a significantly larger merge distance to lights. Currently used for ruin candles.");
 
-                        FlagCheckbox("Increased Menu XYZ Scale", lightFlags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
+                        FlagCheckbox("Increased Menu XYZ Scale", config.flags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
                             "Increases the in-game menu XYZ position slider range from 250 to 1250, for positioning "
                             "lights on larger objects.");
 
-                        FlagCheckbox("No Merging", lightFlags, LIGHT_FLAGS::kNoMerging,
+                        FlagCheckbox("No Merging", config.flags, LIGHT_FLAGS::kNoMerging,
                             "Light sources of this type will never merge.");
 
-                        FlagCheckbox("Outdoor", lightFlags, LIGHT_FLAGS::kOutdoor,
+                        FlagCheckbox("Outdoor", config.flags, LIGHT_FLAGS::kOutdoor,
                             "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
                             "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
 
@@ -983,6 +979,11 @@ namespace UI {
                     ImGuiMCP::SliderFloat(
                         "Movement",
                         &config.flickerAmplitude,
+                        0.0f, 1.0f, "%.2f");
+
+                   /**/ ImGuiMCP::SliderFloat(
+                        "Randomness",
+                        &config.flickerRandomness,
                         0.0f, 1.0f, "%.2f");
                     ImGuiMCP::EndDisabled();
                     ImGuiMCP::EndDisabled();

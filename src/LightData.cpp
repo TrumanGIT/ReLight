@@ -70,7 +70,7 @@ void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, cons
 	}
 }
 
-void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig& cfg, float scale)
+void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig& cfg)
 {
 	if (!niPointLight) {
 		logger::warn("nullptr passed to set ni point light ambient and diffuse");
@@ -78,16 +78,7 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 	}
 	niPointLight->local.translate.x = cfg.position[0];
 	niPointLight->local.translate.y = cfg.position[1];
-
-	if(scale > 1.0f) {
-
-		niPointLight->local.translate.z = cfg.position[2] * scale;
-
-	} else {
-
-		niPointLight->local.translate.z = cfg.position[2];
-
-	}
+	niPointLight->local.translate.z = cfg.position[2];
 }
 
 void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg) {
@@ -134,7 +125,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	logger::debug(" brightness set to: {} ", cfg.brightness);
 	logger::debug("config ID set to {}", cfg.configID); 
 
-	setNiPointLightPos(niPointLight, cfg, scale);
+	setNiPointLightPos(niPointLight, cfg);
 
 	logger::debug(" position set to: x:{} y:{} z:{} ", cfg.position[0], cfg.position[1], cfg.position[2]);
 
