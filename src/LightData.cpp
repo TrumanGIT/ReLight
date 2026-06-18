@@ -205,6 +205,7 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 
 	cfg.flickerIntensity = baseConfig.flickerIntensity;
 	cfg.flickersPerSecond = baseConfig.flickersPerSecond;
+	cfg.flickerRandomness = baseConfig.flickerRandomness;
 
 	if (globals::islInstalled) {
 

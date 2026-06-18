@@ -181,6 +181,7 @@ bool saveConfiguration(const LightConfig& config) {
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
 		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
+		newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
 		//clamp to 0.1f
 		newEntry["cutoffOverride"] =
 			std::max(0.01f, static_cast<float>(truncateDecimals(config.cutoffOverride, 2)));
@@ -242,7 +243,7 @@ bool saveNewConfiguration(LightConfig& config)
 			newEntry["refID"] = config.refFormIDsAndModNames;
 		}
 
-		newEntry["menuCategory"] = "";
+		newEntry["menuCategory"] = config.menuCategory;
 		newEntry["menuName"] = config.menuName;
 
 		logger::info("New configuration saved with an empty menu category by default in the JSON for the user to be free to tweak if he wants to unclutter the menu.");
@@ -265,6 +266,7 @@ bool saveNewConfiguration(LightConfig& config)
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
 		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
+		newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
 		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
 		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
 
@@ -956,6 +958,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 newEntry["flickerIntensity"] = truncateDecimals(cfg.flickerIntensity, 2);
 		 newEntry["flickersPerSecond"] = truncateDecimals(cfg.flickersPerSecond, 2);
 		 newEntry["flickerAmplitude"] = truncateDecimals(cfg.flickerAmplitude, 2);
+		 newEntry["flickerRandomness"] = truncateDecimals(cfg.flickerRandomness, 2);
 		 newEntry["size"] = truncateDecimals(std::max(0.1f, cfg.size), 2);
 		 newEntry["cutoffOverride"] = truncateDecimals(cfg.cutoffOverride, 2);
 

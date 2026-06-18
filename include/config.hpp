@@ -32,6 +32,7 @@ F(flickerIntensity, 0.1f) \
 F(flickersPerSecond, 0.1f) \
 F(flickerTime, 0.0f) \
 F(flickerAmplitude, 0.0f) \
+F(flickerRandomness, 0.0f) \
 F(startingFade, 0.f) \
 F(size, 2.0f) \
 F(cutoffOverride , 0.05f) \

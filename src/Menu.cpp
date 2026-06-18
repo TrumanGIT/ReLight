@@ -1033,6 +1033,19 @@ namespace UI {
                         &config.flickerAmplitude,
                         0.0f, 1.0f, "%.2f");
                     ImGuiMCP::EndDisabled();
+
+                    // Flicker Randomness UI slider
+                    // Check if the param flickerRandomness exist. If not, applies a default value that will be saved with the template next time the user saves it in the light editor.
+                    // Otherwise apply the existing parameter value from the config.
+                    // Since I don't know how you handle existing code when adding new values I made this check. 
+                    // Tell me if there's another way to prevent the ui from being weird when ReLight tries to inject a value that doesn't exist already in the configs...
+
+                    /*ImGuiMCP::SliderFloat(
+                        "Randomness",
+                        &config.flickerRandomness,
+                        0.0f, 1.0f, "%.2f");
+
+                    ImGuiMCP::EndDisabled();*/
                 }
                 ImGuiMCP::EndChild();
 
@@ -1295,11 +1308,11 @@ namespace UI {
     void __stdcall RenderAttachRemove()
     {
 
-        auto centerNextItem = [&](float estimatedWidth) { 
-            float startX = ImGuiMCP::GetCursorPosX(); 
-            
-            ImGuiMCP::ImVec2 avail{}; ImGuiMCP::GetContentRegionAvail(&avail); 
-            
+        auto centerNextItem = [&](float estimatedWidth) {
+            float startX = ImGuiMCP::GetCursorPosX();
+
+            ImGuiMCP::ImVec2 avail{}; ImGuiMCP::GetContentRegionAvail(&avail);
+
             ImGuiMCP::SetCursorPosX(startX + (avail.x - estimatedWidth) * 0.5f);
             };
 
@@ -1330,7 +1343,9 @@ namespace UI {
         static RE::TESModel* model = nullptr;
 
         static char menuNameBuffer[128]{};
+        static char menuCategoryBuffer[128]{};
         static bool menuNameBufferInitialized = false;
+        static bool menuCategoryBufferInitialized = false;
 
         static LightConfig newCfg;
 
@@ -1366,6 +1381,8 @@ namespace UI {
 
             menuNameBufferInitialized = false;
             menuNameBuffer[0] = '\0';
+            menuCategoryBufferInitialized = false;
+            menuCategoryBuffer[0] = '\0';
         };
 
         auto selected = RE::Console::GetSelectedRef().get();
@@ -2098,8 +2115,12 @@ namespace UI {
                 createNewTemplate &&
                 !multiLight;
 
+            bool showMenuCategoryBox = showMenuNameBox;
+
             if (showMenuNameBox && !menuNameBufferInitialized) {
                 std::string initialName;
+                // Set the initialCategory to an empty string so the light is uncategorized by default
+                std::string initialCategory = "";
 
                 if (!createNewTemplate) {
                     initialName = selectedCfgs[0].menuName;
@@ -2112,18 +2133,38 @@ namespace UI {
                 menuNameBuffer[sizeof(menuNameBuffer) - 1] = '\0';
 
                 menuNameBufferInitialized = true;
+
+                std::strncpy(menuCategoryBuffer, initialCategory.c_str(), sizeof(menuCategoryBuffer) - 1);
+                menuCategoryBuffer[sizeof(menuCategoryBuffer) - 1] = '\0';
+
+                menuCategoryBufferInitialized = true;
             }
 
             if (showMenuNameBox) {
                 ImGuiMCP::SetCursorPosX(320.0f);
                 ImGuiMCP::Text("Set Menu Name: ");
-                ImGuiMCP::SameLine(); 
+                ImGuiMCP::SameLine();
+                // Dummy added so both inputs for name and category are vertically aligned
+                ImGuiMCP::Dummy(ImGuiMCP::ImVec2(108.0f, 0.0f));
+                ImGuiMCP::SameLine();
                 ImGuiMCP::SetNextItemWidth(250.0f);
 
                 ImGuiMCP::InputText(
                     "##TemplateName",
                     menuNameBuffer,
                     sizeof(menuNameBuffer));
+            }
+
+            if (showMenuCategoryBox) {
+                ImGuiMCP::SetCursorPosX(320.0f);
+                ImGuiMCP::Text("Set Category Name (optional): ");
+                ImGuiMCP::SameLine();
+                ImGuiMCP::SetNextItemWidth(250.0f);
+
+                ImGuiMCP::InputText(
+                    "##TemplateCategory",
+                    menuCategoryBuffer,
+                    sizeof(menuCategoryBuffer));
             }
 
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
@@ -2240,7 +2281,13 @@ namespace UI {
                 }
                 else {
                     if (!multiLight) {
+
                         newCfg.menuName = menuNameBuffer;
+                        newCfg.menuCategory = menuCategoryBuffer;
+
+                        // This gives the new configuration the same file path as their name in the menu
+                        newCfg.configPath = BuildConfigPath(newCfg.menuName);
+
                     }
 
                     if (!saveNewConfiguration(newCfg)) {
