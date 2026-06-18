@@ -31,6 +31,8 @@ namespace UI {
 
     auto plusIcon = FontAwesome::UnicodeToUtf8(0xf055);
 
+    auto flagIcon = FontAwesome::UnicodeToUtf8(0xf024);
+
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
 
@@ -730,30 +732,76 @@ namespace UI {
                         config.menuName = newTemplateName;
                     }
 
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
+                    /////////
+                    //Flags
+                   //////////
 
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-                    // RETRIEVE ALL AVAILABLE FLAGS (using enum system)
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
+                    ImGuiMCP::SameLine(0.0f, 10.0f); 
 
-                    static int selectedActiveFlagIndex = 0;
-                    static int selectedMissingFlagIndex = 0;
+                    static bool showFlagWindow = false;
 
-                    // helper containers
-                    std::vector<LIGHT_FLAGS> activeFlags;
-                    std::vector<LIGHT_FLAGS> missingFlags;
-
-                    // build ACTIVE + MISSING lists (excluding SpotLight)
-                    for (const auto& [flag, name] : LightFlagNames)
-                    {
-                        if (flag == LIGHT_FLAGS::kSpotLight)
-                            continue; // 🚫 excluded from both UI lists
-
-                        if (config.flags & static_cast<uint32_t>(flag))
-                            activeFlags.push_back(flag);
-                        else
-                            missingFlags.push_back(flag);
+                    if (ImGuiMCP::Button((std::string("Flags ") + flagIcon).c_str())) {
+                        showFlagWindow = !showFlagWindow;
                     }
+
+                    if (showFlagWindow) {
+                        ImGuiMCP::Begin("Flag Window", &showFlagWindow, ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None);
+
+                        static uint32_t lightFlags = 0;
+
+                        auto FlagCheckbox = [](const char* label, uint32_t& flags, LIGHT_FLAGS flag, const char* tooltip)
+                            {
+                                bool checked = (flags & static_cast<uint32_t>(flag)) != 0;
+                                if (ImGuiMCP::Checkbox(label, &checked))
+                                {
+                                    if (checked)
+                                        flags |= static_cast<uint32_t>(flag);
+                                    else
+                                        flags &= ~static_cast<uint32_t>(flag);
+                                }
+
+                                if (ImGuiMCP::IsItemHovered())
+                                {
+                                    ImGuiMCP::SetTooltip("%s", tooltip);
+                                }
+                            };
+
+                        FlagCheckbox("Candle", lightFlags, LIGHT_FLAGS::kCandle,
+                            "Important for light flicker prevention. Also allows the light to merge with any other "
+                            "light created from a relight json file which also has the Candle flag.");
+
+                        FlagCheckbox("Chandelier", lightFlags, LIGHT_FLAGS::kChandelier,
+                            "Important for light flicker prevention.");
+
+                        FlagCheckbox("Fire", lightFlags, LIGHT_FLAGS::kFire,
+                            "Important for light flicker prevention. Also allows the light to merge with any other "
+                            "light created from a relight json file which also has the Fire flag.");
+
+                        FlagCheckbox("Giant Campfire", lightFlags, LIGHT_FLAGS::kGiantCampfire,
+                            "Allows merging with any other light created by a relight json config with the Fire flag.");
+
+                        FlagCheckbox("Other", lightFlags, LIGHT_FLAGS::kOther,
+                            "Allows merging with any other light created by a relight json config with the Other flag.");
+
+                        FlagCheckbox("Increased Merge Distance", lightFlags, LIGHT_FLAGS::kIncreasedMergeDistance,
+                            "Grants a significantly larger merge distance to lights. Currently used for ruin candles.");
+
+                        FlagCheckbox("Increased Menu XYZ Scale", lightFlags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
+                            "Increases the in-game menu XYZ position slider range from 250 to 1250, for positioning "
+                            "lights on larger objects.");
+
+                        FlagCheckbox("No Merging", lightFlags, LIGHT_FLAGS::kNoMerging,
+                            "Light sources of this type will never merge.");
+
+                        FlagCheckbox("Outdoor", lightFlags, LIGHT_FLAGS::kOutdoor,
+                            "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
+                            "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
+
+
+                        ImGuiMCP::End();
+                    }
+
+                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
 
                     //////////////////////////////////////////////////////////////////////////////////////////////////
                     // CATEGORY EDITOR
@@ -780,103 +828,9 @@ namespace UI {
 
                     ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
 
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-                    // ACTIVE FLAGS DROPDOWN (REMOVE)
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
+              
 
-                    std::vector<const char*> activeNames;
-                    std::vector<LIGHT_FLAGS> activeMap;
-
-                    // DEFAULT ENTRY
-                    activeNames.push_back("Delete a flag");
-                    activeMap.push_back(static_cast<LIGHT_FLAGS>(-1));
-
-                    for (auto f : activeFlags)
-                    {
-                        activeNames.push_back(LightFlagNames.at(f).c_str());
-                        activeMap.push_back(f);
-                    }
-
-                    if (activeNames.empty())
-                    {
-                        activeNames.push_back("No flags attached");
-                        activeMap.push_back(static_cast<LIGHT_FLAGS>(-1));
-                    }
-
-                    if (selectedActiveFlagIndex >= activeNames.size())
-                        selectedActiveFlagIndex = 0;
-
-                    if (ImGuiMCP::Combo("##flagDropdown",
-                        &selectedActiveFlagIndex,
-                        activeNames.data(),
-                        (int)activeNames.size()))
-                    {
-                        auto flag = activeMap[selectedActiveFlagIndex];
-
-                        if (flag != static_cast<LIGHT_FLAGS>(-1))
-                        {
-                            // REMOVE flag
-                            config.flags &= ~static_cast<uint32_t>(flag);
-
-                            // RESET dropdown to default entry
-                            selectedActiveFlagIndex = 0;
-                        }
-                    }
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("Use this to add one or more flags to the selected template.");
-                    }
-
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
-
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-                    // MISSING FLAGS DROPDOWN (ADD)
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-
-                    std::vector<const char*> missingNames;
-                    std::vector<LIGHT_FLAGS> missingMap;
-
-                    // DEFAULT ENTRY
-                    missingNames.push_back("Add a flag");
-                    missingMap.push_back(static_cast<LIGHT_FLAGS>(-1));
-
-                    for (auto f : missingFlags)
-                    {
-                        missingNames.push_back(LightFlagNames.at(f).c_str());
-                        missingMap.push_back(f);
-                    }
-
-                    if (missingNames.empty())
-                    {
-                        missingNames.push_back("All flags attached");
-                        missingMap.push_back(static_cast<LIGHT_FLAGS>(-1));
-                    }
-
-                    if (selectedMissingFlagIndex >= missingNames.size())
-                    {
-                        selectedMissingFlagIndex = 0;
-                    }
-
-                    if (ImGuiMCP::Combo("##flagAddDropdown",
-                        &selectedMissingFlagIndex,
-                        missingNames.data(),
-                        (int)missingNames.size()))
-                    {
-                        auto flag = missingMap[selectedMissingFlagIndex];
-
-                        if (flag != static_cast<LIGHT_FLAGS>(-1))
-                        {
-                            // ADD flag
-                            config.flags |= static_cast<uint32_t>(flag);
-
-                            // RESET dropdown to default entry
-                            selectedMissingFlagIndex = 0;
-                        }
-                    }
-
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("Use this to remove one or more flags from the selected template.");
-                    }
-
+    
                     ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 30.0f));
 
                 }
