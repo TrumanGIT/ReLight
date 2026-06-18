@@ -817,8 +817,6 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		return empty;
 	}
 
-	toLower(meshPath);
-
 	if (!interior) {
 		auto it = LightData::meshPathToJsonCfgExteriors.find(meshPath);
 		if (it != LightData::meshPathToJsonCfgExteriors.end()) {

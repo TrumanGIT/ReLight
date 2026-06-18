@@ -10,10 +10,10 @@ using namespace std;
 
 #define RELOCATION_OFFSET(SE, AE) REL::VariantOffset(SE, AE, 0).offset()
 
-/*SKSEPluginInfo(
-	.Version = REL::Version{ 5, 2, 0, 0 },
+SKSEPluginInfo(
+	.Version = REL::Version{ 5, 3, 0, 0 },
 	.Name = "Relight",
 	.Author = "Truman",
 	.StructCompatibility = SKSE::StructCompatibility::Independent,
 	.RuntimeCompatibility = SKSE::VersionIndependence::AddressLibrary
-);*/ 
+);
