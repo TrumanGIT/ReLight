@@ -1285,6 +1285,8 @@ namespace UI {
 
         static char menuNameBuffer[128]{};
         static bool menuNameBufferInitialized = false;
+        static char menuCategoryBuffer[128]{};
+        static bool menuCategoryBufferInitialized = false;
 
         static LightConfig newCfg;
 
@@ -1320,6 +1322,8 @@ namespace UI {
 
             menuNameBufferInitialized = false;
             menuNameBuffer[0] = '\0';
+            menuCategoryBufferInitialized = false;
+            menuCategoryBuffer[0] = '\0';
         };
 
         auto selected = RE::Console::GetSelectedRef().get();
@@ -2052,8 +2056,12 @@ namespace UI {
                 createNewTemplate &&
                 !multiLight;
 
+            bool showMenuCategoryBox = createNewTemplate &&
+                !multiLight;
+
             if (showMenuNameBox && !menuNameBufferInitialized) {
                 std::string initialName;
+                std::string initialCategory = "";
 
                 if (!createNewTemplate) {
                     initialName = selectedCfgs[0].menuName;
@@ -2066,18 +2074,39 @@ namespace UI {
                 menuNameBuffer[sizeof(menuNameBuffer) - 1] = '\0';
 
                 menuNameBufferInitialized = true;
+
+
+                std::strncpy(menuCategoryBuffer, initialCategory.c_str(), sizeof(menuCategoryBuffer) - 1);
+                menuCategoryBuffer[sizeof(menuCategoryBuffer) - 1] = '\0';
+
+                menuCategoryBufferInitialized = true;
             }
 
             if (showMenuNameBox) {
                 ImGuiMCP::SetCursorPosX(320.0f);
                 ImGuiMCP::Text("Set Menu Name: ");
-                ImGuiMCP::SameLine(); 
+                ImGuiMCP::SameLine();
+                // Dummy added so both inputs for name and category are vertically aligned
+                ImGuiMCP::Dummy(ImGuiMCP::ImVec2(108.0f, 0.0f));
+                ImGuiMCP::SameLine();
                 ImGuiMCP::SetNextItemWidth(250.0f);
 
                 ImGuiMCP::InputText(
                     "##TemplateName",
                     menuNameBuffer,
                     sizeof(menuNameBuffer));
+            }
+
+            if (showMenuCategoryBox) {
+                ImGuiMCP::SetCursorPosX(320.0f);
+                ImGuiMCP::Text("Set Category Name (optional): ");
+                ImGuiMCP::SameLine();
+                ImGuiMCP::SetNextItemWidth(250.0f);
+
+                ImGuiMCP::InputText(
+                    "##TemplateCategory",
+                    menuCategoryBuffer,
+                    sizeof(menuCategoryBuffer));
             }
 
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
@@ -2195,6 +2224,10 @@ namespace UI {
                 else {
                     if (!multiLight) {
                         newCfg.menuName = menuNameBuffer;
+                        newCfg.menuCategory = menuCategoryBuffer;
+
+                        // This gives the new configuration the same file path as their name in the menu
+                        newCfg.configPath = BuildConfigPath(newCfg.menuName);
                     }
 
                     if (!saveNewConfiguration(newCfg)) {
