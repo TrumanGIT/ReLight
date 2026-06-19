@@ -65,7 +65,6 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 			}
 		}
 
-
 		if (data.contains("flags")) {
 			config.flags = ParseFlags(data["flags"]);
 		}
@@ -77,6 +76,17 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 				int idx = v.get<int>();
 				if (idx >= 0)
 					config.attachPath.push_back(idx);
+			}
+		}
+
+		if (data.contains("externalEmittance") && data["externalEmittance"].is_string()) {
+			std::string editorID = data["externalEmittance"].get<std::string>();
+			if (!editorID.empty()) {
+				auto* form = RE::TESForm::LookupByEditorID(editorID);
+				config.emittanceRegion = form ? form->As<RE::TESRegion>() : nullptr;
+				if (!config.emittanceRegion) {
+					logger::warn("Failed to find TESRegion for externalEmittance '{}'", editorID);
+				}
 			}
 		}
 
@@ -144,6 +154,8 @@ bool saveConfiguration(const LightConfig& config) {
 		}
 
 		newEntry["menuName"] = config.menuName;
+
+		newEntry["externalEmittance"] = config.externalEmittance;
 
 		// Checks if the template already had a group name to re-apply it, otherwise applies an empty menuCategory
 		if (!config.menuCategory.empty()) {
@@ -245,6 +257,7 @@ bool saveNewConfiguration(LightConfig& config)
 
 		newEntry["menuCategory"] = config.menuCategory;
 		newEntry["menuName"] = config.menuName;
+		newEntry["externalEmittance"] = config.externalEmittance;
 
 		logger::info("New configuration saved with an empty menu category by default in the JSON for the user to be free to tweak if he wants to unclutter the menu.");
 
@@ -657,8 +670,6 @@ bool saveNewConfiguration(LightConfig& config)
 	  cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
   }
 
-
-
 inline uint32_t ParseFlags(const nlohmann::json& j)
 {
 	uint32_t mask = 0;
@@ -716,6 +727,7 @@ void sortInPriorityList(const LightConfig& cfg)
 	}
 }
 
+//parse json configs 
 void parseTemplates() {
 	logger::info("Parsing light templates..");
 	std::vector<std::string> paths = GetConfigPaths();
@@ -801,12 +813,12 @@ void parseTemplates() {
 				cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
 			}
 
+		
 			//used to get the right index to save back too
 			jsonIndex++;
 		}
 	}
 }
-
 
 std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior)
 {
@@ -897,6 +909,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 cfg.configPath = configPath;
 		 cfg.jsonIndex = jsonIndex;
 		 cfg.configID = preserveConfigID ? baseCfg.configID : globals::nextID++;
+		// since we apply from a base config mabye we dont even need to set menu catagory and mabye menu name as well
 		 cfg.menuCategory = menuCategory;
 		 cfg.menuName = menuName;
 		 cfg.refFormIDsAndModNames.clear(); // clear copied baseCfg refs since were adding a new json object to json file

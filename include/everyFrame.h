@@ -604,9 +604,38 @@ inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 	}
 }
 
+//power of three light placer
+inline void UpdateRegionEmittance(RE::NiColor& a_color, RE::TESRegion* a_region)
+{
+	auto weather = a_region->currentWeather;
+	if (!weather) {
+		weather = a_region->SelectWeather();
+		if (weather) {
+			a_region->SetCurrentWeather(weather);
+		}
+	}
+	if (!weather) {
+		if (auto defaultWeather = RE::TESForm::LookupByID<RE::TESWeather>(0x15E)) {
+			weather = defaultWeather;
+		}
+	}
+	if (weather) {
+		RE::Sky::COLOR_BLEND      colorBlend{};
+		RE::TESWeather::ColorTime time1{};
+		RE::TESWeather::ColorTime time2{};
+
+		auto sky = RE::Sky::GetSingleton();
+		sky->FillColorBlend(colorBlend, weather, 1.0f, time1, time2);
+		sky->FillColorBlendColors(colorBlend, weather, nullptr, RE::TESWeather::ColorType::kEffectLighting, time1, time2);
+		auto* setting = RE::GameSettingCollection::GetSingleton()->GetSetting("fWeatherFlashDirectional");
+		float flashDirectional = setting ? setting->data.f : 1.0f;
+		sky->SetColor(a_color, &colorBlend, sky->flash * flashDirectional);
+	}
+}
+
 // generic type argument probly not needed both shadow light list and non shadow light list same array type proboblly
 template <class T>
-static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiPoint3 playerPos)
+static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3 playerPos)
 {
 
 	constexpr float maxDist = 5000.0f;
@@ -640,10 +669,6 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 
 		auto& rt = light->light->GetLightRuntimeData();
 
-		auto* pointLight = netimmerse_cast<RE::NiPointLight*>(light->light.get());
-		if (!pointLight)
-			continue;
-
 		// seems like everyone throws ambient away like Community shaders for example
 		// so we will do the same to act as 3 free floats we can store values in for flicker amplitude.
 		auto& pos = light->light->local.translate;
@@ -652,7 +677,15 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		if (it == LightData::configIDToJsonCfg.end())
 			continue;
 
-		const auto& dataExt = it->second;
+		const auto& config = it->second;
+
+		if (config.emittanceRegion) {
+			auto emittanceColor = config.emittanceRegion->emittanceColor;
+			if (emittanceColor == globals::COLOR_BLACK) {
+				UpdateRegionEmittance(emittanceColor, config.emittanceRegion);
+			}
+			rt.diffuse *= emittanceColor;
+		}
 
 		uint32_t seed =
 			static_cast<uint32_t>(
@@ -665,8 +698,8 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		// Otherwise apply the existing parameter value from the config.
 		// Since I don't know how you handle existing code when adding new values I made this check. 
 		// Tell me if there's another way to prevent the code from being weird when ReLight tries to inject a value that doesn't exist already in the configs...
-		if (dataExt.flickerRandomness) {
-			r = getRandomFloat(-dataExt.flickerRandomness ,dataExt.flickerRandomness, seed);
+		if (config.flickerRandomness) {
+			r = getRandomFloat(-config.flickerRandomness , config.flickerRandomness, seed);
 
 		} else {
 
@@ -676,12 +709,16 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
 
 		rt.fade =
-			(dataExt.startingFade +
-				NiSinQ(scale * dataExt.flickersPerSecond) * dataExt.flickerIntensity)
+			(config.startingFade +
+				NiSinQ(scale * config.flickersPerSecond) * config.flickerIntensity)
 			* globals::brightnessModifier;
 
 		// stop movement if flickers per second is off
-		if (dataExt.flickersPerSecond <= 0.0f)
+		if (config.flickersPerSecond <= 0.0f)
+			continue;
+
+		auto* pointLight = netimmerse_cast<RE::NiPointLight*>(light->light.get());
+		if (!pointLight)
 			continue;
 
 		// oscillation
@@ -694,8 +731,8 @@ static void ApplyLightFlicker(T& lights, float delta, bool shadowLights, RE::NiP
 			pointLight->quadraticAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 2);
 		}
 
-		const float speedBase = dataExt.flickersPerSecond * std::numbers::pi_v<float>;
-		const float amp = dataExt.flickerAmplitude;
+		const float speedBase = config.flickersPerSecond * std::numbers::pi_v<float>;
+		const float amp = config.flickerAmplitude;
 
 		pointLight->constAttenuation = std::fmod(pointLight->constAttenuation + delta * speedBase * 0.91f, RE::NI_TWO_PI);
 		pointLight->linearAttenuation = std::fmod(pointLight->linearAttenuation + delta * speedBase * 1.13f, RE::NI_TWO_PI);

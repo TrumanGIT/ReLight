@@ -44,9 +44,9 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	const auto playerPos = player->GetPosition(); 
 
-	ApplyLightFlicker(ssRt.activeLights, delta, false, playerPos);
+	updateLights(ssRt.activeLights, delta, false, playerPos);
 
-	ApplyLightFlicker(ssRt.activeShadowLights, delta, true, playerPos);
+	updateLights(ssRt.activeShadowLights, delta, true, playerPos);
 
 	if (globals::skseMenuOpened) {
 		globals::skseMenuOpened = false;

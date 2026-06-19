@@ -9,7 +9,6 @@
 namespace globals
 
 {
-
     inline bool enableDebugLines = true; 
 
     inline int distanceForDrawDebugLines = 500; 
@@ -137,5 +136,7 @@ namespace globals
     inline std::vector<std::string> enableByEditorID = {};
 
     inline std::vector<std::string> disableByEditorID = {};
+
+    inline  RE::NiColor COLOR_BLACK{ 0.0f, 0.0f, 0.0f };
 
 }

@@ -23,7 +23,7 @@ B(neverFades, true) \
 #define FOREACH_FLOAT(F) \
 F(brightness, 3.0f) \
 F(radius, 250.f) \
-F(fov, 1.0f) \
+F(fov, 90.0f) \
 F(falloff, 1.f) \
 F(nearDistance, 5.f) \
 F(depthBias, 1.0f) \
@@ -76,6 +76,8 @@ struct LightConfig {
     std::vector<std::string> meshPaths;
     std::string menuCategory{};
     std::string menuName{};
+    std::string externalEmittance{};      // "FXLightRegionSunlight" or empty
+    RE::TESRegion* emittanceRegion = nullptr;
     std::vector<std::string> refFormIDsAndModNames;
     std::vector<std::string> baseFormIDsAndModNames;
     std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
