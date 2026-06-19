@@ -1140,6 +1140,101 @@ namespace UI {
                             }
                         }
                     }
+
+                    auto UpdateLightColor = [&](const auto& lightData)
+                        {
+                            auto* ssNode =
+                                RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+
+                            if (!ssNode)
+                                return;
+
+                            auto& rt = ssNode->GetRuntimeData();
+
+                            for (auto& l : rt.activeLights) {
+                                if (!l)
+                                    continue;
+
+                                if (l->light->GetLightRuntimeData().unk138 ==
+                                    lightData.unk138)
+                                {
+                                    l->light->GetLightRuntimeData().diffuse =
+                                        lightData.diffuse;
+                                }
+                            }
+
+                            for (auto& l : rt.activeShadowLights) {
+                                if (!l)
+                                    continue;
+
+                                if (l->light->GetLightRuntimeData().unk138 ==
+                                    lightData.unk138)
+                                {
+                                    l->light->GetLightRuntimeData().diffuse =
+                                        lightData.diffuse;
+                                }
+                            }
+                        };
+
+                    // Color preview button
+                    float colorPickerButtonHeight = ImGuiMCP::GetFrameHeight();
+
+                    ImGuiMCP::SameLine();
+
+                    if (ImGuiMCP::ColorButton(
+                        "##ColorPreview",
+                        ImGuiMCP::ImVec4(
+                            lightData.diffuse.red,
+                            lightData.diffuse.green,
+                            lightData.diffuse.blue,
+                            1.0f),
+                        ImGuiMCP::ImGuiColorEditFlags_NoTooltip,
+                        ImGuiMCP::ImVec2(
+                            colorPickerButtonHeight,
+                            colorPickerButtonHeight)))
+                    {
+                        ImGuiMCP::OpenPopup("ColorPicker");
+                    }
+
+                    // Hover tooltip
+                    if (ImGuiMCP::IsItemHovered())
+                    {
+                        ImGuiMCP::BeginTooltip();
+
+                        ImGuiMCP::Text("Click to open the color picker");
+                        ImGuiMCP::Separator();
+
+                        ImGuiMCP::Text("R: %.3f", lightData.diffuse.red);
+                        ImGuiMCP::Text("G: %.3f", lightData.diffuse.green);
+                        ImGuiMCP::Text("B: %.3f", lightData.diffuse.blue);
+
+                        ImGuiMCP::EndTooltip();
+                    }
+
+                    // Color picker popup
+                    if (ImGuiMCP::BeginPopup("ColorPicker"))
+                    {
+                        float color[4] = {
+                            lightData.diffuse.red,
+                            lightData.diffuse.green,
+                            lightData.diffuse.blue,
+                            1.0f
+                        };
+
+                        if (ImGuiMCP::ColorPicker4(
+                            "##Picker",
+                            color,
+                            ImGuiMCP::ImGuiColorEditFlags_NoAlpha))
+                        {
+                            lightData.diffuse.red = color[0];
+                            lightData.diffuse.green = color[1];
+                            lightData.diffuse.blue = color[2];
+
+                            UpdateLightColor(lightData);
+                        }
+
+                        ImGuiMCP::EndPopup();
+                    }
                 }
                 ImGuiMCP::EndChild();
 
@@ -1285,6 +1380,8 @@ namespace UI {
 
         static char menuNameBuffer[128]{};
         static bool menuNameBufferInitialized = false;
+        static char menuCategoryBuffer[128]{};
+        static bool menuCategoryBufferInitialized = false;
 
         static LightConfig newCfg;
 
@@ -1320,6 +1417,8 @@ namespace UI {
 
             menuNameBufferInitialized = false;
             menuNameBuffer[0] = '\0';
+            menuCategoryBufferInitialized = false;
+            menuCategoryBuffer[0] = '\0';
         };
 
         auto selected = RE::Console::GetSelectedRef().get();
@@ -2052,8 +2151,12 @@ namespace UI {
                 createNewTemplate &&
                 !multiLight;
 
+            bool showMenuCategoryBox = createNewTemplate &&
+                !multiLight;
+
             if (showMenuNameBox && !menuNameBufferInitialized) {
                 std::string initialName;
+                std::string initialCategory = "";
 
                 if (!createNewTemplate) {
                     initialName = selectedCfgs[0].menuName;
@@ -2066,18 +2169,39 @@ namespace UI {
                 menuNameBuffer[sizeof(menuNameBuffer) - 1] = '\0';
 
                 menuNameBufferInitialized = true;
+
+
+                std::strncpy(menuCategoryBuffer, initialCategory.c_str(), sizeof(menuCategoryBuffer) - 1);
+                menuCategoryBuffer[sizeof(menuCategoryBuffer) - 1] = '\0';
+
+                menuCategoryBufferInitialized = true;
             }
 
             if (showMenuNameBox) {
                 ImGuiMCP::SetCursorPosX(320.0f);
                 ImGuiMCP::Text("Set Menu Name: ");
-                ImGuiMCP::SameLine(); 
+                ImGuiMCP::SameLine();
+                // Dummy added so both inputs for name and category are vertically aligned
+                ImGuiMCP::Dummy(ImGuiMCP::ImVec2(108.0f, 0.0f));
+                ImGuiMCP::SameLine();
                 ImGuiMCP::SetNextItemWidth(250.0f);
 
                 ImGuiMCP::InputText(
                     "##TemplateName",
                     menuNameBuffer,
                     sizeof(menuNameBuffer));
+            }
+
+            if (showMenuCategoryBox) {
+                ImGuiMCP::SetCursorPosX(320.0f);
+                ImGuiMCP::Text("Set Category Name (optional): ");
+                ImGuiMCP::SameLine();
+                ImGuiMCP::SetNextItemWidth(250.0f);
+
+                ImGuiMCP::InputText(
+                    "##TemplateCategory",
+                    menuCategoryBuffer,
+                    sizeof(menuCategoryBuffer));
             }
 
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
@@ -2195,6 +2319,10 @@ namespace UI {
                 else {
                     if (!multiLight) {
                         newCfg.menuName = menuNameBuffer;
+                        newCfg.menuCategory = menuCategoryBuffer;
+
+                        // This gives the new configuration the same file path as their name in the menu
+                        newCfg.configPath = BuildConfigPath(newCfg.menuName);
                     }
 
                     if (!saveNewConfiguration(newCfg)) {
