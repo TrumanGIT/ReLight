@@ -1140,6 +1140,101 @@ namespace UI {
                             }
                         }
                     }
+
+                    auto UpdateLightColor = [&](const auto& lightData)
+                        {
+                            auto* ssNode =
+                                RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+
+                            if (!ssNode)
+                                return;
+
+                            auto& rt = ssNode->GetRuntimeData();
+
+                            for (auto& l : rt.activeLights) {
+                                if (!l)
+                                    continue;
+
+                                if (l->light->GetLightRuntimeData().unk138 ==
+                                    lightData.unk138)
+                                {
+                                    l->light->GetLightRuntimeData().diffuse =
+                                        lightData.diffuse;
+                                }
+                            }
+
+                            for (auto& l : rt.activeShadowLights) {
+                                if (!l)
+                                    continue;
+
+                                if (l->light->GetLightRuntimeData().unk138 ==
+                                    lightData.unk138)
+                                {
+                                    l->light->GetLightRuntimeData().diffuse =
+                                        lightData.diffuse;
+                                }
+                            }
+                        };
+
+                    // Color preview button
+                    float colorPickerButtonHeight = ImGuiMCP::GetFrameHeight();
+
+                    ImGuiMCP::SameLine();
+
+                    if (ImGuiMCP::ColorButton(
+                        "##ColorPreview",
+                        ImGuiMCP::ImVec4(
+                            lightData.diffuse.red,
+                            lightData.diffuse.green,
+                            lightData.diffuse.blue,
+                            1.0f),
+                        ImGuiMCP::ImGuiColorEditFlags_NoTooltip,
+                        ImGuiMCP::ImVec2(
+                            colorPickerButtonHeight,
+                            colorPickerButtonHeight)))
+                    {
+                        ImGuiMCP::OpenPopup("ColorPicker");
+                    }
+
+                    // Hover tooltip
+                    if (ImGuiMCP::IsItemHovered())
+                    {
+                        ImGuiMCP::BeginTooltip();
+
+                        ImGuiMCP::Text("Click to open the color picker");
+                        ImGuiMCP::Separator();
+
+                        ImGuiMCP::Text("R: %.3f", lightData.diffuse.red);
+                        ImGuiMCP::Text("G: %.3f", lightData.diffuse.green);
+                        ImGuiMCP::Text("B: %.3f", lightData.diffuse.blue);
+
+                        ImGuiMCP::EndTooltip();
+                    }
+
+                    // Color picker popup
+                    if (ImGuiMCP::BeginPopup("ColorPicker"))
+                    {
+                        float color[4] = {
+                            lightData.diffuse.red,
+                            lightData.diffuse.green,
+                            lightData.diffuse.blue,
+                            1.0f
+                        };
+
+                        if (ImGuiMCP::ColorPicker4(
+                            "##Picker",
+                            color,
+                            ImGuiMCP::ImGuiColorEditFlags_NoAlpha))
+                        {
+                            lightData.diffuse.red = color[0];
+                            lightData.diffuse.green = color[1];
+                            lightData.diffuse.blue = color[2];
+
+                            UpdateLightColor(lightData);
+                        }
+
+                        ImGuiMCP::EndPopup();
+                    }
                 }
                 ImGuiMCP::EndChild();
 
