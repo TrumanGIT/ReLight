@@ -2,8 +2,11 @@
 #include "ticker.h"
 #include "global.h"
 #include "disableLights.h"
-#include <format>
 #include "everyFrame.h"
+#include "forms.hpp"
+#include "ini.hpp"
+
+#include <format>
 
 namespace logger = SKSE::log;
 
@@ -75,7 +78,7 @@ namespace UI {
             if (saveINIClicked) {
                 bool ok = false;
                 saveINIButton.set(buttonState::Working);
-                ok = saveSettingsToIni();
+                ok = ini::saveSettingsToIni();
                 saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
             }
             renderDone(saveINIButton, iconX, iconY);
@@ -204,7 +207,7 @@ namespace UI {
             if (saveINIClicked) {
                 bool ok = false;
                 saveINIButton.set(buttonState::Working);
-                ok = saveSettingsToIni();
+                ok = ini::saveSettingsToIni();
                 saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
             }
             renderDone(saveINIButton, iconX, iconY);
@@ -318,7 +321,7 @@ namespace UI {
         if (saveINIClicked) {
             bool ok = false;
             saveINIButton.set(buttonState::Working);
-            ok = saveSettingsToIni();
+            ok = ini::saveSettingsToIni();
             saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
         }
 
@@ -393,7 +396,7 @@ namespace UI {
                                 globals::brightnessModifier;
                         }
                     }
-                    };
+                };
 
                 applyBrightness(rt.activeLights);
                 applyBrightness(rt.activeShadowLights);
@@ -476,8 +479,7 @@ namespace UI {
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
         FontAwesome::PushSolid();
-     
-
+ 
         ImGuiMCP::Text("%s Light Editor", editorIcon.c_str());
         ImGuiMCP::PopStyleColor();
         ImGuiMCP::SameLine();
@@ -658,6 +660,12 @@ namespace UI {
                         return;
                 }
 
+                static std::vector<std::pair<std::string, RE::TESRegion*>> regionList;
+
+                if (regionList.empty()) {
+                    BuildRegionList(regionList);
+                }
+
                 bool isSpotLight = config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight);
 
                 float radiusToUse = isSpotLight ? 5000.0f : 500.0f; 
@@ -821,6 +829,40 @@ namespace UI {
                     {
                         config.menuCategory = newTemplateCategory;
                     }
+
+                    //EXTERNAL EMITTANCE
+                    static bool showEmittanceWindow = false;
+
+                    ImGuiMCP::SameLine();
+                    if (ImGuiMCP::Button("External Emittance")) {
+                        showEmittanceWindow = !showEmittanceWindow;
+                    }
+
+                    // separate window
+                    if (showEmittanceWindow) {
+                        if (ImGuiMCP::Begin("External Emittance", &showEmittanceWindow, ImGuiMCP::ImGuiWindowFlags_NoCollapse |
+                            ImGuiMCP::ImGuiWindowFlags_NoDocking)) {
+                            if (ImGuiMCP::Selectable("None", config.emittanceRegion == nullptr)) {
+                                config.emittanceRegion = nullptr;
+                                config.externalEmittance = "";
+                            }
+                            for (auto& [editorID, region] : regionList) {
+                                bool selected = config.emittanceRegion == region;
+                                if (ImGuiMCP::Selectable(editorID.c_str(), selected)) {
+                                    config.emittanceRegion = region;
+                                    config.externalEmittance = editorID;
+                                    auto emittanceColor = config.emittanceRegion->emittanceColor;
+                                    UpdateRegionEmittance(emittanceColor, config.emittanceRegion); 
+                                    showEmittanceWindow = false; 
+                                }
+                            }
+                            ImGuiMCP::End();
+                        }
+                    }
+
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("Select a region used for external emittance (Change sky light colors based on time of day");
+                    }
     
                     ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 20.0f));
 
@@ -981,15 +1023,14 @@ namespace UI {
                         &config.flickerAmplitude,
                         0.0f, 1.0f, "%.2f");
 
-                   /**/ ImGuiMCP::SliderFloat(
+                   /*ImGuiMCP::SliderFloat(
                         "Randomness",
                         &config.flickerRandomness,
-                        0.0f, 1.0f, "%.2f");
+                        0.0f, 1.0f, "%.2f");*/ 
                     ImGuiMCP::EndDisabled();
                     ImGuiMCP::EndDisabled();
                 }
                 ImGuiMCP::EndChild();
-
 
                 ImGuiMCP::Columns(1);
                 ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
@@ -1113,111 +1154,112 @@ namespace UI {
 
                 ImGuiMCP::NextColumn();
 
+                static bool colorPickerOpen = false;
 
-                if (ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, boxSize), true,
+                auto ApplyRuntimeColor = [&](const RE::NiColor& runtimeColor)
+                    {
+                        lightData.diffuse = runtimeColor;
+
+                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                        if (!ssNode)
+                            return;
+
+                        auto& rt = ssNode->GetRuntimeData();
+
+                        for (auto& l : rt.activeLights)
+                        {
+                            if (!l || !l->light)
+                                continue;
+
+                            if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                            {
+                                l->light->GetLightRuntimeData().diffuse = runtimeColor;
+                            }
+                        }
+
+                        for (auto& l : rt.activeShadowLights)
+                        {
+                            if (!l || !l->light)
+                                continue;
+
+                            if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                            {
+                                l->light->GetLightRuntimeData().diffuse = runtimeColor;
+                            }
+                        }
+                    };
+
+                if(ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, boxSize), true,
                     ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                 {
                     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
                         ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-
                     ImGuiMCP::Text("%s Color (RGB)", palletIcon.c_str());
                     ImGuiMCP::PopStyleColor();
                     ImGuiMCP::Separator();
+          
 
-                    if (ImGuiMCP::SliderFloat3("RGB", &lightData.diffuse.red, 0.0f, 1.0f, "%.3f")) {
-                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                        if (ssNode) {
-                            auto& rt = ssNode->GetRuntimeData();
-                            for (auto& l : rt.activeLights) {
-                                if (!l) continue;
-                                if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
-                                    l->light->GetLightRuntimeData().diffuse = lightData.diffuse;
-                            }
-                            for (auto& l : rt.activeShadowLights) {
-                                if (!l) continue;
-                                if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
-                                    l->light->GetLightRuntimeData().diffuse = lightData.diffuse;
-                            }
-                        }
-                    }
-
-                    auto UpdateLightColor = [&](const auto& lightData)
-                        {
-                            auto* ssNode =
-                                RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-
-                            if (!ssNode)
-                                return;
-
-                            auto& rt = ssNode->GetRuntimeData();
-
-                            for (auto& l : rt.activeLights) {
-                                if (!l)
-                                    continue;
-
-                                if (l->light->GetLightRuntimeData().unk138 ==
-                                    lightData.unk138)
-                                {
-                                    l->light->GetLightRuntimeData().diffuse =
-                                        lightData.diffuse;
-                                }
-                            }
-
-                            for (auto& l : rt.activeShadowLights) {
-                                if (!l)
-                                    continue;
-
-                                if (l->light->GetLightRuntimeData().unk138 ==
-                                    lightData.unk138)
-                                {
-                                    l->light->GetLightRuntimeData().diffuse =
-                                        lightData.diffuse;
-                                }
-                            }
+                    if (ImGuiMCP::SliderInt3("RGB", &config.diffuseColor[0], 0, 255))
+                    {
+                        RE::NiColor runtimeColor{
+                            config.diffuseColor[0] / 255.0f,
+                            config.diffuseColor[1] / 255.0f,
+                            config.diffuseColor[2] / 255.0f
                         };
 
-                    // Color preview button
+                        if (config.emittanceRegion)
+                        {
+                            auto emittance = config.emittanceRegion->emittanceColor;
+
+                            runtimeColor.red *= emittance.red;
+                            runtimeColor.green *= emittance.green;
+                            runtimeColor.blue *= emittance.blue;
+                        }
+
+                        ApplyRuntimeColor(runtimeColor);
+                    }
+                    
+  
                     float colorPickerButtonHeight = ImGuiMCP::GetFrameHeight();
-
                     ImGuiMCP::SameLine();
-
                     if (ImGuiMCP::ColorButton(
                         "##ColorPreview",
                         ImGuiMCP::ImVec4(
-                            lightData.diffuse.red,
-                            lightData.diffuse.green,
-                            lightData.diffuse.blue,
+                            config.diffuseColor[0] / 255.0f,
+                            config.diffuseColor[1] / 255.0f,
+                            config.diffuseColor[2] / 255.0f,
                             1.0f),
                         ImGuiMCP::ImGuiColorEditFlags_NoTooltip,
                         ImGuiMCP::ImVec2(
                             colorPickerButtonHeight,
                             colorPickerButtonHeight)))
                     {
-                        ImGuiMCP::OpenPopup("ColorPicker");
+                        colorPickerOpen = true; // static bool instead of OpenPopup
                     }
-
-                    // Hover tooltip
                     if (ImGuiMCP::IsItemHovered())
                     {
                         ImGuiMCP::BeginTooltip();
-
                         ImGuiMCP::Text("Click to open the color picker");
                         ImGuiMCP::Separator();
-
                         ImGuiMCP::Text("R: %.3f", lightData.diffuse.red);
                         ImGuiMCP::Text("G: %.3f", lightData.diffuse.green);
                         ImGuiMCP::Text("B: %.3f", lightData.diffuse.blue);
-
                         ImGuiMCP::EndTooltip();
                     }
+                }
+                ImGuiMCP::EndChild();
 
-                    // Color picker popup
-                    if (ImGuiMCP::BeginPopup("ColorPicker"))
+                // color picker window lives outside child
+                if (colorPickerOpen)
+                {
+                    if (ImGuiMCP::Begin("Color Picker", &colorPickerOpen,
+                        ImGuiMCP::ImGuiWindowFlags_AlwaysAutoResize |
+                        ImGuiMCP::ImGuiWindowFlags_NoCollapse))
                     {
                         float color[4] = {
-                            lightData.diffuse.red,
-                            lightData.diffuse.green,
-                            lightData.diffuse.blue,
+                            config.diffuseColor[0] / 255.0f,
+                            config.diffuseColor[1] / 255.0f,
+                            config.diffuseColor[2] / 255.0f,
                             1.0f
                         };
 
@@ -1226,22 +1268,34 @@ namespace UI {
                             color,
                             ImGuiMCP::ImGuiColorEditFlags_NoAlpha))
                         {
-                            lightData.diffuse.red = color[0];
-                            lightData.diffuse.green = color[1];
-                            lightData.diffuse.blue = color[2];
+                            config.diffuseColor[0] = static_cast<int>(color[0] * 255.0f);
+                            config.diffuseColor[1] = static_cast<int>(color[1] * 255.0f);
+                            config.diffuseColor[2] = static_cast<int>(color[2] * 255.0f);
 
-                            UpdateLightColor(lightData);
+                            RE::NiColor runtimeColor{
+                                color[0],
+                                color[1],
+                                color[2]
+                            };
+
+                            if (config.emittanceRegion)
+                            {
+                                auto emittance = config.emittanceRegion->emittanceColor;
+
+                                runtimeColor.red *= emittance.red;
+                                runtimeColor.green *= emittance.green;
+                                runtimeColor.blue *= emittance.blue;
+                            }
+
+                            ApplyRuntimeColor(runtimeColor);
                         }
 
-                        ImGuiMCP::EndPopup();
+                        ImGuiMCP::End();
                     }
                 }
-                ImGuiMCP::EndChild();
 
                 ImGuiMCP::Columns(1);
-
                 ImGuiMCP::Spacing();
-
                 ImGuiMCP::Spacing();
 
                 if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 205), true,
@@ -1617,9 +1671,9 @@ namespace UI {
 
             if (ImGuiMCP::Button("Add To Light Exclusion List")) {
 
-                std::string refIDandModName = BuildRefIDAndModName(selected);
+                std::string refIDandModName = forms::BuildRefIDAndModName(selected);
 
-                if (!AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
+                if (!ini::AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
                     logger::error("Failed to append excluded ref {}", refIDandModName);
                 }
 
@@ -1775,9 +1829,9 @@ namespace UI {
 
             if (ImGuiMCP::Button("Add To Light Exclusion List")) {
 
-                std::string refIDandModName = BuildRefIDAndModName(selected);
+                std::string refIDandModName = forms::BuildRefIDAndModName(selected);
 
-                if (!AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
+                if (!ini::AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
                     logger::error("Failed to append excluded ref {}", refIDandModName);
                 }
 
@@ -1996,7 +2050,7 @@ namespace UI {
 
                 if (createNewTemplate) {
 
-                    auto refFormIDandModName = BuildRefIDAndModName(selected);
+                    auto refFormIDandModName = forms::BuildRefIDAndModName(selected);
 
                     newCfg.refFormIDsAndModNames.push_back(refFormIDandModName);
                     newCfg.menuName = refFormIDandModName;
@@ -2023,7 +2077,7 @@ namespace UI {
                     });
 
 
-                    RemoveFromIniExcludeRefID(selected, refFormIDandModName);
+                    ini::RemoveFromIniExcludeRefID(selected, refFormIDandModName);
                 }
                 else {
                     auto a_root = selected->Get3D();
@@ -2121,9 +2175,9 @@ namespace UI {
                         UpdateRefRootTransforms(selected);
                     }
 
-                    std::string refIDandModName = BuildRefIDAndModName(selected);
+                    std::string refIDandModName = forms::BuildRefIDAndModName(selected);
 
-                    RemoveFromIniExcludeRefID(selected, refIDandModName);
+                    ini::RemoveFromIniExcludeRefID(selected, refIDandModName);
 
                     step = AttachLightStep::Done;
                 }
@@ -2223,7 +2277,7 @@ namespace UI {
                             finalMenuCategory,
                             finalMenuName,
                             niLight,
-                            BuildRefIDAndModName(selected),
+                            forms::BuildRefIDAndModName(selected),
                             "",
                             newCfg,
                             true,
@@ -2271,7 +2325,7 @@ namespace UI {
                     const auto& filePath = selectedCfgs[0].configPath;
 
                     if (!refLight) {
-                        if (AddMeshPathToAllEntries(filePath, meshPath)) {
+                        if (AddMeshPathToAllJsonEntries(filePath, meshPath)) {
                             logger::info("Added mesh path to existing template successfully");
                         }
                         else {
@@ -2296,8 +2350,8 @@ namespace UI {
                     // refid light
                     LightConfig refCfg = selectedCfgs[0];
 
-                    std::string refFormIDAndModName = BuildRefIDAndModName(selected);
-                    RemoveFromIniExcludeRefID(selected, refFormIDAndModName);
+                    std::string refFormIDAndModName = forms::BuildRefIDAndModName(selected);
+                    ini::RemoveFromIniExcludeRefID(selected, refFormIDAndModName);
                     refCfg.configPath = filePath;
                     refCfg.jsonIndex = static_cast<std::uint16_t>(CountJsonEntriesInFile(filePath));
                     refCfg.menuName = selectedCfgs[0].menuName;
@@ -2310,7 +2364,7 @@ namespace UI {
                         break;
                     }
 
-                    AddRefIDToAllEntries(refCfg.configPath, refFormIDAndModName);
+                    AddRefIDToAllJsonEntries(refCfg.configPath, refFormIDAndModName);
 
                     globals::baseFormsWithAttachedLights.emplace(baseFormID);
                     resetState();

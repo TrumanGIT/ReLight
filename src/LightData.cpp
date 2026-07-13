@@ -190,13 +190,9 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 	//cfg.position[1] = niLight->local.translate.y;
 	//cfg.position[2] = niLight->local.translate.z;
 
-	cfg.diffuseColor[0] = int(rt.diffuse.red * 255.0f);
-	cfg.diffuseColor[1] = int(rt.diffuse.green * 255.0f);
-	cfg.diffuseColor[2] = int(rt.diffuse.blue * 255.0f);
-
 	cfg.flickerIntensity = baseConfig.flickerIntensity;
 	cfg.flickersPerSecond = baseConfig.flickersPerSecond;
-	cfg.flickerRandomness = baseConfig.flickerRandomness;
+//	cfg.flickerRandomness = baseConfig.flickerRandomness;
 
 	if (globals::islInstalled) {
 

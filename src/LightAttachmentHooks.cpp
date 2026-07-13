@@ -151,7 +151,6 @@ void Load3D::Install()
 // im unable figure out how 1st person / 3rd person lights work. according to logging, in vanilla both are attachd at the 1st 
 //attachlight node in the node tree of a torch. I think the game constantly update the first persons lights position as the player moves.
 
-//TODO:: this is poorly implemented, possibly editing all torch sconces in the area as well when were only trying to target handheld torches
 void AddonNodes::thunk(
 	RE::NiAVObject* a_clonedNode,
 	RE::NiAVObject* a_node,
@@ -161,6 +160,7 @@ void AddonNodes::thunk(
 {
     func(a_clonedNode, a_node, a_slot, a_actor, a_bipedAnim);
 		 
+	// torch slot
 	if (a_slot == 9) {
 
 		logger::debug("cloned node = {} a_node = {}", a_clonedNode->name.c_str(), a_node->name.c_str());
@@ -230,7 +230,6 @@ bool Activate::thunk(
 	}
 
 	LightManager::HandleSkyHavenTempleScriptedFires(a_targetRef); 
-
 
 	LightManager::HandleDLC1VCDungeonScriptedFires(a_targetRef); 
 

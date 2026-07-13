@@ -7,7 +7,10 @@
 #include "LightManager.h"
 #include "utility.h"
 #include "global.h"
+#include "raycast.hpp"
+
 #include <CLibUtilsQTR/DrawDebug.hpp>
+
 
 inline float NiSinQImpl(float a_value)
 {
@@ -630,39 +633,40 @@ inline void UpdateRegionEmittance(RE::NiColor& a_color, RE::TESRegion* a_region)
 		auto* setting = RE::GameSettingCollection::GetSingleton()->GetSetting("fWeatherFlashDirectional");
 		float flashDirectional = setting ? setting->data.f : 1.0f;
 		sky->SetColor(a_color, &colorBlend, sky->flash * flashDirectional);
+		logger::info("Updated Region Emittance Color");
 	}
 }
 
 // generic type argument probly not needed both shadow light list and non shadow light list same array type proboblly
 template <class T>
-static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3 playerPos)
+static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3 playerPos, bool updateExternalEmittance)
 {
-
 	constexpr float maxDist = 5000.0f;
 	constexpr float maxDistSq = maxDist * maxDist;
 
     std::vector<RE::NiPointer<RE::NiLight>> toRemove;  
 
-    for (auto& light : lights) {
-        if (!light || !light->light)
+	for (auto& light : lights) {
+		if (!light || !light->light)
 			continue;
 
-		HandleQueuedLights(light); 
+		HandleQueuedLights(light);
 
-        auto name = std::string_view(light->light->name.c_str());
-        if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
-            continue;
+		auto name = std::string_view(light->light->name.c_str());
+		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
+			continue;
 
 		auto diff = light->light->world.translate - playerPos;
 		float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
 		if (distSq > maxDistSq)
 			continue;
 
-        // this is to remove lights from the scene otherwise they stay after mesh unloads
-        if (!light->light->parent) {
-            toRemove.push_back(light->light);
-            continue;
-        }
+		// this is to remove lights from the scene otherwise they stay after mesh unloads
+		auto a_root = light->light->parent;
+		if (!a_root) {
+			toRemove.push_back(light->light);
+			continue;
+		}
 
 		// scale I use as a free float used as flicker timer
 		auto& scale = light->light->local.scale;
@@ -679,32 +683,36 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 
 		const auto& config = it->second;
 
-		if (config.emittanceRegion) {
-			auto emittanceColor = config.emittanceRegion->emittanceColor;
-			if (emittanceColor == globals::COLOR_BLACK) {
-				UpdateRegionEmittance(emittanceColor, config.emittanceRegion);
+		if (config.emittanceRegion && updateExternalEmittance) {
+
+			auto emittance = config.emittanceRegion->emittanceColor;
+
+			if (emittance == globals::COLOR_BLACK) {
+				UpdateRegionEmittance(emittance, config.emittanceRegion);
 			}
-			rt.diffuse *= emittanceColor;
+			rt.diffuse.red = (config.diffuseColor[0] / 255.0f) * emittance.red;
+			rt.diffuse.green = (config.diffuseColor[1] / 255.0f) * emittance.green;
+			rt.diffuse.blue = (config.diffuseColor[2] / 255.0f) * emittance.blue;
 		}
 
 		uint32_t seed =
 			static_cast<uint32_t>(
 				reinterpret_cast<std::uintptr_t>(light.get()) & 0xFFFFFFFF);
 
-		float r = 0.0f; 
+		//float r = 0.0f; 
 
 		// Flicker Randomness
 		// Check if the param flickerRandomness exist. If not, applies a default value that will be saved with the template next time the user saves it in the light editor.
 		// Otherwise apply the existing parameter value from the config.
 		// Since I don't know how you handle existing code when adding new values I made this check. 
 		// Tell me if there's another way to prevent the code from being weird when ReLight tries to inject a value that doesn't exist already in the configs...
-		if (config.flickerRandomness) {
-			r = getRandomFloat(-config.flickerRandomness , config.flickerRandomness, seed);
+	//	if (config.flickerRandomness) {
+	//		r = getRandomFloat(-config.flickerRandomness , config.flickerRandomness, seed);
 
-		} else {
+	//	} else {
 
-			r = getRandomFloat(-0.1f, 0.1f, seed);
-		}
+			float r = getRandomFloat(-0.1f, 0.1f, seed);
+	//	}
 
 		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
 
@@ -742,7 +750,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		const float sy = NiSinQ(pointLight->linearAttenuation);
 		const float sz = NiSinQ(pointLight->quadraticAttenuation);
 
-		const auto& base = pointLight->local.translate;  // or whatever your config field is called
+		const auto& base = pointLight->local.translate; 
 
 		pos.x = base[0] + sx * amp;
 		pos.y = base[1] + sy * amp;
@@ -752,10 +760,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		updateData.time = 0.0f;
 		updateData.flags = RE::NiUpdateData::Flag::kDirty;
 
-		auto a_root = light->light->parent;
-		if (!a_root) {
-			continue;
-		}
+	
 
 		a_root->UpdateTransformAndBounds(updateData);
 
@@ -809,7 +814,7 @@ inline void handlePendingMerges() {
                     if (!refB) continue;
 
                     // ray cast to ensure no walls in between
-                    if (HasAnythingBetween(refA.get()->GetPosition(), refB.get()->GetPosition())) {
+                    if (raycast::HasAnythingBetween(refA.get()->GetPosition(), refB.get()->GetPosition())) {
                         reprocessQueue.emplace_back(handle);
                         continue;
                     }
@@ -838,7 +843,7 @@ inline void handlePendingMerges() {
             auto otherRef = handle.get();
             if (!otherRef) continue;;
           
-            if (HasAnythingBetween(retryRefA.get()->GetPosition(), otherRef.get()->GetPosition())) {
+            if (raycast::HasAnythingBetween(retryRefA.get()->GetPosition(), otherRef.get()->GetPosition())) {
                 nextQueue.emplace_back(handle);
             }
             else {
@@ -923,8 +928,8 @@ inline bool OneSecondPassed(const std::chrono::steady_clock::time_point& timerSt
 template <class T>
 static void DrawLightDebugSpheres(T& lights, RE::NiPoint3 playerPos, uint32_t configID)
 {
-	constexpr float maxDist = 450.0f;
-	constexpr float maxDistSq = maxDist * maxDist;
+
+	const int maxDistSq = globals::distanceForDrawDebugLines * globals::distanceForDrawDebugLines;
 
 	auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
 	if (!api) return;
@@ -951,7 +956,6 @@ static void DrawLightDebugSpheres(T& lights, RE::NiPoint3 playerPos, uint32_t co
 		api->DrawCircle(worldPos, radius, RE::NiPoint3(0.0f, 0.0f, 0.0f), 1); // XY
 		api->DrawCircle(worldPos, radius, RE::NiPoint3(RE::NI_HALF_PI, 0.0f, 0.0f), 1); // XZ
 		api->DrawCircle(worldPos, radius, RE::NiPoint3(0.0f, RE::NI_HALF_PI, 0.0f), 1); // YZ
-		logger::info("debug line drawn"); 
 	}
 }
 

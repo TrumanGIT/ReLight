@@ -1,8 +1,10 @@
 #include "LightManager.h"
 #include "Utility.h"
 #include "config.hpp"
-#include "ClibUtil/EditorID.hpp"
 #include "LightAttachmentHooks.h"
+#include "forms.hpp"
+
+#include <ClibUtil/EditorID.hpp>
 #include <chrono>
 #include <type_traits>
 #include <array>
@@ -454,7 +456,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 		 return false;
 	 } 
 
-	 if (!skipExcludes && isExclude(meshName, a_this)) return true;
+	 if (!skipExcludes && forms::isExclude(meshName, a_this)) return true;
 
 	auto cfgs = findConfigsForMeshPath(meshNameMatch, isInterior);
 
@@ -764,7 +766,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		if (!otherRefNameMatch.empty()) {
 
-			if (isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
+			if (forms::isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
 
 			bool looseMatch = false;
 

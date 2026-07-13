@@ -11,6 +11,7 @@
 #include "disableLights.h"
 #include "LightAttachmentHooks.h"
 #include "vanillaMenus.h"
+#include "ini.hpp"
 
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
@@ -29,11 +30,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kPostLoadGame:
     {
- 
-       // auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
-        //logger::info("api exists: {}", api != nullptr);
-        //auto hud = DebugAPI_IMPL::DebugAPI::GetHUD();
-        //logger::info("HUD menu found: {}", hud != nullptr);
     
         break;
     }
@@ -44,19 +40,22 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
     }
     case SKSE::MessagingInterface::kDataLoaded:
     {
-        iniParser();
+        ini::IniParser();
 
         //cs installed dont need flicker prevention
         if (globals::islInstalled) globals::enableLightFlickerPreventionMeasures = false;
 
         if (globals::disableISL == true) globals::islInstalled = false; 
 
+        //parse json files
         parseTemplates();
+
         // create master point light. must clone it or crash idk why
         LightData::masterNiPointLight = NiPointLight::NiPointLight();
+
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
-        getObjectFadeMult();
+        //getObjectFadeMult();
         logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);
 
         DebugAPI_IMPL::DebugOverlayMenu::Register();

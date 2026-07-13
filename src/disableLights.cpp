@@ -2,6 +2,7 @@
 #include "disableLights.h"
 #include "Utility.h"
 #include "LightManager.h"
+#include "forms.hpp"
 
 
 //Po3's hook THIS DISABLES ALL LIGHTS TO START WITH A CLEAN BASE TO WORK FROM
@@ -55,7 +56,7 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     toLower(edid);
 
-    if (ContainsEditorID(edid, globals::disableByEditorID)) return true;
+    if (forms::ContainsEditorID(edid, globals::disableByEditorID)) return true;
 
     auto formID = ref->GetFormID();
 
@@ -75,7 +76,7 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     if (!globals::disableGameLights) return false;
 
-	if (ContainsEditorID(edid, globals::enableByEditorID)) return false;
+	if (forms::ContainsEditorID(edid, globals::enableByEditorID)) return false;
 
 
     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();

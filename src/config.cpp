@@ -4,6 +4,7 @@
 #include "LightManager.h"
 #include "utility.h"
 #include <algorithm>
+#include "forms.hpp"
 
 using json = nlohmann::json;
 
@@ -193,7 +194,7 @@ bool saveConfiguration(const LightConfig& config) {
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
 		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
-		newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
+		//newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
 		//clamp to 0.1f
 		newEntry["cutoffOverride"] =
 			std::max(0.01f, static_cast<float>(truncateDecimals(config.cutoffOverride, 2)));
@@ -279,7 +280,7 @@ bool saveNewConfiguration(LightConfig& config)
 		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
 		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
 		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
-		newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
+		//newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
 		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
 		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
 
@@ -336,7 +337,7 @@ bool saveNewConfiguration(LightConfig& config)
 	}
 }
 
- bool AddMeshPathToAllEntries(const std::string& filePath, const std::string& meshPath)
+ bool AddMeshPathToAllJsonEntries(const std::string& filePath, const std::string& meshPath)
 {
 	try {
 		std::ifstream inFile(filePath);
@@ -471,7 +472,7 @@ bool saveNewConfiguration(LightConfig& config)
     }
  }
 
-  bool AddRefIDToAllEntries(
+  bool AddRefIDToAllJsonEntries(
 	 const std::string& configPath,
 	 const std::string& refID)
  {
@@ -621,7 +622,7 @@ bool saveNewConfiguration(LightConfig& config)
 			  }
 
 			  // unified resolver (handles normal mods + light mods + vanilla fallback)
-			  const RE::TESFile* file = ResolveTESFileWithFallback(dataHandler, modName);
+			  const RE::TESFile* file = forms::ResolveTESFileWithFallback(dataHandler, modName);
 
 			  if (!file) {
 				  logger::warn("Invalid mod name '{}' in {} '{}'", modName, key, id);
@@ -813,8 +814,7 @@ void parseTemplates() {
 				cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
 			}
 
-		
-			//used to get the right index to save back too
+			//used to get the right index to save back too json file for multi light configs
 			jsonIndex++;
 		}
 	}
@@ -969,7 +969,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 newEntry["flickerIntensity"] = truncateDecimals(cfg.flickerIntensity, 2);
 		 newEntry["flickersPerSecond"] = truncateDecimals(cfg.flickersPerSecond, 2);
 		 newEntry["flickerAmplitude"] = truncateDecimals(cfg.flickerAmplitude, 2);
-		 newEntry["flickerRandomness"] = truncateDecimals(cfg.flickerRandomness, 2);
+		// newEntry["flickerRandomness"] = truncateDecimals(cfg.flickerRandomness, 2);
 		 newEntry["size"] = truncateDecimals(std::max(0.1f, cfg.size), 2);
 		 newEntry["cutoffOverride"] = truncateDecimals(cfg.cutoffOverride, 2);
 

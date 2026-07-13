@@ -44,9 +44,21 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	const auto playerPos = player->GetPosition(); 
 
-	updateLights(ssRt.activeLights, delta, false, playerPos);
+	static float externalEmittanceTimer = 0.0f;
+	static bool updateExternalEmittance = false; 
+	externalEmittanceTimer += delta;
 
-	updateLights(ssRt.activeShadowLights, delta, true, playerPos);
+	if (externalEmittanceTimer >= 1.0f) {
+		externalEmittanceTimer = 0.0f;
+
+		updateExternalEmittance = true; 
+	}
+
+	updateLights(ssRt.activeLights, delta, false, playerPos, updateExternalEmittance);
+
+	updateLights(ssRt.activeShadowLights, delta, true, playerPos, updateExternalEmittance);
+
+	updateExternalEmittance = false; 
 
 	if (globals::skseMenuOpened) {
 		globals::skseMenuOpened = false;

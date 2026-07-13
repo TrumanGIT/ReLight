@@ -157,93 +157,6 @@ namespace UI {
     // RenderLightEditor FUNCTIONS BELOW
     ////////////////////////////////////////
 
-   inline bool saveSettingsToIni()
-    {
-        logger::info("Saving ReLight.ini...");
-        const std::string path = "Data\\SKSE\\Plugins\\ReLight.ini";
-
-        // READ: grab everything from the exclude refs section downward as a raw block
-        std::string preservedBlock;
-        {
-            std::ifstream inFile(path);
-            if (inFile.is_open())
-            {
-                std::string line;
-                bool inSection = false;
-                while (std::getline(inFile, line))
-                {
-                    if (!inSection && line.find("; add esps by name") != std::string::npos)
-                        inSection = true;
-                    if (inSection)
-                        preservedBlock += line + "\n";
-                }
-            }
-        }
-
-        std::ofstream outFile(path, std::ios::trunc);
-        if (!outFile.is_open())
-        {
-            logger::error("Failed to open {} for writing!", path);
-            return false;
-        }
-        outFile << ";allow relight to disable all non relight lights(to start with a clean base)\n";
-        outFile << "disableGameLights=" << (globals::disableGameLights ? "true" : "false") << "\n\n";
-        outFile << "; enable light flicker prevention (Not for CS users)\n";
-        outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
-        outFile << ";Change brightness of all Relight lights\n";
-        outFile << "lightBrightnessMultiplier=" << std::clamp(globals::brightnessModifier, 0.1f, 2.0f) << "\n\n";
-        outFile << ";Change brightness of all non SKSE lights\n";
-        outFile << "nonSKSELightsBrightnessMultiplier=" << std::clamp(globals::vanillaBrightnessModifier, 0.1f, 2.0f) << "\n\n";
-        outFile << "; remove fake glow orbs (default = true)\n";
-        outFile << "removeFakeGlowOrbs=" << (globals::removeFakeGlowOrbs ? "true" : "false") << "\n\n";
-        outFile << "; enable debug bulbs (default = false)\n";
-        outFile << "enableDebugBulbs=" << (globals::enableDebugLightBulbs ? "true" : "false") << "\n\n";
-        outFile << "; enable debug lines (default = true)\n";
-        outFile << "enableDebugLines=" << (globals::enableDebugLines ? "true" : "false") << "\n\n";
-        outFile << "; max distance for debug lines (default = false)\n";
-        outFile << "maxDistanceForDrawDebuglines=" << globals::distanceForDrawDebugLines << "\n\n";
-        outFile << "; disable Inverse Squared Lighting (relight lights and menu will change to vanilla, Only works if ISL is disabled at boot in CS settings)\n";
-        outFile << "disableISL=" << (globals::disableISL ? "true" : "false") << "\n\n";
-        outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
-        outFile << "loggingLevel=" << globals::loggingLevel << "\n";
-        outFile << "\n; Light merge settings\n\n";
-        outFile << "enableLightMerging="<< (globals::enableLightMerging ? "true" : "false") << "\n";
-        outFile << "light merge distance=" << globals::lightMergeDistance << "\n";
-        outFile << "shadow light merge distance=" << globals::shadowLightMergeDistance << "\n";
-        outFile << "light merge distance increased=" << globals::lightMergeSeekingDistance << "\n";
-        outFile << "max z diff to merge=" << globals::fMaxZDiffToMerge << "\n";
-        outFile << "max z diff to merge increased=" << globals::fMaxZDiffToMergeIncreased << "\n";
-        outFile << "light fade increase per merge=" << globals::lightFadePerMerge << "\n";
-        outFile << "light radius increase per merge=" << globals::lightRadiusPerMerge << "\n";
-        outFile << "light fade max=" << globals::lightFadeMax << "\n";
-        outFile << "light radius max=" << globals::lightRadiusMax << "\n";
-        outFile << "light merge max lights=" << globals::lightMergeMaxLights << "\n\n";
-        outFile << "\n;Light FlickerPrevention Settings\n\n";
-        outFile << ";trishapes with worldbound radius larger than this number will not participate in light flicker prevention\n";
-        outFile << "large surface size=" << globals::largeSurfaceSize << "\n";
-        outFile << ";trishapes with worldbound radius larger then this number will not participate in light type distance checks\n";
-        outFile << "medium surface size=" << globals::mediumSurfaceSize << "\n";
-        outFile << ";trishapes with worldbound radius larger then this number will not participate in max light types per surface checks\n";
-        outFile << "small surface size=" << globals::smallSurfaceSize << "\n";
-        outFile << "max candles per sm surface=" << globals::maxCandlesPerSurfaceSM << "\n";
-        outFile << "max chandeliers per sm surface=" << globals::maxChandeliersPerSurfaceSM << "\n";
-        outFile << "max fires per sm surface=" << globals::maxFiresPerSurfaceSM << "\n";
-        outFile << "max candles per m surface=" << globals::maxCandlesPerSurfaceM << "\n";
-        outFile << "max chandeliers per m surface=" << globals::maxChandeliersPerSurfaceM << "\n";
-        outFile << "max fires per m surface=" << globals::maxFiresPerSurfaceM << "\n";
-        outFile << "max candle distance=" << globals::maxCandleDistance << "\n";
-        outFile << "max candle z distance=" << globals::maxCandleZDistance << "\n";
-        outFile << "max chandelier distance=" << globals::maxChandelierDistance << "\n";
-        outFile << "max chandelier z distance=" << globals::maxChandelierZDistance << "\n";
-
-        // dump the entire preserved block back verbatim - comments, formids, everything
-        if (!preservedBlock.empty())
-            outFile << "\n" << preservedBlock;
-
-        outFile.close();
-        logger::info("ReLight.ini saved successfully!");
-        return true;
-   }
 
    inline void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
         if (!light) {
@@ -283,6 +196,10 @@ namespace UI {
             return;
         }
 
+        cfg.diffuseColor[0] = backupCfg.diffuseColor[0];
+        cfg.diffuseColor[1] = backupCfg.diffuseColor[1];
+        cfg.diffuseColor[2] = backupCfg.diffuseColor[2];
+
         lightData.radius = LightData::getNiPointLightRadius(backupCfg, ref->GetScale());
         lightData.fade = backupCfg.brightness;
         LightData::setNiPointLightAmbientAndDiffuse(light.get(), backupCfg);
@@ -300,10 +217,12 @@ namespace UI {
         cfg.flickerIntensity = backupCfg.flickerIntensity;
         cfg.flickersPerSecond = backupCfg.flickersPerSecond;
         cfg.flickerAmplitude = backupCfg.flickerAmplitude;
-        cfg.flickerRandomness = backupCfg.flickerRandomness;
+      //  cfg.flickerRandomness = backupCfg.flickerRandomness;
         cfg.flags = backupCfg.flags;
         cfg.menuName = backupCfg.menuName;
         cfg.menuCategory = backupCfg.menuCategory;
+        cfg.externalEmittance = backupCfg.externalEmittance;
+        cfg.emittanceRegion = backupCfg.emittanceRegion; 
 
         // Propagate to active lights in the shader node
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -334,7 +253,7 @@ namespace UI {
         updateLightList(rt.activeShadowLights);
 
         logger::info("Restored '{}' to default config", lightName);
-    }
+   }
 
 
    inline bool compareLightNames(const char* a, const char* b) {
@@ -1035,19 +954,37 @@ namespace UI {
         return result;
     }
 
-    inline void RemoveFromIniExcludeRefID(RE::TESObjectREFR* ref, std::string& refIDandModName)
+  
+
+    inline void BuildRegionList(std::vector<std::pair<std::string, RE::TESRegion*>>& out)
     {
+        out.clear();
 
-        if (refIDandModName.empty()) {
-            logger::warn("RemoveFromIniExcludeRefID: Failed to build refID string.");
-            return;
+        auto& regions = RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESRegion>();
+
+        for (auto* region : regions) {
+            if (!region) {
+                continue;
+            }
+
+            auto editorID = clib_util::editorID::get_editorID(region);
+            if (editorID.empty()) {
+                continue;
+            }
+
+            // filter: only FX* or Weather*
+            if (!editorID.starts_with("FX") &&
+                !editorID.starts_with("Weather")) {
+                continue;
+            }
+
+            out.emplace_back(editorID, region);
         }
 
-        if (!RemoveMenuExcludedRefFromINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
-            logger::info("No Ref {} Found in Ini Excludes to Remove", refIDandModName);
-        }
-
-        globals::excludedRefFormIDs.erase(ref->GetFormID());
+        std::sort(out.begin(), out.end(),
+            [](const auto& a, const auto& b) {
+                return a.first < b.first;
+            });
     }
 
 

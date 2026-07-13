@@ -32,10 +32,11 @@ F(flickerIntensity, 0.1f) \
 F(flickersPerSecond, 0.1f) \
 F(flickerTime, 0.0f) \
 F(flickerAmplitude, 0.0f) \
-F(flickerRandomness, 0.0f) \
 F(startingFade, 0.f) \
 F(size, 2.0f) \
 F(cutoffOverride , 0.05f) \
+
+//F(flickerRandomness, 0.0f) \
 
 #define BOOL2DEF(B, I) bool B{I};
 #define FLOAT2DEF(B, I) float B{I};
@@ -73,20 +74,21 @@ struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
     FOREACH_FLOAT(FLOAT2DEF);
     std::string configPath{};                     // save the path from where this config is loaded
-    std::vector<std::string> meshPaths;
-    std::string menuCategory{};
-    std::string menuName{};
-    std::string externalEmittance{};      // "FXLightRegionSunlight" or empty
+    std::vector<std::string> meshPaths;        // to attach light from config to objects with said mesh path
+    std::string menuCategory{};            // catagorise configs in the light editor
+    std::string menuName{};                // name as it appears in the editor
+    std::string externalEmittance{};      // to make lights change color based on time of day
     RE::TESRegion* emittanceRegion = nullptr;
-    std::vector<std::string> refFormIDsAndModNames;
-    std::vector<std::string> baseFormIDsAndModNames;
-    std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color.red, blue green 
+    std::vector<std::string> refFormIDsAndModNames; // to attach light from config to objects with said reference form id
+    std::vector<std::string> baseFormIDsAndModNames; // to attach light from config to objects with said base form id
+    std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color for main color
+    //std::array<int, COL_SIZE> startingDiffuseColor{};     // NiPointLightRunflickerTime->data.color for main color
     std::array<float, POS_SIZE> position{0, 0, 30};       // RE::NiPointLight->local.translate.x, y z
-    std::array<float, POS_SIZE> rotation{ 0, 0, 0 };       // RE::NiPointLight->local.rotation
+    std::array<float, POS_SIZE> rotation{ 0, 0, 0 };       // RE::NiPointLight->local.rotation used for spotlights
     uint32_t flags{ 0 };
-    std::vector<int> attachPath;
-    uint32_t configID = 0;
-    uint16_t jsonIndex = 0;
+    std::vector<int> attachPath; // used to attach the ni light to a certain node of a mesh
+    uint32_t configID = 0;       // used to lookup configs fast in flicker calcs ect
+    uint16_t jsonIndex = 0;      // used to keep track of multi lights
 
     inline void printFlags(uint32_t mask)
     {
@@ -201,9 +203,9 @@ inline bool updateConfigMap (std::vector<LightConfig>& vec, const LightConfig& u
 }
 
 //used for in game menu
-bool AddMeshPathToAllEntries(const std::string& filePath, const std::string& meshPath); 
+bool AddMeshPathToAllJsonEntries(const std::string& filePath, const std::string& meshPath); 
 
-bool AddRefIDToAllEntries(const std::string& configPath, const std::string& refID);
+bool AddRefIDToAllJsonEntries(const std::string& configPath, const std::string& refID);
 
 std::size_t CountJsonEntriesInFile(const std::string& configPath); 
 
