@@ -232,6 +232,19 @@ namespace UI {
                 ImGuiMCP::SetTooltip("Enable / Disable light merging");
             }
 
+
+            if (ImGuiMCP::Checkbox("Enable Shadow Light Merging", &globals::enableShadowLightMerging)) {
+            }
+
+            if (ImGuiMCP::IsItemHovered()) {
+                ImGuiMCP::BeginTooltip();
+                ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4(1.0f, 0.2f, 0.2f, 1.0f));
+                ImGuiMCP::Text("WARNING: Disabling shadow light merging can cause you to exceed skyrims 4 shadow light limit per area");
+                ImGuiMCP::Text("Enable / Disable light merging");
+                ImGuiMCP::PopStyleColor();
+                ImGuiMCP::EndTooltip();
+            }
+
             ImGuiMCP::SliderInt("Max lights to merge", &globals::lightMergeMaxLights, 0, 25);
 
             if (ImGuiMCP::IsItemHovered()) {
@@ -333,6 +346,8 @@ namespace UI {
             debugLogAllLights();
         }
 
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Log all currently active relight lights to relight.log file");
+
         ImGuiMCP::Separator();
 
         ImGuiMCP::Checkbox("Disable Game Lights", &globals::disableGameLights);
@@ -353,7 +368,7 @@ namespace UI {
             0,
             10000,
             "%d");
-        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("any light futher then this value will not draw debug lines");
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Any light futher then this value will not draw debug lines");
             
 
         ImGuiMCP::Separator();
@@ -861,7 +876,7 @@ namespace UI {
                     }
 
                     if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("Select a region used for external emittance (Change sky light colors based on time of day");
+                        ImGuiMCP::SetTooltip("Select a region used for external emittance (Change light colors based on time of day, good for window lights)");
                     }
     
                     ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 20.0f));

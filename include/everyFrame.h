@@ -878,9 +878,11 @@ inline void handlePendingMerges() {
         }
 
         uint32_t flags = cfgs[0].flags;
+
+		const auto allowLightMerge = cfgs[0].shadowLight ? globals::enableShadowLightMerging : globals::enableLightMerging;
   
 		if (cfgs.size() == 1 &&
-			globals::enableLightMerging &&
+			allowLightMerge &&
 			!(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
             auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
             if (!cloneLight) { reprocessQueue = std::move(nextQueue); continue; }

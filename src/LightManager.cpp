@@ -469,8 +469,10 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 
 	uint32_t flags = cfgs[0].flags;
 
+	const auto allowLightMerge = cfgs[0].shadowLight ? globals::enableShadowLightMerging : globals::enableLightMerging;
+
 	// not a multi light, send off to merging logic
-	if (cfgs.size() == 1 && globals::enableLightMerging && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
+	if (cfgs.size() == 1 && allowLightMerge && !(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
 		auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
 		if (!cloneLight) {
 			logger::warn("Failed to clone NiPointLight for ref {:08X} with mesh '{}' )", refFormID, meshName);

@@ -86,6 +86,8 @@ namespace globals
 
     inline bool enableLightMerging = true;
 
+    inline bool enableShadowLightMerging = true;
+
     inline int lightMergeMaxLights = 12;
 
     inline float lightMergeSeekingDistance = 188;

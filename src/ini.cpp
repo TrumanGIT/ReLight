@@ -340,6 +340,12 @@ namespace ini {
 			logger::info("enable Light Merging = {}", globals::enableLightMerging);
 			continue;
 		}
+
+		if (key == "enableshadowlightmerging") {
+			globals::enableShadowLightMerging = value == "true";
+			logger::info("enable shadow Light Merging = {}", globals::enableShadowLightMerging);
+			continue;
+		}
 		// light flicker prevention 
 
 		if (key == "large surface size") {
@@ -465,6 +471,7 @@ namespace ini {
 	outFile << "\n; Light merge settings\n\n";
 	outFile << "enableLightMerging=" << (globals::enableLightMerging ? "true" : "false") << "\n";
 	outFile << "light merge distance=" << globals::lightMergeDistance << "\n";
+	outFile << "enableShadowLightMerging=" << (globals::enableShadowLightMerging ? "true" : "false") << "\n";
 	outFile << "shadow light merge distance=" << globals::shadowLightMergeDistance << "\n";
 	outFile << "light merge distance increased=" << globals::lightMergeSeekingDistance << "\n";
 	outFile << "max z diff to merge=" << globals::fMaxZDiffToMerge << "\n";
