@@ -472,10 +472,13 @@ bool saveNewConfiguration(LightConfig& config)
     }
  }
 
-  bool AddRefIDToAllJsonEntries(
+ bool AddFormIDToAllJsonEntries(
 	 const std::string& configPath,
-	 const std::string& refID)
+	 const std::string& formIDStr,
+	 bool baseID)
  {
+	 const char* fieldName = baseID ? "baseID" : "refID";
+
 	 try {
 		 std::ifstream inFile(configPath);
 		 if (!inFile.is_open()) {
@@ -498,45 +501,45 @@ bool saveNewConfiguration(LightConfig& config)
 				 continue;
 			 }
 
-			 if (!entry.contains("refID")) {
-				 entry["refID"] = json::array();
-				 entry["refID"].push_back(refID);
+			 if (!entry.contains(fieldName)) {
+				 entry[fieldName] = json::array();
+				 entry[fieldName].push_back(formIDStr);
 				 changed = true;
 				 continue;
 			 }
 
-			 auto& refField = entry["refID"];
+			 auto& idField = entry[fieldName];
 
-			 if (refField.is_string()) {
-				 std::string existing = refField.get<std::string>();
+			 if (idField.is_string()) {
+				 std::string existing = idField.get<std::string>();
 
-				 if (existing != refID) {
-					 refField = json::array({ existing, refID });
+				 if (existing != formIDStr) {
+					 idField = json::array({ existing, formIDStr });
 					 changed = true;
 				 }
 			 }
-			 else if (refField.is_array()) {
+			 else if (idField.is_array()) {
 				 bool found = false;
 
-				 for (const auto& item : refField) {
-					 if (item.is_string() && item.get<std::string>() == refID) {
+				 for (const auto& item : idField) {
+					 if (item.is_string() && item.get<std::string>() == formIDStr) {
 						 found = true;
 						 break;
 					 }
 				 }
 
 				 if (!found) {
-					 refField.push_back(refID);
+					 idField.push_back(formIDStr);
 					 changed = true;
 				 }
 			 }
 			 else {
-				 logger::warn("refID in {} was neither string nor array", configPath);
+				 logger::warn("{} in {} was neither string nor array", fieldName, configPath);
 			 }
 		 }
 
 		 if (!changed) {
-			 logger::info("refID '{}' already present in all entries of {}", refID, configPath);
+			 logger::info("{} '{}' already present in all entries of {}", fieldName, formIDStr, configPath);
 			 return true;
 		 }
 
@@ -547,12 +550,12 @@ bool saveNewConfiguration(LightConfig& config)
 		 }
 
 		 outFile << data.dump(4);
-		 logger::info("Added refID '{}' to config file {}", refID, configPath);
+		 logger::info("Added {} '{}' to config file {}", fieldName, formIDStr, configPath);
 
 		 return true;
 	 }
 	 catch (const std::exception& e) {
-		 logger::error("Failed updating refID in {}: {}", configPath, e.what());
+		 logger::error("Failed updating {} in {}: {}", fieldName, configPath, e.what());
 		 return false;
 	 }
  }
@@ -886,10 +889,12 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 	 const std::string& menuName,
 	 RE::NiLight* niLight,
 	 const std::string& refIDAndModName,
-	 const std::string& matched,
+	 const std::string& baseIDAndModName,
 	 const LightConfig& baseCfg,
 	 bool refLight,
-	 RE::FormID refFormID, bool preserveConfigID)
+	 RE::FormID refFormID,
+	 RE::FormID baseFormID,
+	 bool preserveConfigID)
  {
 	 try {
 		 if (configPath.empty()) {
@@ -909,7 +914,6 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 cfg.configPath = configPath;
 		 cfg.jsonIndex = jsonIndex;
 		 cfg.configID = preserveConfigID ? baseCfg.configID : globals::nextID++;
-		// since we apply from a base config mabye we dont even need to set menu catagory and mabye menu name as well
 		 cfg.menuCategory = menuCategory;
 		 cfg.menuName = menuName;
 		 cfg.refFormIDsAndModNames.clear(); // clear copied baseCfg refs since were adding a new json object to json file
@@ -917,9 +921,9 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 			 cfg.refFormIDsAndModNames.push_back(refIDAndModName);
 		 }
 
-		 cfg.meshPaths.clear();
-		 if (!matched.empty()) {
-			 cfg.meshPaths.push_back(matched);
+		 cfg.baseFormIDsAndModNames.clear();
+		 if (!baseIDAndModName.empty()) {
+			 cfg.baseFormIDsAndModNames.push_back(baseIDAndModName);
 		 }
 
 		 std::ifstream inFile(configPath);
@@ -938,8 +942,8 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 
 		 json newEntry;
 
-		 if (!cfg.meshPaths.empty()) {
-			 newEntry["meshPath"] = cfg.meshPaths;
+		 if (!cfg.baseFormIDsAndModNames.empty()) {
+			 newEntry["baseID"] = cfg.baseFormIDsAndModNames;
 		 }
 
 		 if (!cfg.refFormIDsAndModNames.empty()) {
@@ -959,7 +963,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 #define JSON_WRITE(C, I) newEntry[#C] = cfg.C;
 		 FOREACH_BOOL(JSON_WRITE)
 
-		 newEntry["brightness"] = truncateDecimals(cfg.startingFade, 2);
+			 newEntry["brightness"] = truncateDecimals(cfg.startingFade, 2);
 		 newEntry["radius"] = truncateDecimals(cfg.radius, 2);
 		 newEntry["fov"] = truncateDecimals(cfg.fov, 2);
 		 newEntry["falloff"] = truncateDecimals(cfg.falloff, 2);
@@ -969,7 +973,6 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 newEntry["flickerIntensity"] = truncateDecimals(cfg.flickerIntensity, 2);
 		 newEntry["flickersPerSecond"] = truncateDecimals(cfg.flickersPerSecond, 2);
 		 newEntry["flickerAmplitude"] = truncateDecimals(cfg.flickerAmplitude, 2);
-		// newEntry["flickerRandomness"] = truncateDecimals(cfg.flickerRandomness, 2);
 		 newEntry["size"] = truncateDecimals(std::max(0.1f, cfg.size), 2);
 		 newEntry["cutoffOverride"] = truncateDecimals(cfg.cutoffOverride, 2);
 
@@ -1015,9 +1018,8 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 
 		 outFile << data.dump(4);
 
-			 LightData::configIDToJsonCfg[cfg.configID] = cfg;
-			 LightData::defaultConfigs[cfg.configID] = cfg;
-		
+		 LightData::configIDToJsonCfg[cfg.configID] = cfg;
+		 LightData::defaultConfigs[cfg.configID] = cfg;
 
 		 if (refLight) {
 			 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
@@ -1029,28 +1031,20 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 
 			 logger::info(
 				 "AppendNewConfigEntryFromLight: added ref config '{}' at {} index {}",
-				 cfg.menuCategory,
 				 cfg.menuName,
 				 cfg.configPath,
 				 cfg.jsonIndex);
 		 }
 		 else {
-			 for (const auto& meshPath : cfg.meshPaths) {
-				 if (meshPath.empty()) {
-					 continue;
-				 }
-
-				 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-					 LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
-				 }
-				 else {
-					 LightData::meshPathToJsonCfg[meshPath].push_back(cfg);
-				 }
+			 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				 LightData::baseFormIDToJsonCfgExteriors[baseFormID].push_back(cfg);
+			 }
+			 else {
+				 LightData::baseFormIDToJsonCfg[baseFormID].push_back(cfg);
 			 }
 
 			 logger::info(
-				 "AppendNewConfigEntryFromLight: added mesh config '{}' at {} index {}",
-				 cfg.menuCategory,
+				 "AppendNewConfigEntryFromLight: added base config '{}' at {} index {}",
 				 cfg.menuName,
 				 cfg.configPath,
 				 cfg.jsonIndex);

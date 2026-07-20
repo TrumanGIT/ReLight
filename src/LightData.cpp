@@ -342,10 +342,11 @@ void LightData::InvalidateTriLightCacheForActivator(RE::TESObjectREFR* ref)
 		});
 }
 
+// LightData.cpp
 void LightData::AddConfigToMaps(
 	const LightConfig& cfg,
 	bool isRefLight,
-	RE::FormID refFormID)
+	RE::FormID formID)
 {
 	LightData::configIDToJsonCfg[cfg.configID] = cfg;
 	LightData::defaultConfigs[cfg.configID] = cfg;
@@ -353,42 +354,27 @@ void LightData::AddConfigToMaps(
 	if (isRefLight) {
 
 		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-			LightData::refFormIDToJsonCfgExteriors[refFormID].push_back(cfg);
+			LightData::refFormIDToJsonCfgExteriors[formID].push_back(cfg);
 		}
 		else {
-			LightData::refFormIDToJsonCfg[refFormID].push_back(cfg);
+			LightData::refFormIDToJsonCfg[formID].push_back(cfg);
 		}
 
 		logger::info(
 			"RegisterConfigInMaps: added ref config '{}' at {} index {}",
-			cfg.menuName,
-			cfg.configPath,
-			cfg.jsonIndex);
+			cfg.menuName, cfg.configPath, cfg.jsonIndex);
 	}
 	else {
 
-		for (auto meshPath : cfg.meshPaths) {
-
-			if (meshPath.empty()) {
-				continue;
-			}
-
-			toLower(meshPath);
-
-			if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-				LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
-			}
-			else {
-				LightData::meshPathToJsonCfg[meshPath].push_back(cfg);
-			}
-
-			globals::priorityList.push_back(meshPath);
-
-			logger::info(
-				"RegisterConfigInMaps: added mesh config '{}' at {} index {}",
-				meshPath,
-				cfg.configPath,
-				cfg.jsonIndex);
+		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+			LightData::baseFormIDToJsonCfgExteriors[formID].push_back(cfg);
 		}
+		else {
+			LightData::baseFormIDToJsonCfg[formID].push_back(cfg);
+		}
+
+		logger::info(
+			"RegisterConfigInMaps: added base config '{}' at {} index {}",
+			cfg.menuName, cfg.configPath, cfg.jsonIndex);
 	}
 }

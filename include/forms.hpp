@@ -20,7 +20,7 @@ namespace forms {
 		const std::string& meshPath,
 		RE::TESObjectREFR* ref);
 
-	std::string BuildRefIDAndModName(RE::TESObjectREFR* ref); 
+	std::string BuildFormIDAndModName(RE::TESObjectREFR* ref, bool baseID); 
 
 	const RE::TESFile* ResolveTESFileWithFallback(
 		RE::TESDataHandler* dataHandler,

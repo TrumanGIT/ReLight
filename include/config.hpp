@@ -205,7 +205,10 @@ inline bool updateConfigMap (std::vector<LightConfig>& vec, const LightConfig& u
 //used for in game menu
 bool AddMeshPathToAllJsonEntries(const std::string& filePath, const std::string& meshPath); 
 
-bool AddRefIDToAllJsonEntries(const std::string& configPath, const std::string& refID);
+bool AddFormIDToAllJsonEntries(
+    const std::string& configPath,
+    const std::string& formIDStr,
+    bool baseID);
 
 std::size_t CountJsonEntriesInFile(const std::string& configPath); 
 
@@ -225,8 +228,13 @@ bool AppendNewConfigEntryFromLight(
     const std::string& menuCategory,
     const std::string& menuName,
     RE::NiLight* niLight,
-    const std::string& refIDsAndModNames,
-    const std::string& matched, const LightConfig& baseCfg, bool refLight, RE::FormID refFormID, bool preserveConfigID = false);
+    const std::string& refIDAndModName,
+    const std::string& baseIDAndModName,
+    const LightConfig& baseCfg,
+    bool refLight,
+    RE::FormID refFormID,
+    RE::FormID baseFormID,
+    bool preserveConfigID);
 
 void parseTemplates();
 

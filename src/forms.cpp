@@ -133,7 +133,7 @@ namespace forms {
 		return false;
 	}
 
-	  std::string BuildRefIDAndModName(RE::TESObjectREFR* ref)
+	  std::string BuildFormIDAndModName(RE::TESObjectREFR* ref, bool baseID)
 	 {
 		 if (!ref) {
 			 return "";
@@ -147,7 +147,17 @@ namespace forms {
 			 return "";
 		 }
 
-		 auto runtimeID = ref->GetFormID();
+
+		 RE::FormID runtimeID = 0x0; 
+		 if (baseID) {
+			 auto baseObject = ref->GetBaseObject();
+			 if (!baseObject) return "";
+			 runtimeID = baseObject->GetFormID();
+		 }
+
+		 else {
+			 runtimeID = ref->GetFormID();
+		 }
 
 		 if (refOriginFile->IsLight()) {
 			 // Best option if available in your CommonLib version

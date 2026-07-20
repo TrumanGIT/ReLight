@@ -560,7 +560,6 @@ namespace UI {
         LightData::ResetTriLightCache();
     }
 
-
     inline std::string ResolveMenuName(const LightConfig& cfg)
     {
         if (!cfg.menuName.empty())
@@ -880,14 +879,14 @@ namespace UI {
     //RenderAttachRemove FUNTIONS
     ///////////////////////////////
 
-    inline void RefreshNearbyObjects(RE::TESObjectREFR* selected, std::string& extractedMeshName)
+    inline void RefreshNearbyObjectsByBase(RE::TESObjectREFR* selected, RE::FormID targetBaseFormID)
     {
         if (!selected) {
             logger::error("no selected ref, cannot refresh nearby objects");
             return;
         }
 
-        logger::debug("refresh lights called with mesh name, {}", extractedMeshName);
+        logger::debug("refresh lights called with base formID, {:08X}", targetBaseFormID);
 
         auto* player = RE::PlayerCharacter::GetSingleton();
         auto* tes = RE::TES::GetSingleton();
@@ -898,25 +897,16 @@ namespace UI {
         }
 
         tes->ForEachReferenceInRange(player, globals::fLODFadeOutMultObjects,
-            [selected, extractedMeshName](RE::TESObjectREFR* ref)
+            [selected, targetBaseFormID](RE::TESObjectREFR* ref)
             {
                 if (!ref || ref == selected) {
                     return RE::BSContainer::ForEachResult::kContinue;
                 }
 
                 const auto base = ref->GetBaseObject();
-
-                auto model = base ? base->As<RE::TESModel>() : nullptr;
-                if (!model) {
-                    //  logger::warn(" coldent get model in refresh Nearby objects");
+                if (!base || base->GetFormID() != targetBaseFormID) {
                     return RE::BSContainer::ForEachResult::kContinue;
                 }
-
-                auto  refBMeshPath = extractMeshName(model->GetModel());
-
-                toLower(refBMeshPath);
-
-                if (refBMeshPath != extractedMeshName) return RE::BSContainer::ForEachResult::kContinue;
 
                 logger::debug("Base-form match found; refreshing ref {:08X}", ref->GetFormID());
 
