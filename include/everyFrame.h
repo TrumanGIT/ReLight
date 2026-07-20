@@ -644,7 +644,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 	constexpr float maxDist = 5000.0f;
 	constexpr float maxDistSq = maxDist * maxDist;
 
-    std::vector<RE::NiPointer<RE::NiLight>> toRemove;  
+	std::vector<RE::NiPointer<RE::NiLight>> toRemove;
 
 	for (auto& light : lights) {
 		if (!light || !light->light)
@@ -694,7 +694,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 			rt.diffuse.green = (config.diffuseColor[1] / 255.0f) * emittance.green;
 			rt.diffuse.blue = (config.diffuseColor[2] / 255.0f) * emittance.blue;
 		}
-
+		
 		uint32_t seed =
 			static_cast<uint32_t>(
 				reinterpret_cast<std::uintptr_t>(light.get()) & 0xFFFFFFFF);

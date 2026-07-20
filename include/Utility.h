@@ -162,8 +162,6 @@ inline void glowOrbRemover(RE::NiNode* node)
 	glowOrbRemoverImpl(node);
 }
 
-
-
 inline const std::string findPriorityMatch(const std::string& meshName)
 {
 	for (const auto& meshNameInPriorityList : globals::priorityList) {

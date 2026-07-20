@@ -1207,19 +1207,9 @@ namespace UI {
                             config.diffuseColor[2] / 255.0f
                         };
 
-                        if (config.emittanceRegion)
-                        {
-                            auto emittance = config.emittanceRegion->emittanceColor;
-
-                            runtimeColor.red *= emittance.red;
-                            runtimeColor.green *= emittance.green;
-                            runtimeColor.blue *= emittance.blue;
-                        }
-
                         ApplyRuntimeColor(runtimeColor);
                     }
                     
-  
                     float colorPickerButtonHeight = ImGuiMCP::GetFrameHeight();
                     ImGuiMCP::SameLine();
                     if (ImGuiMCP::ColorButton(
@@ -1277,15 +1267,6 @@ namespace UI {
                                 color[1],
                                 color[2]
                             };
-
-                            if (config.emittanceRegion)
-                            {
-                                auto emittance = config.emittanceRegion->emittanceColor;
-
-                                runtimeColor.red *= emittance.red;
-                                runtimeColor.green *= emittance.green;
-                                runtimeColor.blue *= emittance.blue;
-                            }
 
                             ApplyRuntimeColor(runtimeColor);
                         }
