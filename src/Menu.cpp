@@ -494,7 +494,7 @@ namespace UI {
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
         FontAwesome::PushSolid();
- 
+
         ImGuiMCP::Text("%s Light Editor", editorIcon.c_str());
         ImGuiMCP::PopStyleColor();
         ImGuiMCP::SameLine();
@@ -552,8 +552,6 @@ namespace UI {
 
                 if (LightData::foundConfigForLight(niLight)) {
 
-                    // not using runtime here i dont really know the diff 
-                    // here we grab the config itself from the config to json ID map
                     auto& baseConfig = LightData::configIDToJsonCfg[niLight->unk138];
 
                     LightData::updateConfigFromLight(cfg, baseConfig, niLight);
@@ -654,729 +652,737 @@ namespace UI {
             didRefreshThisFrame = !didRefreshThisFrame;
         }
 
-        // catagorizies lights based on user defined catagories, alphabetizes ect
-            RenderLightList(lights, selectedIndex);
+        // ---------------------------------------------------------------------
+        // LOADED TEMPLATES LIST with fixed height of 450.0f, scrollable
+        // ---------------------------------------------------------------------
+        {
+            if (ImGuiMCP::BeginChild("LightListChild", ImGuiMCP::ImVec2(0, 450.0f), true))
+            {
+                RenderLightList(lights, selectedIndex);
+            }
+            ImGuiMCP::EndChild();
+        }
 
-            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
-                RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
-                auto& lightData = selectedLight->light->GetLightRuntimeData();
-                auto it = LightData::configIDToJsonCfg.find(lightData.unk138);
-                if (it == LightData::configIDToJsonCfg.end())
-                    return;
+        // ---------------------------------------------------------------------
+        // SELECTED TEMPLATE SETTINGS — fixed height of 450.0f, scrollable
+        // ---------------------------------------------------------------------
+        if (selectedIndex >= 0 && selectedIndex < lights.size()) {
+            RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
+            auto& lightData = selectedLight->light->GetLightRuntimeData();
+            auto it = LightData::configIDToJsonCfg.find(lightData.unk138);
 
+            if (it != LightData::configIDToJsonCfg.end()) {
                 auto& config = it->second;
 
-                Overlay* selectedIslRt;
+                Overlay* selectedIslRt = nullptr;
+                bool islReady = true;
 
                 if (globals::islInstalled) {
                     selectedIslRt = Overlay::Get(selectedLight->light.get());
-
-                    if (!selectedIslRt)
-                        return;
+                    if (!selectedIslRt) {
+                        islReady = false;
+                    }
                 }
 
-                static std::vector<std::pair<std::string, RE::TESRegion*>> regionList;
+                if (islReady) {
+                    static std::vector<std::pair<std::string, RE::TESRegion*>> regionList;
 
-                if (regionList.empty()) {
-                    BuildRegionList(regionList);
-                }
-
-                bool isSpotLight = config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight);
-
-                float radiusToUse = isSpotLight ? 5000.0f : 500.0f; 
-
-                float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
-
-                bool isTorch = (selectedLight->light->name == "RLtorch");
-
-                bool isShadowLight = config.shadowLight; 
-
-                if (globals::enableDebugLines &&!(config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight))) {
-
-                    globals::skseMenuOpened = true;      // menu is open this frame
-                    globals::debugLinesNeedClear = true; 
-
-                      auto player = RE::PlayerCharacter::GetSingleton();
-                      if (!player) return;
-
-                      auto playerPos = player->GetPosition();
-
-                      auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                      if (!ssNode) {
-                            logger::warn("ShadowSceneNode[0] is null!");
-                            return;
-                      }
-
-                      auto& ssRt = ssNode->GetRuntimeData();
-
-                      DrawLightDebugSpheres(ssRt.activeLights, playerPos, config.configID);
-
-                      DrawLightDebugSpheres(ssRt.activeShadowLights, playerPos, config.configID);
-
-                      DebugAPI_IMPL::DebugAPI::GetSingleton()->Update();
-                }
-
-                ImGuiMCP::PushID(selectedLight->light.get());
-
-                ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
-
-                // This is where the template editor starts.
-
-                //////////////////////////////////////////////////////////////////////////////////////////////////////
-                // We create a child for the other 4 main parameters (name, category, add flag, remove flag)
-                //////////////////////////////////////////////////////////////////////////////////////////////////////
-
-                if (ImGuiMCP::BeginChild("TemplateEditor", ImGuiMCP::ImVec2(0, 0), true,
-                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                {
-
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-                    // Template Name
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-
-                    static char newTemplateName[255];
-
-                    strncpy(newTemplateName, config.menuName.c_str(), sizeof(newTemplateName));
-                    newTemplateName[sizeof(newTemplateName) - 1] = '\0';
-
-                    ImGuiMCP::Text("Name:");
-                    ImGuiMCP::SameLine();
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(35.0f, 0.0f));
-                    ImGuiMCP::SameLine();
-                    ImGuiMCP::InputText("##templateName", newTemplateName, sizeof(newTemplateName));
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("This updates how the template name appears in the light editor.");
+                    if (regionList.empty()) {
+                        BuildRegionList(regionList);
                     }
 
-                    if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuName != newTemplateName)
+                    bool isSpotLight = config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight);
+                    float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
+                    float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
+                    bool isTorch = (selectedLight->light->name == "RLtorch");
+                    bool isShadowLight = config.shadowLight;
+
+                    if (ImGuiMCP::BeginChild("SelectedLightSettingsChild", ImGuiMCP::ImVec2(0, 450.0f), true))
                     {
-                        config.menuName = newTemplateName;
-                    }
+                        if (globals::enableDebugLines && !(config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight))) {
 
-                    /////////
-                    //Flags
-                   //////////
+                            globals::skseMenuOpened = true;
+                            globals::debugLinesNeedClear = true;
 
-                    ImGuiMCP::SameLine(0.0f, 10.0f); 
+                            auto player = RE::PlayerCharacter::GetSingleton();
+                            auto* ssNode = player
+                                ? RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0]
+                                : nullptr;
 
-                    static bool showFlagWindow = false;
+                            if (player && ssNode) {
+                                auto playerPos = player->GetPosition();
+                                auto& ssRt = ssNode->GetRuntimeData();
 
-                    if (ImGuiMCP::Button((std::string("Flags ") + flagIcon).c_str())) {
-                        showFlagWindow = !showFlagWindow;
-                    }
+                                DrawLightDebugSpheres(ssRt.activeLights, playerPos, config.configID);
+                                DrawLightDebugSpheres(ssRt.activeShadowLights, playerPos, config.configID);
 
-                    if (showFlagWindow) {
-                        ImGuiMCP::Begin("Flag Window", &showFlagWindow, ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None);
-
-                        auto FlagCheckbox = [](const char* label, uint32_t& flags, LIGHT_FLAGS flag, const char* tooltip)
-                            {
-                                bool checked = (flags & static_cast<uint32_t>(flag)) != 0;
-                                if (ImGuiMCP::Checkbox(label, &checked))
-                                {
-                                    if (checked)
-                                        flags |= static_cast<uint32_t>(flag);
-                                    else
-                                        flags &= ~static_cast<uint32_t>(flag);
-                                }
-
-                                if (ImGuiMCP::IsItemHovered())
-                                {
-                                    ImGuiMCP::SetTooltip("%s", tooltip);
-                                }
-                            };
-
-                        FlagCheckbox("Candle", config.flags, LIGHT_FLAGS::kCandle,
-                            "Important for light flicker prevention. Also allows the light to merge with any other "
-                            "light created from a relight json file which also has the Candle flag.");
-
-                        FlagCheckbox("Chandelier", config.flags, LIGHT_FLAGS::kChandelier,
-                            "Important for light flicker prevention.");
-
-                        FlagCheckbox("Fire", config.flags, LIGHT_FLAGS::kFire,
-                            "Important for light flicker prevention. Also allows the light to merge with any other "
-                            "light created from a relight json file which also has the Fire flag.");
-
-                        FlagCheckbox("Giant Campfire", config.flags, LIGHT_FLAGS::kGiantCampfire,
-                            "Allows merging with any other light created by a relight json config with the Fire flag (needed).");
-
-                        FlagCheckbox("Other", config.flags, LIGHT_FLAGS::kOther,
-                            "Allows merging with any other light created by a relight json config with the Other flag.");
-
-                        FlagCheckbox("Increased Merge Distance", config.flags, LIGHT_FLAGS::kIncreasedMergeDistance,
-                            "Grants a significantly larger merge distance to lights. Currently used for ruin candles.");
-
-                        FlagCheckbox("Increased Menu XYZ Scale", config.flags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
-                            "Increases the in-game menu XYZ position slider range from 250 to 1250, for positioning "
-                            "lights on larger objects.");
-
-                        FlagCheckbox("No Merging", config.flags, LIGHT_FLAGS::kNoMerging,
-                            "Light sources of this type will never merge.");
-
-                        FlagCheckbox("Outdoor", config.flags, LIGHT_FLAGS::kOutdoor,
-                            "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
-                            "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
-
-
-                        ImGuiMCP::End();
-                    }
-
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
-
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-                    // CATEGORY EDITOR
-                    //////////////////////////////////////////////////////////////////////////////////////////////////
-
-                    static char newTemplateCategory[255];
-
-                    strncpy(newTemplateCategory, config.menuCategory.c_str(), sizeof(newTemplateCategory));
-                    newTemplateCategory[sizeof(newTemplateCategory) - 1] = '\0';
-
-                    ImGuiMCP::Text("Category:");
-                    ImGuiMCP::SameLine();
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(10.0f, 0.0f));
-                    ImGuiMCP::SameLine();
-                    ImGuiMCP::InputText("##templateCategory", newTemplateCategory, sizeof(newTemplateCategory));
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("This organizes templates into a dropdown for a cleaner layout.");
-                    }
-
-                    if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuCategory != newTemplateCategory)
-                    {
-                        config.menuCategory = newTemplateCategory;
-                    }
-
-                    //EXTERNAL EMITTANCE
-                    static bool showEmittanceWindow = false;
-
-                    ImGuiMCP::SameLine();
-                    if (ImGuiMCP::Button("External Emittance")) {
-                        showEmittanceWindow = !showEmittanceWindow;
-                    }
-
-                    // separate window
-                    if (showEmittanceWindow) {
-                        if (ImGuiMCP::Begin("External Emittance", &showEmittanceWindow, ImGuiMCP::ImGuiWindowFlags_NoCollapse |
-                            ImGuiMCP::ImGuiWindowFlags_NoDocking)) {
-                            if (ImGuiMCP::Selectable("None", config.emittanceRegion == nullptr)) {
-                                config.emittanceRegion = nullptr;
-                                config.externalEmittance = "";
+                                DebugAPI_IMPL::DebugAPI::GetSingleton()->Update();
                             }
-                            for (auto& [editorID, region] : regionList) {
-                                bool selected = config.emittanceRegion == region;
-                                if (ImGuiMCP::Selectable(editorID.c_str(), selected)) {
-                                    config.emittanceRegion = region;
-                                    config.externalEmittance = editorID;
-                                    auto emittanceColor = config.emittanceRegion->emittanceColor;
-                                    UpdateRegionEmittance(emittanceColor, config.emittanceRegion); 
-                                    showEmittanceWindow = false; 
-                                }
-                            }
-                            ImGuiMCP::End();
-                        }
-                    }
-
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("Select a region used for external emittance (Change light colors based on time of day, good for window lights)");
-                    }
-    
-                    ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 20.0f));
-
-                }
-
-                ImGuiMCP::PushItemWidth(150.0f);
-
-                ImGuiMCP::Columns(2, nullptr, false);
-
-                if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, 200), true,
-                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                {
-                    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
-                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                    FontAwesome::PushSolid();
-
-                    ImGuiMCP::Text("%s Illuminance", lightbulbIcon.c_str());
-                    ImGuiMCP::PopStyleColor();
-                    ImGuiMCP::Separator();
-
-                    if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, brightnessToUse, "%.1f")) {
-                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                        if (ssNode) {
-                            auto& rt = ssNode->GetRuntimeData();
-                            for (auto& l : rt.activeLights) {
-                                if (!l) continue;
-                                auto& rtData = l->light->GetLightRuntimeData();
-                                if (rtData.unk138 == lightData.unk138)
-                                    rtData.fade = config.startingFade;
-                            }
-                            for (auto& l : rt.activeShadowLights) {
-                                if (!l) continue;
-                                auto& rtData = l->light->GetLightRuntimeData();
-                                if (rtData.unk138 == lightData.unk138)
-                                    rtData.fade = config.startingFade;
-                            }
-                        }
-                    }
-
-                    if (!globals::islInstalled) {
-                        if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
-                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                            if (ssNode) {
-                                auto& rt = ssNode->GetRuntimeData();
-                                for (auto& l : rt.activeLights) {
-                                    if (!l) continue;
-                                    auto& rtData = l->light->GetLightRuntimeData();
-                                    if (rtData.unk138 == lightData.unk138)
-                                        rtData.radius = lightData.radius;
-                                }
-                                for (auto& l : rt.activeShadowLights) {
-                                    if (!l) continue;
-                                    auto& rtData = l->light->GetLightRuntimeData();
-                                    if (rtData.unk138 == lightData.unk138)
-                                        rtData.radius = lightData.radius;
-                                }
-                            }
-                        }
-                    }
-                    else if (selectedIslRt) {
-                        if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
-                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                            if (ssNode) {
-                                auto& rt = ssNode->GetRuntimeData();
-                                for (auto& l : rt.activeLights) {
-                                    if (!l) continue;
-                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    if (auto* isl = Overlay::Get(l->light.get())) {
-                                        isl->cutoffOverride = selectedIslRt->cutoffOverride;
-                                    }
-                                }
-                                for (auto& l : rt.activeShadowLights) {
-                                    if (!l) continue;
-                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    if (auto* isl = Overlay::Get(l->light.get())) {
-                                        isl->cutoffOverride = selectedIslRt->cutoffOverride;
-                                    }
-                                }
+                            else if (player && !ssNode) {
+                                logger::warn("ShadowSceneNode[0] is null!");
                             }
                         }
 
-                        if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.0f, 10.0f, "%.2f")) {
-                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                            if (ssNode) {
-                                auto& rt = ssNode->GetRuntimeData();
-                                for (auto& l : rt.activeLights) {
-                                    if (!l) continue;
-                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    if (auto* isl = Overlay::Get(l->light.get())) {
-                                        isl->size = selectedIslRt->size;
-                                    }
-                                }
-                                for (auto& l : rt.activeShadowLights) {
-                                    if (!l) continue;
-                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    if (auto* isl = Overlay::Get(l->light.get())) {
-                                        isl->size = selectedIslRt->size;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                ImGuiMCP::EndChild();
-                ImGuiMCP::NextColumn();
+                        ImGuiMCP::PushID(selectedLight->light.get());
 
-                if (ImGuiMCP::BeginChild(
-                    "FlickerBox",
-                    ImGuiMCP::ImVec2(0, 200),
-                    true,
-                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                {
-                    // ----- Flicker Header -----
+                        ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
 
-                    if (didRefreshThisFrame && config.flickersPerSecond != 0.0f) {
-                        FontAwesome::PushSolid();
-                        ImGuiMCP::PushStyleColor(
-                            ImGuiMCP::ImGuiCol_Text,
-                            ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                    }
-                    else {
-                        FontAwesome::PushRegular();
-                        ImGuiMCP::PushStyleColor(
-                            ImGuiMCP::ImGuiCol_Text,
-                            ImGuiMCP::ImVec4{ 0.35f, 0.35f, 0.35f, 1.0f });
-                    }
+                        //////////////////////////////////////////////////////////////////////////////////////////////////////
+                        // TemplateEditor - Now dynamically sized based on content (height: 0 = auto-size)
+                        //////////////////////////////////////////////////////////////////////////////////////////////////////
 
-                    ImGuiMCP::Text("%s", lightbulbIcon.c_str());
-
-                    ImGuiMCP::PopStyleColor();
-                    FontAwesome::Pop();
-
-                    ImGuiMCP::SameLine();
-                    ImGuiMCP::PushStyleColor(
-                        ImGuiMCP::ImGuiCol_Text,
-                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                    ImGuiMCP::Text("Flicker");
-                    ImGuiMCP::PopStyleColor();
-
-                    ImGuiMCP::Separator();
-
-                    ImGuiMCP::BeginDisabled(isTorch);
-
-                    ImGuiMCP::SliderFloat(
-                        "Flickers / Second",
-                        &config.flickersPerSecond,
-                        0.0f, 5.0f, "%.2f");
-
-                    ImGuiMCP::BeginDisabled(config.flickersPerSecond == 0.0);
-
-                    ImGuiMCP::SliderFloat(
-                        "Flicker Intensity",
-                        &config.flickerIntensity,
-                        0.0f, 1.0f, "%.2f");
-               
-                    ImGuiMCP::SliderFloat(
-                        "Movement",
-                        &config.flickerAmplitude,
-                        0.0f, 1.0f, "%.2f");
-
-                   /*ImGuiMCP::SliderFloat(
-                        "Randomness",
-                        &config.flickerRandomness,
-                        0.0f, 1.0f, "%.2f");*/ 
-                    ImGuiMCP::EndDisabled();
-                    ImGuiMCP::EndDisabled();
-                }
-                ImGuiMCP::EndChild();
-
-                ImGuiMCP::Columns(1);
-                ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
-
-                ImGuiMCP::Columns(2, nullptr, false);
-
-                float sliderRange = (config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMenuXYZScale))
-                    ? 1250.0f
-                    : 250.0f;
-
-                float boxSize = isSpotLight ? 150.0f : 100.0f;
-
-                if (ImGuiMCP::BeginChild(
-                    "PositionBox",
-                    ImGuiMCP::ImVec2(0, boxSize),
-                    true,
-                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                {
-                    ImGuiMCP::PushStyleColor(
-                        ImGuiMCP::ImGuiCol_Text,
-                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                    ImGuiMCP::Text("%s Translation", coordinatesIcon.c_str());
-                    ImGuiMCP::PopStyleColor();
-
-                    ImGuiMCP::Separator();
-
-                    ImGuiMCP::BeginDisabled(isTorch);
-
-                    if (ImGuiMCP::SliderFloat3(
-                        "Position",
-                        &config.position[0],
-                        -sliderRange, sliderRange, "%.3f"))
-                    {
-                        if (!isTorch) {
-                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                            if (ssNode) {
-                                auto& rt = ssNode->GetRuntimeData();
-                                for (auto& l : rt.activeLights) {
-                                    if (!l) continue;
-                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    l->light->local.translate.x = config.position[0];
-                                    l->light->local.translate.y = config.position[1];
-                                    l->light->local.translate.z = config.position[2];
-                                    if (auto* parent = l->light->parent) {
-                                        RE::NiUpdateData updateData{};
-                                        updateData.time = 0.0f;
-                                        updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                        parent->UpdateTransformAndBounds(updateData);
-                                    }
-                                }
-                                for (auto& l : rt.activeShadowLights) {
-                                    if (!l) continue;
-                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
-                                    l->light->local.translate.x = config.position[0];
-                                    l->light->local.translate.y = config.position[1];
-                                    l->light->local.translate.z = config.position[2];
-                                    if (auto* parent = l->light->parent) {
-                                        RE::NiUpdateData updateData{};
-                                        updateData.time = 0.0f;
-                                        updateData.flags = RE::NiUpdateData::Flag::kDirty;
-                                        parent->UpdateTransformAndBounds(updateData);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    if (isSpotLight && !isTorch)
-                    {
-                        if (ImGuiMCP::SliderFloat3(
-                            "Rotation",
-                            &config.rotation[0],
-                            -180.0f,
-                            180.0f,
-                            "%.3f"))
+                        if (ImGuiMCP::BeginChild("TemplateEditor", ImGuiMCP::ImVec2(0, 0),
+                            ImGuiMCP::ImGuiChildFlags_Border | ImGuiMCP::ImGuiChildFlags_AutoResizeY, ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
                         {
-                            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                            static char newTemplateName[255];
+                            strncpy(newTemplateName, config.menuName.c_str(), sizeof(newTemplateName));
+                            newTemplateName[sizeof(newTemplateName) - 1] = '\0';
 
-                            if (ssNode)
+                            auto* style = ImGuiMCP::GetStyle();
+                            constexpr float kButtonSpacing = 10.0f;
+
+                            // --- Name row ---
+                            std::string flagsLabel = std::string("Flags ") + flagIcon;
+                            ImGuiMCP::ImVec2 flagsTextSize{};
+                            ImGuiMCP::CalcTextSize(&flagsTextSize, flagsLabel.c_str(), nullptr, false, -1.0f);
+                            float flagsButtonWidth = flagsTextSize.x + style->FramePadding.x * 2.0f;
+
+                            ImGuiMCP::Text("Name:");
+                            ImGuiMCP::SameLine();
+                            ImGuiMCP::Dummy(ImGuiMCP::ImVec2(35.0f, 0.0f));
+                            ImGuiMCP::SameLine();
+
+                            ImGuiMCP::ImVec2 avail{};
+                            ImGuiMCP::GetContentRegionAvail(&avail);
+                            float nameInputWidth = avail.x - flagsButtonWidth - kButtonSpacing;
+                            if (nameInputWidth < 50.0f) nameInputWidth = 50.0f; // safety floor so it never collapses to nothing
+
+                            ImGuiMCP::SetNextItemWidth(nameInputWidth);
+                            ImGuiMCP::InputText("##templateName", newTemplateName, sizeof(newTemplateName));
+                            if (ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip("This updates how the template name appears in the light editor.");
+                            }
+
+                            if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuName != newTemplateName)
                             {
-                                auto& rt = ssNode->GetRuntimeData();
+                                config.menuName = newTemplateName;
+                            }
 
-                                auto applyRotation = [&](auto& lights)
+                            ImGuiMCP::SameLine(0.0f, kButtonSpacing);
+
+                            static bool showFlagWindow = false;
+
+                            if (ImGuiMCP::Button(flagsLabel.c_str())) {
+                                showFlagWindow = !showFlagWindow;
+                            }
+
+                            if (showFlagWindow) {
+                                ImGuiMCP::Begin("Flag Window", &showFlagWindow, ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None);
+
+                                auto FlagCheckbox = [](const char* label, uint32_t& flags, LIGHT_FLAGS flag, const char* tooltip)
                                     {
-                                        for (auto& l : lights)
+                                        bool checked = (flags & static_cast<uint32_t>(flag)) != 0;
+                                        if (ImGuiMCP::Checkbox(label, &checked))
                                         {
-                                            if (!l)
-                                                continue;
+                                            if (checked)
+                                                flags |= static_cast<uint32_t>(flag);
+                                            else
+                                                flags &= ~static_cast<uint32_t>(flag);
+                                        }
 
-                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138)
-                                                continue;
+                                        if (ImGuiMCP::IsItemHovered())
+                                        {
+                                            ImGuiMCP::SetTooltip("%s", tooltip);
+                                        }
+                                    };
 
-                                            RE::NiMatrix3 rot;
-                                            rot.SetEulerAnglesXYZ(
-                                                RE::deg_to_rad(config.rotation[0]),
-                                                RE::deg_to_rad(config.rotation[1]),
-                                                RE::deg_to_rad(config.rotation[2])
-                                            );
+                                FlagCheckbox("Candle", config.flags, LIGHT_FLAGS::kCandle,
+                                    "Important for light flicker prevention. Also allows the light to merge with any other "
+                                    "light created from a relight json file which also has the Candle flag.");
 
-                                            l->light->local.rotate = rot;
+                                FlagCheckbox("Chandelier", config.flags, LIGHT_FLAGS::kChandelier,
+                                    "Important for light flicker prevention.");
 
-                                            if (auto* parent = l->light->parent)
-                                            {
+                                FlagCheckbox("Fire", config.flags, LIGHT_FLAGS::kFire,
+                                    "Important for light flicker prevention. Also allows the light to merge with any other "
+                                    "light created from a relight json file which also has the Fire flag.");
+
+                                FlagCheckbox("Giant Campfire", config.flags, LIGHT_FLAGS::kGiantCampfire,
+                                    "Allows merging with any other light created by a relight json config with the Fire flag (needed).");
+
+                                FlagCheckbox("Other", config.flags, LIGHT_FLAGS::kOther,
+                                    "Allows merging with any other light created by a relight json config with the Other flag.");
+
+                                FlagCheckbox("Increased Merge Distance", config.flags, LIGHT_FLAGS::kIncreasedMergeDistance,
+                                    "Grants a significantly larger merge distance to lights. Currently used for ruin candles.");
+
+                                FlagCheckbox("Increased Menu XYZ Scale", config.flags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
+                                    "Increases the in-game menu XYZ position slider range from 250 to 1250, for positioning "
+                                    "lights on larger objects.");
+
+                                FlagCheckbox("No Merging", config.flags, LIGHT_FLAGS::kNoMerging,
+                                    "Light sources of this type will never merge.");
+
+                                FlagCheckbox("Outdoor", config.flags, LIGHT_FLAGS::kOutdoor,
+                                    "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
+                                    "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
+
+                                ImGuiMCP::End();
+                            }
+
+                            ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
+
+                            static char newTemplateCategory[255];
+                            strncpy(newTemplateCategory, config.menuCategory.c_str(), sizeof(newTemplateCategory));
+                            newTemplateCategory[sizeof(newTemplateCategory) - 1] = '\0';
+
+                            // --- Category row ---
+                            ImGuiMCP::ImVec2 emittanceTextSize{};
+                            ImGuiMCP::CalcTextSize(&emittanceTextSize, "External Emittance", nullptr, false, -1.0f);
+                            float emittanceButtonWidth = emittanceTextSize.x + style->FramePadding.x * 2.0f;
+
+                            ImGuiMCP::Text("Category:");
+                            ImGuiMCP::SameLine();
+                            ImGuiMCP::Dummy(ImGuiMCP::ImVec2(10.0f, 0.0f));
+                            ImGuiMCP::SameLine();
+
+                            ImGuiMCP::ImVec2 categoryAvail{};
+                            ImGuiMCP::GetContentRegionAvail(&categoryAvail);
+                            float categoryInputWidth = categoryAvail.x - emittanceButtonWidth - style->ItemSpacing.x;
+                            if (categoryInputWidth < 50.0f) categoryInputWidth = 50.0f;
+
+                            ImGuiMCP::SetNextItemWidth(categoryInputWidth);
+                            ImGuiMCP::InputText("##templateCategory", newTemplateCategory, sizeof(newTemplateCategory));
+                            if (ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip("This organizes templates into a dropdown for a cleaner layout.");
+                            }
+
+                            if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuCategory != newTemplateCategory)
+                            {
+                                config.menuCategory = newTemplateCategory;
+                            }
+
+                            static bool showEmittanceWindow = false;
+
+                            ImGuiMCP::SameLine();
+                            if (ImGuiMCP::Button("External Emittance")) {
+                                showEmittanceWindow = !showEmittanceWindow;
+                            }
+
+                            if (showEmittanceWindow) {
+                                if (ImGuiMCP::Begin("External Emittance", &showEmittanceWindow, ImGuiMCP::ImGuiWindowFlags_NoCollapse |
+                                    ImGuiMCP::ImGuiWindowFlags_NoDocking)) {
+                                    if (ImGuiMCP::Selectable("None", config.emittanceRegion == nullptr)) {
+                                        config.emittanceRegion = nullptr;
+                                        config.externalEmittance = "";
+                                    }
+                                    for (auto& [editorID, region] : regionList) {
+                                        bool selected = config.emittanceRegion == region;
+                                        if (ImGuiMCP::Selectable(editorID.c_str(), selected)) {
+                                            config.emittanceRegion = region;
+                                            config.externalEmittance = editorID;
+                                            auto emittanceColor = config.emittanceRegion->emittanceColor;
+                                            UpdateRegionEmittance(emittanceColor, config.emittanceRegion);
+                                            showEmittanceWindow = false;
+                                        }
+                                    }
+                                    ImGuiMCP::End();
+                                }
+                            }
+
+                            if (ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip("Select a region used for external emittance (Change light colors based on time of day, good for window lights)");
+                            }
+                        }
+                        ImGuiMCP::EndChild(); // TemplateEditor
+
+                        ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
+
+                        ImGuiMCP::PushItemWidth(150.0f);
+
+                        ImGuiMCP::Columns(2, nullptr, false);
+
+                        if (ImGuiMCP::BeginChild("BrightnessBox", ImGuiMCP::ImVec2(0, 200), true,
+                            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                        {
+                            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                                ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                            FontAwesome::PushSolid();
+
+                            ImGuiMCP::Text("%s Illuminance", lightbulbIcon.c_str());
+                            ImGuiMCP::PopStyleColor();
+                            ImGuiMCP::Separator();
+
+                            if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, brightnessToUse, "%.1f")) {
+                                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                                if (ssNode) {
+                                    auto& rt = ssNode->GetRuntimeData();
+                                    for (auto& l : rt.activeLights) {
+                                        if (!l) continue;
+                                        auto& rtData = l->light->GetLightRuntimeData();
+                                        if (rtData.unk138 == lightData.unk138)
+                                            rtData.fade = config.startingFade;
+                                    }
+                                    for (auto& l : rt.activeShadowLights) {
+                                        if (!l) continue;
+                                        auto& rtData = l->light->GetLightRuntimeData();
+                                        if (rtData.unk138 == lightData.unk138)
+                                            rtData.fade = config.startingFade;
+                                    }
+                                }
+                            }
+
+                            if (!globals::islInstalled) {
+                                if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
+                                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                                    if (ssNode) {
+                                        auto& rt = ssNode->GetRuntimeData();
+                                        for (auto& l : rt.activeLights) {
+                                            if (!l) continue;
+                                            auto& rtData = l->light->GetLightRuntimeData();
+                                            if (rtData.unk138 == lightData.unk138)
+                                                rtData.radius = lightData.radius;
+                                        }
+                                        for (auto& l : rt.activeShadowLights) {
+                                            if (!l) continue;
+                                            auto& rtData = l->light->GetLightRuntimeData();
+                                            if (rtData.unk138 == lightData.unk138)
+                                                rtData.radius = lightData.radius;
+                                        }
+                                    }
+                                }
+                            }
+                            else if (selectedIslRt) {
+                                if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
+                                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                                    if (ssNode) {
+                                        auto& rt = ssNode->GetRuntimeData();
+                                        for (auto& l : rt.activeLights) {
+                                            if (!l) continue;
+                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                            if (auto* isl = Overlay::Get(l->light.get())) {
+                                                isl->cutoffOverride = selectedIslRt->cutoffOverride;
+                                            }
+                                        }
+                                        for (auto& l : rt.activeShadowLights) {
+                                            if (!l) continue;
+                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                            if (auto* isl = Overlay::Get(l->light.get())) {
+                                                isl->cutoffOverride = selectedIslRt->cutoffOverride;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.0f, 10.0f, "%.2f")) {
+                                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                                    if (ssNode) {
+                                        auto& rt = ssNode->GetRuntimeData();
+                                        for (auto& l : rt.activeLights) {
+                                            if (!l) continue;
+                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                            if (auto* isl = Overlay::Get(l->light.get())) {
+                                                isl->size = selectedIslRt->size;
+                                            }
+                                        }
+                                        for (auto& l : rt.activeShadowLights) {
+                                            if (!l) continue;
+                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                            if (auto* isl = Overlay::Get(l->light.get())) {
+                                                isl->size = selectedIslRt->size;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        ImGuiMCP::EndChild(); // BrightnessBox
+                        ImGuiMCP::NextColumn();
+
+                        if (ImGuiMCP::BeginChild(
+                            "FlickerBox",
+                            ImGuiMCP::ImVec2(0, 200),
+                            true,
+                            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                        {
+                            if (didRefreshThisFrame && config.flickersPerSecond != 0.0f) {
+                                FontAwesome::PushSolid();
+                                ImGuiMCP::PushStyleColor(
+                                    ImGuiMCP::ImGuiCol_Text,
+                                    ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                            }
+                            else {
+                                FontAwesome::PushRegular();
+                                ImGuiMCP::PushStyleColor(
+                                    ImGuiMCP::ImGuiCol_Text,
+                                    ImGuiMCP::ImVec4{ 0.35f, 0.35f, 0.35f, 1.0f });
+                            }
+
+                            ImGuiMCP::Text("%s", lightbulbIcon.c_str());
+
+                            ImGuiMCP::PopStyleColor();
+                            FontAwesome::Pop();
+
+                            ImGuiMCP::SameLine();
+                            ImGuiMCP::PushStyleColor(
+                                ImGuiMCP::ImGuiCol_Text,
+                                ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                            ImGuiMCP::Text("Flicker");
+                            ImGuiMCP::PopStyleColor();
+
+                            ImGuiMCP::Separator();
+
+                            ImGuiMCP::BeginDisabled(isTorch);
+
+                            ImGuiMCP::SliderFloat(
+                                "Flickers / Second",
+                                &config.flickersPerSecond,
+                                0.0f, 5.0f, "%.2f");
+
+                            ImGuiMCP::BeginDisabled(config.flickersPerSecond == 0.0);
+
+                            ImGuiMCP::SliderFloat(
+                                "Flicker Intensity",
+                                &config.flickerIntensity,
+                                0.0f, 1.0f, "%.2f");
+
+                            ImGuiMCP::SliderFloat(
+                                "Movement",
+                                &config.flickerAmplitude,
+                                0.0f, 1.0f, "%.2f");
+
+                            ImGuiMCP::EndDisabled();
+                            ImGuiMCP::EndDisabled();
+                        }
+                        ImGuiMCP::EndChild(); // FlickerBox
+
+                        ImGuiMCP::Columns(1);
+                        ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
+
+                        ImGuiMCP::Columns(2, nullptr, false);
+
+                        float sliderRange = (config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMenuXYZScale))
+                            ? 1250.0f
+                            : 250.0f;
+
+                        float boxSize = isSpotLight ? 150.0f : 100.0f;
+
+                        if (ImGuiMCP::BeginChild(
+                            "PositionBox",
+                            ImGuiMCP::ImVec2(0, boxSize),
+                            true,
+                            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                        {
+                            ImGuiMCP::PushStyleColor(
+                                ImGuiMCP::ImGuiCol_Text,
+                                ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                            ImGuiMCP::Text("%s Translation", coordinatesIcon.c_str());
+                            ImGuiMCP::PopStyleColor();
+
+                            ImGuiMCP::Separator();
+
+                            ImGuiMCP::BeginDisabled(isTorch);
+
+                            if (ImGuiMCP::SliderFloat3(
+                                "Position",
+                                &config.position[0],
+                                -sliderRange, sliderRange, "%.3f"))
+                            {
+                                if (!isTorch) {
+                                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                                    if (ssNode) {
+                                        auto& rt = ssNode->GetRuntimeData();
+                                        for (auto& l : rt.activeLights) {
+                                            if (!l) continue;
+                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                            l->light->local.translate.x = config.position[0];
+                                            l->light->local.translate.y = config.position[1];
+                                            l->light->local.translate.z = config.position[2];
+                                            if (auto* parent = l->light->parent) {
                                                 RE::NiUpdateData updateData{};
                                                 updateData.time = 0.0f;
                                                 updateData.flags = RE::NiUpdateData::Flag::kDirty;
-
                                                 parent->UpdateTransformAndBounds(updateData);
                                             }
                                         }
-                                };
-
-                                applyRotation(rt.activeLights);
-                                applyRotation(rt.activeShadowLights);
+                                        for (auto& l : rt.activeShadowLights) {
+                                            if (!l) continue;
+                                            if (l->light->GetLightRuntimeData().unk138 != lightData.unk138) continue;
+                                            l->light->local.translate.x = config.position[0];
+                                            l->light->local.translate.y = config.position[1];
+                                            l->light->local.translate.z = config.position[2];
+                                            if (auto* parent = l->light->parent) {
+                                                RE::NiUpdateData updateData{};
+                                                updateData.time = 0.0f;
+                                                updateData.flags = RE::NiUpdateData::Flag::kDirty;
+                                                parent->UpdateTransformAndBounds(updateData);
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                        }
-                    }
-
-                    ImGuiMCP::EndDisabled();
-                }
-                ImGuiMCP::EndChild();
-
-                ImGuiMCP::NextColumn();
-
-                static bool colorPickerOpen = false;
-
-                auto ApplyRuntimeColor = [&](const RE::NiColor& runtimeColor)
-                    {
-                        lightData.diffuse = runtimeColor;
-
-                        auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                        if (!ssNode)
-                            return;
-
-                        auto& rt = ssNode->GetRuntimeData();
-
-                        for (auto& l : rt.activeLights)
-                        {
-                            if (!l || !l->light)
-                                continue;
-
-                            if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                            if (isSpotLight && !isTorch)
                             {
-                                l->light->GetLightRuntimeData().diffuse = runtimeColor;
+                                if (ImGuiMCP::SliderFloat3(
+                                    "Rotation",
+                                    &config.rotation[0],
+                                    -180.0f,
+                                    180.0f,
+                                    "%.3f"))
+                                {
+                                    auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+
+                                    if (ssNode)
+                                    {
+                                        auto& rt = ssNode->GetRuntimeData();
+
+                                        auto applyRotation = [&](auto& lights)
+                                            {
+                                                for (auto& l : lights)
+                                                {
+                                                    if (!l)
+                                                        continue;
+
+                                                    if (l->light->GetLightRuntimeData().unk138 != lightData.unk138)
+                                                        continue;
+
+                                                    RE::NiMatrix3 rot;
+                                                    rot.SetEulerAnglesXYZ(
+                                                        RE::deg_to_rad(config.rotation[0]),
+                                                        RE::deg_to_rad(config.rotation[1]),
+                                                        RE::deg_to_rad(config.rotation[2])
+                                                    );
+
+                                                    l->light->local.rotate = rot;
+
+                                                    if (auto* parent = l->light->parent)
+                                                    {
+                                                        RE::NiUpdateData updateData{};
+                                                        updateData.time = 0.0f;
+                                                        updateData.flags = RE::NiUpdateData::Flag::kDirty;
+
+                                                        parent->UpdateTransformAndBounds(updateData);
+                                                    }
+                                                }
+                                            };
+
+                                        applyRotation(rt.activeLights);
+                                        applyRotation(rt.activeShadowLights);
+                                    }
+                                }
                             }
+
+                            ImGuiMCP::EndDisabled();
                         }
+                        ImGuiMCP::EndChild(); // PositionBox
 
-                        for (auto& l : rt.activeShadowLights)
-                        {
-                            if (!l || !l->light)
-                                continue;
+                        ImGuiMCP::NextColumn();
 
-                            if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                        static bool colorPickerOpen = false;
+
+                        auto ApplyRuntimeColor = [&](const RE::NiColor& runtimeColor)
                             {
-                                l->light->GetLightRuntimeData().diffuse = runtimeColor;
-                            }
-                        }
-                    };
+                                lightData.diffuse = runtimeColor;
 
-                if(ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, boxSize), true,
-                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                {
-                    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
-                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                    ImGuiMCP::Text("%s Color (RGB)", palletIcon.c_str());
-                    ImGuiMCP::PopStyleColor();
-                    ImGuiMCP::Separator();
-          
+                                auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+                                if (!ssNode)
+                                    return;
 
-                    if (ImGuiMCP::SliderInt3("RGB", &config.diffuseColor[0], 0, 255))
-                    {
-                        RE::NiColor runtimeColor{
-                            config.diffuseColor[0] / 255.0f,
-                            config.diffuseColor[1] / 255.0f,
-                            config.diffuseColor[2] / 255.0f
-                        };
+                                auto& rt = ssNode->GetRuntimeData();
 
-                        ApplyRuntimeColor(runtimeColor);
-                    }
-                    
-                    float colorPickerButtonHeight = ImGuiMCP::GetFrameHeight();
-                    ImGuiMCP::SameLine();
-                    if (ImGuiMCP::ColorButton(
-                        "##ColorPreview",
-                        ImGuiMCP::ImVec4(
-                            config.diffuseColor[0] / 255.0f,
-                            config.diffuseColor[1] / 255.0f,
-                            config.diffuseColor[2] / 255.0f,
-                            1.0f),
-                        ImGuiMCP::ImGuiColorEditFlags_NoTooltip,
-                        ImGuiMCP::ImVec2(
-                            colorPickerButtonHeight,
-                            colorPickerButtonHeight)))
-                    {
-                        colorPickerOpen = true; // static bool instead of OpenPopup
-                    }
-                    if (ImGuiMCP::IsItemHovered())
-                    {
-                        ImGuiMCP::BeginTooltip();
-                        ImGuiMCP::Text("Click to open the color picker");
-                        ImGuiMCP::Separator();
-                        ImGuiMCP::Text("R: %.3f", lightData.diffuse.red);
-                        ImGuiMCP::Text("G: %.3f", lightData.diffuse.green);
-                        ImGuiMCP::Text("B: %.3f", lightData.diffuse.blue);
-                        ImGuiMCP::EndTooltip();
-                    }
-                }
-                ImGuiMCP::EndChild();
+                                for (auto& l : rt.activeLights)
+                                {
+                                    if (!l || !l->light)
+                                        continue;
 
-                // color picker window lives outside child
-                if (colorPickerOpen)
-                {
-                    if (ImGuiMCP::Begin("Color Picker", &colorPickerOpen,
-                        ImGuiMCP::ImGuiWindowFlags_AlwaysAutoResize |
-                        ImGuiMCP::ImGuiWindowFlags_NoCollapse))
-                    {
-                        float color[4] = {
-                            config.diffuseColor[0] / 255.0f,
-                            config.diffuseColor[1] / 255.0f,
-                            config.diffuseColor[2] / 255.0f,
-                            1.0f
-                        };
+                                    if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                                    {
+                                        l->light->GetLightRuntimeData().diffuse = runtimeColor;
+                                    }
+                                }
 
-                        if (ImGuiMCP::ColorPicker4(
-                            "##Picker",
-                            color,
-                            ImGuiMCP::ImGuiColorEditFlags_NoAlpha))
-                        {
-                            config.diffuseColor[0] = static_cast<int>(color[0] * 255.0f);
-                            config.diffuseColor[1] = static_cast<int>(color[1] * 255.0f);
-                            config.diffuseColor[2] = static_cast<int>(color[2] * 255.0f);
+                                for (auto& l : rt.activeShadowLights)
+                                {
+                                    if (!l || !l->light)
+                                        continue;
 
-                            RE::NiColor runtimeColor{
-                                color[0],
-                                color[1],
-                                color[2]
+                                    if (l->light->GetLightRuntimeData().unk138 == lightData.unk138)
+                                    {
+                                        l->light->GetLightRuntimeData().diffuse = runtimeColor;
+                                    }
+                                }
                             };
 
-                            ApplyRuntimeColor(runtimeColor);
-                        }
+                        if (ImGuiMCP::BeginChild("ColorBox", ImGuiMCP::ImVec2(0, boxSize), true,
+                            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                        {
+                            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                                ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                            ImGuiMCP::Text("%s Color (RGB)", palletIcon.c_str());
+                            ImGuiMCP::PopStyleColor();
+                            ImGuiMCP::Separator();
 
-                        ImGuiMCP::End();
-                    }
-                }
+                            if (ImGuiMCP::SliderInt3("RGB", &config.diffuseColor[0], 0, 255))
+                            {
+                                RE::NiColor runtimeColor{
+                                    config.diffuseColor[0] / 255.0f,
+                                    config.diffuseColor[1] / 255.0f,
+                                    config.diffuseColor[2] / 255.0f
+                                };
 
-                ImGuiMCP::Columns(1);
-                ImGuiMCP::Spacing();
-                ImGuiMCP::Spacing();
-
-                if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 205), true,
-                    ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
-                {
-                    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
-                        ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
-                    ImGuiMCP::Text("Non-Runtime Light Settings");
-                    ImGuiMCP::PopStyleColor();
-
-                    ImGuiMCP::SameLine();
-
-                    ImGuiMCP::BeginDisabled(isTorch);
-
-                    if (ImGuiMCP::Button("Refresh Lights")) {
-                        RefreshNonRuntimeSettings(config);
-                    }
-
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("Changes to these settings require refreshing lights to take effect.");
-                    }
-
-                    ImGuiMCP::Separator();
-
-                    ImGuiMCP::ImVec2 avail{};
-                    ImGuiMCP::GetContentRegionAvail(&avail);
-                    float halfWidth = avail.x * 0.3f;
-
-                    ImGuiMCP::Columns(2, "NonRuntimeColumns", false);
-
-                    ImGuiMCP::Spacing();
-                    ImGuiMCP::PushItemWidth(halfWidth);
-
-                    ImGuiMCP::SliderFloat("Fall Off", &config.falloff, 0.0f, 5.0f, "%.1f");
-                    ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f");
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("Affect shadow quality");
-                    }
-
-                    ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f");
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("For Spotlights");
-                    }
-
-                    ImGuiMCP::NextColumn();
- 
-                    ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
-                    ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
-
-                    ImGuiMCP::BeginDisabled(!isShadowLight);
-
-                    bool isSpot =
-                        (config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
-
-                    if (ImGuiMCP::Checkbox("SpotLight", &isSpot))
-                    {
-                        if (isSpot) {
-                            config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
-                            
-                            // set fov if its not lower then 45
-                            if (config.fov > 45.0f) {
-                                config.fov = 45.0f;
+                                ApplyRuntimeColor(runtimeColor);
                             }
-                         
+
+                            float colorPickerButtonHeight = ImGuiMCP::GetFrameHeight();
+                            ImGuiMCP::SameLine();
+                            if (ImGuiMCP::ColorButton(
+                                "##ColorPreview",
+                                ImGuiMCP::ImVec4(
+                                    config.diffuseColor[0] / 255.0f,
+                                    config.diffuseColor[1] / 255.0f,
+                                    config.diffuseColor[2] / 255.0f,
+                                    1.0f),
+                                ImGuiMCP::ImGuiColorEditFlags_NoTooltip,
+                                ImGuiMCP::ImVec2(
+                                    colorPickerButtonHeight,
+                                    colorPickerButtonHeight)))
+                            {
+                                colorPickerOpen = true;
+                            }
+                            if (ImGuiMCP::IsItemHovered())
+                            {
+                                ImGuiMCP::BeginTooltip();
+                                ImGuiMCP::Text("Click to open the color picker");
+                                ImGuiMCP::Separator();
+                                ImGuiMCP::Text("R: %.3f", lightData.diffuse.red);
+                                ImGuiMCP::Text("G: %.3f", lightData.diffuse.green);
+                                ImGuiMCP::Text("B: %.3f", lightData.diffuse.blue);
+                                ImGuiMCP::EndTooltip();
+                            }
                         }
-                        else {
-                            config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
-                            config.fov = 90.0f;
+                        ImGuiMCP::EndChild(); // ColorBox
+
+                        if (colorPickerOpen)
+                        {
+                            if (ImGuiMCP::Begin("Color Picker", &colorPickerOpen,
+                                ImGuiMCP::ImGuiWindowFlags_AlwaysAutoResize |
+                                ImGuiMCP::ImGuiWindowFlags_NoCollapse))
+                            {
+                                float color[4] = {
+                                    config.diffuseColor[0] / 255.0f,
+                                    config.diffuseColor[1] / 255.0f,
+                                    config.diffuseColor[2] / 255.0f,
+                                    1.0f
+                                };
+
+                                if (ImGuiMCP::ColorPicker4(
+                                    "##Picker",
+                                    color,
+                                    ImGuiMCP::ImGuiColorEditFlags_NoAlpha))
+                                {
+                                    config.diffuseColor[0] = static_cast<int>(color[0] * 255.0f);
+                                    config.diffuseColor[1] = static_cast<int>(color[1] * 255.0f);
+                                    config.diffuseColor[2] = static_cast<int>(color[2] * 255.0f);
+
+                                    RE::NiColor runtimeColor{
+                                        color[0],
+                                        color[1],
+                                        color[2]
+                                    };
+
+                                    ApplyRuntimeColor(runtimeColor);
+                                }
+
+                                ImGuiMCP::End();
+                            }
                         }
+
+                        ImGuiMCP::Columns(1);
+                        ImGuiMCP::Spacing();
+                        ImGuiMCP::Spacing();
+
+                        if (ImGuiMCP::BeginChild("NonRuntimeBox", ImGuiMCP::ImVec2(0, 205), true,
+                            ImGuiMCP::ImGuiWindowFlags_NoScrollbar))
+                        {
+                            ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+                                ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
+                            ImGuiMCP::Text("Non-Runtime Light Settings");
+                            ImGuiMCP::PopStyleColor();
+
+                            ImGuiMCP::SameLine();
+
+                            ImGuiMCP::BeginDisabled(isTorch);
+
+                            if (ImGuiMCP::Button("Refresh Lights")) {
+                                RefreshNonRuntimeSettings(config);
+                            }
+
+                            if (ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip("Changes to these settings require refreshing lights to take effect.");
+                            }
+
+                            ImGuiMCP::Separator();
+
+                            ImGuiMCP::ImVec2 avail{};
+                            ImGuiMCP::GetContentRegionAvail(&avail);
+                            float halfWidth = avail.x * 0.3f;
+
+                            ImGuiMCP::Columns(2, "NonRuntimeColumns", false);
+
+                            ImGuiMCP::Spacing();
+                            ImGuiMCP::PushItemWidth(halfWidth);
+
+                            ImGuiMCP::SliderFloat("Fall Off", &config.falloff, 0.0f, 5.0f, "%.1f");
+                            ImGuiMCP::SliderFloat("Depth Bias", &config.depthBias, 0.0f, 30.0f, "%.2f");
+                            if (ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip("Affect shadow quality");
+                            }
+
+                            ImGuiMCP::SliderFloat("FOV", &config.fov, 0.0f, 90.0f, "%.2f");
+                            if (ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip("For Spotlights");
+                            }
+
+                            ImGuiMCP::NextColumn();
+
+                            ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
+                            ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
+
+                            ImGuiMCP::BeginDisabled(!isShadowLight);
+
+                            bool isSpot =
+                                (config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+
+                            if (ImGuiMCP::Checkbox("SpotLight", &isSpot))
+                            {
+                                if (isSpot) {
+                                    config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
+
+                                    if (config.fov > 45.0f) {
+                                        config.fov = 45.0f;
+                                    }
+                                }
+                                else {
+                                    config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
+                                    config.fov = 90.0f;
+                                }
+                            }
+
+                            if (ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip("SpotLights only work for shadow lights, FOV and rotation can be used to edit them");
+                            }
+
+                            ImGuiMCP::EndDisabled(); // closes !isShadowLight
+                            ImGuiMCP::EndDisabled(); // closes isTorch
+                        }
+                        ImGuiMCP::EndChild(); // NonRuntimeBox
+
+                        ImGuiMCP::PopID();
                     }
-
-                    if (ImGuiMCP::IsItemHovered()) {
-                        ImGuiMCP::SetTooltip("SpotLights only work for shadow lights, FOV and rotation can be used to edit them");
-                    }
-
-                    ImGuiMCP::EndDisabled(); // closes !isShadowLight
-
-                    ImGuiMCP::EndDisabled(); // closes isTorch
-
-                    ImGuiMCP::EndChild();
+                    ImGuiMCP::EndChild(); // SelectedLightSettingsChild
                 }
-
-                ImGuiMCP::PopID();
             }
-
+        }
     }
 
 
@@ -2110,7 +2116,6 @@ namespace UI {
                     break;
                 }
 
-                RE::FormID thisBaseFormID = baseObj->GetFormID();
                 std::string baseIDandModName = forms::BuildFormIDAndModName(selected, true);
 
                 if (createNewTemplate) {
