@@ -2156,8 +2156,8 @@ namespace UI {
                 if (createNewTemplate) {
 
                     newCfg.baseFormIDsAndModNames.push_back(baseIDandModName);
-                    newCfg.menuName = baseIDandModName;
-                    newCfg.configPath = BuildConfigPath(baseIDandModName);
+                    newCfg.menuName = meshPath;
+                    newCfg.configPath = BuildConfigPath(meshPath);
                     newCfg.jsonIndex = 0;
                     newCfg.configID = globals::nextID++;
                     newCfg.diffuseColor = { 255, 162, 61 };

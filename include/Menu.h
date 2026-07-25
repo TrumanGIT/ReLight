@@ -863,7 +863,7 @@ namespace UI {
             static_cast<float>(groupData.uncategorized.size()) * itemHeight;
 
         // Minimum height so the list isn't tiny
-        constexpr float minListHeight = 50.0f;
+        constexpr float minListHeight = 250.0f;
 
         desiredHeight = std::clamp(
             desiredHeight,

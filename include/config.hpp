@@ -21,8 +21,8 @@ B(affectWater, true) \
 B(neverFades, true) \
 
 #define FOREACH_FLOAT(F) \
-F(brightness, 3.0f) \
-F(radius, 250.f) \
+F(brightness, 2.0f) \
+F(radius, 200.f) \
 F(fov, 90.0f) \
 F(falloff, 1.f) \
 F(nearDistance, 5.f) \
@@ -34,9 +34,7 @@ F(flickerTime, 0.0f) \
 F(flickerAmplitude, 0.0f) \
 F(startingFade, 0.f) \
 F(size, 2.0f) \
-F(cutoffOverride , 0.05f) \
-
-//F(flickerRandomness, 0.0f) \
+F(cutoffOverride , 0.3f) \
 
 #define BOOL2DEF(B, I) bool B{I};
 #define FLOAT2DEF(B, I) float B{I};
@@ -68,7 +66,8 @@ inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
     { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
     { LIGHT_FLAGS::kNoMerging, "NoMerging" },
-    { LIGHT_FLAGS::kOutdoor, "Outdoor" }
+    { LIGHT_FLAGS::kOutdoor, "Outdoor" },
+     { LIGHT_FLAGS::kPulse, "Pulse" }
 };
 
 struct LightConfig {

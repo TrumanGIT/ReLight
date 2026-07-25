@@ -8,7 +8,6 @@
 #include "utility.h"
 #include "global.h"
 #include "raycast.hpp"
-
 #include <CLibUtilsQTR/DrawDebug.hpp>
 
 
@@ -1226,9 +1225,9 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 
 		RE::NiPoint3 basePos = light->light->worldBound.center; 
 
-		const float flickerDelta = delta * config.flickersPerSecond;
+		float flickerDelta = delta * config.flickersPerSecond;
 
-		auto* ref = light->light->GetUserData();
+		const auto* ref = light->light->GetUserData();
 
 		//object reference scale 
 		float scale = ref ? ref->GetScale() : 1.0f;
@@ -1270,6 +1269,9 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 			rt.fade = ((halfIntensityAmplitude * flickerIntensityVal) + (1.0f - halfIntensityAmplitude)) * baseFade;
 		}
 		else {
+
+			flickerDelta *= 5; 
+
 			// ---- Pulse (matches vanilla kPulse / kPulse) ----
 			auto constAttenuation = std::fmod(pointLight->constAttenuation + flickerDelta, RE::NI_TWO_PI);
 			pointLight->constAttenuation = constAttenuation;
