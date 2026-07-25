@@ -123,7 +123,7 @@ struct LightData {
 	}
 
 
-static	bool HasLightFlag(uint32_t flags, LIGHT_FLAGS flag)
+static bool HasLightFlag(uint32_t flags, LIGHT_FLAGS flag)
 	{
 		return (flags & static_cast<uint32_t>(flag)) != 0;
 	}

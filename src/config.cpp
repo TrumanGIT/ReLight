@@ -37,6 +37,12 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 		FOREACH_BOOL(BOOL2JSON_READ)
 		FOREACH_FLOAT(FLOAT2JSON_READ)
 
+			// TODO:: Pulse needs higher like a value of 5
+			//halfway through mods lifetime we change flicker dramatically, this is to help existing configs not look terrible. 
+			if (config.flickersPerSecond > 1.0f) {
+				config.flickersPerSecond = 0.5f;
+			}
+
 		config.startingFade = config.brightness;
 
 		// clamp radius
@@ -618,6 +624,10 @@ bool saveNewConfiguration(LightConfig& config)
 
 			  std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
 
+			  const bool isLightPlugin = parsedID <= 0xFFF;
+
+			  logger::debug("light plugin found when parsing ids"); 
+
 			  auto* dataHandler = RE::TESDataHandler::GetSingleton();
 			  if (!dataHandler) {
 				  logger::warn("TESDataHandler was null while parsing {} '{}'", key, id);
@@ -625,7 +635,7 @@ bool saveNewConfiguration(LightConfig& config)
 			  }
 
 			  // unified resolver (handles normal mods + light mods + vanilla fallback)
-			  const RE::TESFile* file = forms::ResolveTESFileWithFallback(dataHandler, modName);
+			  const RE::TESFile* file = forms::ResolveTESFileWithFallback(dataHandler, modName, isLightPlugin);
 
 			  if (!file) {
 				  logger::warn("Invalid mod name '{}' in {} '{}'", modName, key, id);
@@ -635,6 +645,32 @@ bool saveNewConfiguration(LightConfig& config)
 			  // remove load order index of non light plugins incase users load order changes
 			  if (!file->IsLight()) {
 				  parsedID &= 0x00FFFFFF;
+			  }
+			  // light plugins we need to store the full runtime ID so we dont get accidental matches with using just 3 digit forms as the key
+			  // example light plugin form is parsed as 0x019 and thats all we use there is high chance for unintended match
+			  else {
+				  // Resolve the actual form so we can store its full runtime FormID.
+				  auto* form = dataHandler->LookupForm(parsedID, modName);
+
+				  if (!form) {
+					  logger::warn(
+						  "Could not resolve light plugin form 0x{:03X} from '{}'",
+						  parsedID,
+						  modName
+					  );
+					  continue;
+				  }
+
+				  // Store the full runtime FormID, including the ESL load order.
+				  parsedID = form->GetFormID();
+
+				  logger::debug(
+					  "Resolved light plugin form 0x{:03X} from '{}' -> runtime FormID 0x{:08X}",
+					  parsedID & 0xFFF,
+					  modName,
+					  parsedID
+				  );
+			  
 			  }
 
 			  // parsedID is local FormID key

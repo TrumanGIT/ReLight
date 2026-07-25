@@ -239,6 +239,7 @@ namespace UI {
                 if (activeData.unk138 == lightData.unk138) {
                     activeData = lightData;
                     currentLight->light->local.translate = light->local.translate;
+                    currentLight->light->worldBound.center = light->local.translate;
 
                     if (globals::islInstalled) {
                         if (auto* isl = Overlay::Get(currentLight->light.get())) {
@@ -843,35 +844,96 @@ namespace UI {
 
         LightGroupData groupData = BuildCatagorizedLights(lights);
 
-        // Sort categories alphabetically
-        std::vector<std::string> sortedCategories;
-        sortedCategories.reserve(groupData.byCategory.size());
-        for (auto& [cat, _] : groupData.byCategory)
-            sortedCategories.push_back(cat);
+        // -------------------------------------------------------------
+        // Calculate desired height
+        // -------------------------------------------------------------
 
-        std::sort(
-            sortedCategories.begin(),
-            sortedCategories.end(),
-            [](const std::string& a, const std::string& b)
-            {
-                return compareLightNames(a.c_str(), b.c_str());
-            });
+        constexpr float maxListHeight = 450.0f;
+        constexpr float categoryHeight = 24.0f;
+        constexpr float itemHeight = 24.0f;
 
-        // Render categorized groups under collapsible TreeNodes
-        for (const auto& category : sortedCategories)
+        float desiredHeight = 0.0f;
+
+        // Category headers
+        desiredHeight +=
+            static_cast<float>(groupData.byCategory.size()) * categoryHeight;
+
+        // Uncategorized items
+        desiredHeight +=
+            static_cast<float>(groupData.uncategorized.size()) * itemHeight;
+
+        // Minimum height so the list isn't tiny
+        constexpr float minListHeight = 50.0f;
+
+        desiredHeight = std::clamp(
+            desiredHeight,
+            minListHeight,
+            maxListHeight);
+
+        // -------------------------------------------------------------
+        // Begin dynamically-sized child
+        // -------------------------------------------------------------
+
+        if (ImGuiMCP::BeginChild(
+            "LightListChild",
+            ImGuiMCP::ImVec2(0, desiredHeight),
+            true))
         {
-            if (ImGuiMCP::TreeNode(category.c_str()))
-            {
-                for (const auto& configPath : groupData.byCategory.at(category))
-                    DrawCatagoryGroup(configPath, groupData, lights, selectedIndex);
+            // ---------------------------------------------------------
+            // Sort categories alphabetically
+            // ---------------------------------------------------------
 
-                ImGuiMCP::TreePop();
+            std::vector<std::string> sortedCategories;
+            sortedCategories.reserve(groupData.byCategory.size());
+
+            for (auto& [cat, _] : groupData.byCategory)
+                sortedCategories.push_back(cat);
+
+            std::sort(
+                sortedCategories.begin(),
+                sortedCategories.end(),
+                [](const std::string& a, const std::string& b)
+                {
+                    return compareLightNames(a.c_str(), b.c_str());
+                });
+
+            // ---------------------------------------------------------
+            // Render categorized groups
+            // ---------------------------------------------------------
+
+            for (const auto& category : sortedCategories)
+            {
+                if (ImGuiMCP::TreeNode(category.c_str()))
+                {
+                    for (const auto& configPath :
+                        groupData.byCategory.at(category))
+                    {
+                        DrawCatagoryGroup(
+                            configPath,
+                            groupData,
+                            lights,
+                            selectedIndex);
+                    }
+
+                    ImGuiMCP::TreePop();
+                }
+            }
+
+            // ---------------------------------------------------------
+            // Render uncategorized groups
+            // ---------------------------------------------------------
+
+            for (const auto& configPath : groupData.uncategorized)
+            {
+                DrawCatagoryGroup(
+                    configPath,
+                    groupData,
+                    lights,
+                    selectedIndex);
             }
         }
 
-        // Render uncategorized groups at the top level
-        for (const auto& configPath : groupData.uncategorized)
-            DrawCatagoryGroup(configPath, groupData, lights, selectedIndex);
+        ImGuiMCP::EndChild();
     }
 
 

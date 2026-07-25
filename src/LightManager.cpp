@@ -904,7 +904,6 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 	 p.light->name = "RL" + p.refALightName;
 
-
 	 if (globals::enableDebugLightBulbs) {
 		 AttachDebugMarker(p.refARoot, light);
 	 }
@@ -1021,6 +1020,8 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 		 p.light->local.translate = localMid;
 
+		 // used to store merged lights position, needed for flicker calcs, all 3 fields unused by ni lights so its perfect
+		 p.light->worldBound.center = localMid; 
 
 			 RE::NiUpdateData updateData{};
 			 updateData.time = 0.0f;

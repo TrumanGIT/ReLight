@@ -54,7 +54,8 @@ enum class LIGHT_FLAGS : uint32_t
     kIncreasedMergeDistance = 1 << 6,
     kIncreasedMenuXYZScale = 1 << 7,
     kNoMerging = 1 << 8,
-    kOutdoor = 1 << 9
+    kOutdoor = 1 << 9,
+    kPulse = 1 << 10
 };
 
 inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{

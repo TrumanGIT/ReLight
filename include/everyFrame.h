@@ -532,11 +532,537 @@ inline float NiSinQImpl(float a_value)
 	return sineTable[static_cast<std::uint32_t>(a_value) & 511];
 }
 
+inline float NiCosQImpl(float a_value)
+{
+	static constexpr std::array<float, 512> cosineTable = {
+		1.0,
+		0.99992466f,
+		0.9996988f,
+		0.99932235f,
+		0.9987955f,
+		0.9981181f,
+		0.9972905f,
+		0.9963126f,
+		0.9951848f,
+		0.9939069f,
+		0.99247956f,
+		0.9909026f,
+		0.9891765f,
+		0.9873014f,
+		0.98527765f,
+		0.98310554f,
+		0.98078525f,
+		0.9783174f,
+		0.97570217f,
+		0.97293997f,
+		0.97003126f,
+		0.9669765f,
+		0.96377605f,
+		0.9604305f,
+		0.95694035f,
+		0.953306f,
+		0.94952816f,
+		0.9456073f,
+		0.941544f,
+		0.93733895f,
+		0.93299276f,
+		0.928506f,
+		0.9238795f,
+		0.9191138f,
+		0.9142097f,
+		0.90916795f,
+		0.9039892f,
+		0.89867437f,
+		0.8932243f,
+		0.8876396f,
+		0.8819212f,
+		0.87607f,
+		0.8700869f,
+		0.8639727f,
+		0.8577286f,
+		0.85135514f,
+		0.8448535f,
+		0.83822477f,
+		0.83146966f,
+		0.8245894f,
+		0.8175848f,
+		0.8104572f,
+		0.80320764f,
+		0.79583704f,
+		0.7883465f,
+		0.78073746f,
+		0.7730107f,
+		0.7651675f,
+		0.757209f,
+		0.74913657f,
+		0.7409514f,
+		0.7326545f,
+		0.72424734f,
+		0.7157312f,
+		0.7071071f,
+		0.6983766f,
+		0.68954086f,
+		0.6806013f,
+		0.6715594f,
+		0.6624162f,
+		0.65317327f,
+		0.6438321f,
+		0.6343938f,
+		0.62486f,
+		0.6152321f,
+		0.60551155f,
+		0.59569997f,
+		0.5857985f,
+		0.57580876f,
+		0.5657326f,
+		0.55557096f,
+		0.5453257f,
+		0.5349983f,
+		0.5245904f,
+		0.5141034f,
+		0.503539f,
+		0.4928988f,
+		0.48218435f,
+		0.47139725f,
+		0.4605392f,
+		0.44961178f,
+		0.43861666f,
+		0.4275555f,
+		0.41642994f,
+		0.40524167f,
+		0.39399236f,
+		0.38268372f,
+		0.37131745f,
+		0.35989526f,
+		0.34841886f,
+		0.33689f,
+		0.3253104f,
+		0.31368184f,
+		0.302006f,
+		0.2902847f,
+		0.2785197f,
+		0.26671273f,
+		0.2548656f,
+		0.24298008f,
+		0.23105797f,
+		0.21910107f,
+		0.20711116f,
+		0.19509009f,
+		0.1830396f,
+		0.17096157f,
+		0.1588578f,
+		0.1467301f,
+		0.13458028f,
+		0.12241022f,
+		0.11022172f,
+		0.09801662f,
+		0.08579675f,
+		0.07356397f,
+		0.06132011f,
+		0.049067013f,
+		0.036806528f,
+		0.024540495f,
+		0.01227077f,
+		-8.026785e-07f,
+		-0.012272376f,
+		-0.0245421f,
+		-0.03680813f,
+		-0.049068615f,
+		-0.06132171f,
+		-0.07356557f,
+		-0.08579836f,
+		-0.09801822f,
+		-0.110223316f,
+		-0.12241182f,
+		-0.13458188f,
+		-0.14673169f,
+		-0.15885939f,
+		-0.17096317f,
+		-0.18304119f,
+		-0.19509166f,
+		-0.20711274f,
+		-0.21910264f,
+		-0.23105954f,
+		-0.24298164f,
+		-0.25486714f,
+		-0.26671427f,
+		-0.27852124f,
+		-0.29028624f,
+		-0.30200756f,
+		-0.31368336f,
+		-0.32531196f,
+		-0.33689153f,
+		-0.34842038f,
+		-0.35989678f,
+		-0.37131894f,
+		-0.3826852f,
+		-0.39399382f,
+		-0.40524313f,
+		-0.4164314f,
+		-0.42755696f,
+		-0.43861812f,
+		-0.44961324f,
+		-0.46054062f,
+		-0.47139868f,
+		-0.4821857f,
+		-0.49290013f,
+		-0.50354034f,
+		-0.5141047f,
+		-0.5245917f,
+		-0.5349996f,
+		-0.545327f,
+		-0.5555723f,
+		-0.56573385f,
+		-0.57581025f,
+		-0.58579993f,
+		-0.5957014f,
+		-0.60551316f,
+		-0.6152337f,
+		-0.6248616f,
+		-0.6343954f,
+		-0.64383364f,
+		-0.65317494f,
+		-0.6624179f,
+		-0.67156106f,
+		-0.68060315f,
+		-0.68954265f,
+		-0.6983784f,
+		-0.7071089f,
+		-0.71573293f,
+		-0.7242492f,
+		-0.73265636f,
+		-0.74095327f,
+		-0.7491385f,
+		-0.75721097f,
+		-0.7651694f,
+		-0.7730125f,
+		-0.7807393f,
+		-0.7883485f,
+		-0.79583895f,
+		-0.80320954f,
+		-0.8104592f,
+		-0.81758684f,
+		-0.8245913f,
+		-0.83147156f,
+		-0.8382267f,
+		-0.84485555f,
+		-0.85135716f,
+		-0.85773057f,
+		-0.86397475f,
+		-0.8700889f,
+		-0.876072f,
+		-0.8819231f,
+		-0.88764143f,
+		-0.8932261f,
+		-0.8986762f,
+		-0.90399104f,
+		-0.9091697f,
+		-0.91421145f,
+		-0.91911554f,
+		-0.9238812f,
+		-0.9285077f,
+		-0.93299437f,
+		-0.9373405f,
+		-0.94154555f,
+		-0.94560874f,
+		-0.9495295f,
+		-0.9533074f,
+		-0.9569416f,
+		-0.9604318f,
+		-0.9637773f,
+		-0.9669777f,
+		-0.97003233f,
+		-0.97294104f,
+		-0.9757031f,
+		-0.9783184f,
+		-0.9807862f,
+		-0.9831064f,
+		-0.9852785f,
+		-0.9873022f,
+		-0.9891772f,
+		-0.99090326f,
+		-0.99248016f,
+		-0.9939076f,
+		-0.99518526f,
+		-0.996313f,
+		-0.99729085f,
+		-0.99811846f,
+		-0.9987957f,
+		-0.9993226f,
+		-0.99969894f,
+		-0.9999247f,
+		-1.0f,
+		-0.99992466f,
+		-0.9996987f,
+		-0.9993222f,
+		-0.9987952f,
+		-0.9981178f,
+		-0.99729013f,
+		-0.99631214f,
+		-0.9951842f,
+		-0.9939064f,
+		-0.9924789f,
+		-0.9909018f,
+		-0.9891757f,
+		-0.9873005f,
+		-0.9852767f,
+		-0.98310447f,
+		-0.9807842f,
+		-0.9783162f,
+		-0.97570086f,
+		-0.9729386f,
+		-0.97002983f,
+		-0.966975f,
+		-0.96377444f,
+		-0.96042883f,
+		-0.9569386f,
+		-0.95330423f,
+		-0.9495263f,
+		-0.9456054f,
+		-0.941542f,
+		-0.9373369f,
+		-0.93299055f,
+		-0.92850375f,
+		-0.9238771f,
+		-0.9191114f,
+		-0.9142072f,
+		-0.9091653f,
+		-0.9039866f,
+		-0.8986716f,
+		-0.8932214f,
+		-0.8876366f,
+		-0.8819182f,
+		-0.8760669f,
+		-0.8700837f,
+		-0.86396945f,
+		-0.85772514f,
+		-0.8513516f,
+		-0.84484994f,
+		-0.83822095f,
+		-0.8314657f,
+		-0.8245854f,
+		-0.8175808f,
+		-0.81045306f,
+		-0.80320334f,
+		-0.7958326f,
+		-0.788342f,
+		-0.78073275f,
+		-0.7730059f,
+		-0.7651626f,
+		-0.7572041f,
+		-0.74913156f,
+		-0.7409462f,
+		-0.73264927f,
+		-0.724242f,
+		-0.7157256f,
+		-0.70710146f,
+		-0.6983709f,
+		-0.6895351f,
+		-0.68059546f,
+		-0.6715533f,
+		-0.66241f,
+		-0.653167f,
+		-0.64382565f,
+		-0.63438725f,
+		-0.6248534f,
+		-0.61522543f,
+		-0.6055048f,
+		-0.59569293f,
+		-0.5857914f,
+		-0.5758017f,
+		-0.5657252f,
+		-0.55556357f,
+		-0.54531825f,
+		-0.5349908f,
+		-0.52458274f,
+		-0.5140957f,
+		-0.5035313f,
+		-0.492891f,
+		-0.4821765f,
+		-0.4713894f,
+		-0.4605313f,
+		-0.44960383f,
+		-0.43860868f,
+		-0.42754745f,
+		-0.41642183f,
+		-0.4052335f,
+		-0.39398417f,
+		-0.3826755f,
+		-0.3713092f,
+		-0.35988694f,
+		-0.34841052f,
+		-0.33688164f,
+		-0.325302f,
+		-0.31367338f,
+		-0.3019975f,
+		-0.29027617f,
+		-0.27851114f,
+		-0.26670414f,
+		-0.25485697f,
+		-0.24297144f,
+		-0.2310493f,
+		-0.21909237f,
+		-0.20710245f,
+		-0.19508134f,
+		-0.18303084f,
+		-0.1709528f,
+		-0.158849f,
+		-0.14672127f,
+		-0.13457146f,
+		-0.12240139f,
+		-0.11021287f,
+		-0.09800775f,
+		-0.085787885f,
+		-0.07355509f,
+		-0.061311215f,
+		-0.049058113f,
+		-0.03679762f,
+		-0.02453159f,
+		-0.012261862f,
+		9.711589e-06f,
+		0.012281284f,
+		0.024551008f,
+		0.036817033f,
+		0.049077515f,
+		0.061330605f,
+		0.07357445f,
+		0.08580723f,
+		0.09802708f,
+		0.11023217f,
+		0.12242065f,
+		0.13459072f,
+		0.1467405f,
+		0.15886818f,
+		0.17097194f,
+		0.18304995f,
+		0.1951004f,
+		0.20712146f,
+		0.21911134f,
+		0.23106821f,
+		0.24299029f,
+		0.25487575f,
+		0.26672286f,
+		0.2785298f,
+		0.29029477f,
+		0.30201605f,
+		0.31369182f,
+		0.32532036f,
+		0.3368999f,
+		0.34842873f,
+		0.35990506f,
+		0.37132722f,
+		0.38269344f,
+		0.39400202f,
+		0.4052513f,
+		0.4164395f,
+		0.427565f,
+		0.43862614f,
+		0.4496212f,
+		0.46054855f,
+		0.47140655f,
+		0.48219353f,
+		0.4929079f,
+		0.5035481f,
+		0.5141124f,
+		0.5245993f,
+		0.5350072f,
+		0.5453345f,
+		0.5555797f,
+		0.56574124f,
+		0.5758176f,
+		0.5858072f,
+		0.59570855f,
+		0.60552025f,
+		0.61524075f,
+		0.6248686f,
+		0.6344023f,
+		0.6438405f,
+		0.65318173f,
+		0.6624246f,
+		0.6715677f,
+		0.6806097f,
+		0.68954915f,
+		0.69838476f,
+		0.70711523f,
+		0.7157392f,
+		0.7242554f,
+		0.73266244f,
+		0.7409592f,
+		0.74914443f,
+		0.7572168f,
+		0.7651751f,
+		0.77301824f,
+		0.7807449f,
+		0.788354f,
+		0.7958444f,
+		0.8032149f,
+		0.8104645f,
+		0.81759197f,
+		0.82459635f,
+		0.83147657f,
+		0.83823156f,
+		0.84486026f,
+		0.85136175f,
+		0.8577351f,
+		0.8639792f,
+		0.8700932f,
+		0.8760762f,
+		0.88192725f,
+		0.8876455f,
+		0.8932301f,
+		0.8986801f,
+		0.9039948f,
+		0.90917337f,
+		0.91421497f,
+		0.919119f,
+		0.9238845f,
+		0.9285109f,
+		0.9329975f,
+		0.9373436f,
+		0.94154847f,
+		0.9456116f,
+		0.94953233f,
+		0.95331f,
+		0.9569442f,
+		0.96043426f,
+		0.9637797f,
+		0.96697986f,
+		0.97003454f,
+		0.97294307f,
+		0.97570515f,
+		0.9783202f,
+		0.980788f,
+		0.983108f,
+		0.98528004f,
+		0.9873036f,
+		0.98917854f,
+		0.9909045f,
+		0.99248123f,
+		0.9939085f,
+		0.9951861f,
+		0.9963138f,
+		0.9972915f,
+		0.99811894f,
+		0.9987961f,
+		0.99932295f,
+		0.9996992f,
+		0.9999249f,
+	};
+	return cosineTable[static_cast<std::uint32_t>(a_value) & 511];
+}
+
 // power of 3 
 inline float NiSinQ(float a_radians)
 {
 	return NiSinQImpl((512.0f / (2.0f * std::numbers::pi_v<float>)) * a_radians);
 }
+
+//power of 3
+inline float NiCosQ(float a_radians)
+{
+	return NiCosQImpl((512.0f / RE::NI_TWO_PI) * a_radians);
+}
+
 // hook into player update so we can update light flicker data every fram
 struct PlayerCharacter_Update {
 
@@ -547,12 +1073,13 @@ struct PlayerCharacter_Update {
     static void Install();
 };
 
-
-// used in flicker calcs
-inline float getRandomFloat(const float& min, const float& max, uint32_t rngState)
+inline float getRandomFloat(const float& min, const float& max)
 {
-	return min + (max - min) * Random::rand(rngState);
+	static std::mt19937 rng{ std::random_device{}() };
+	std::uniform_real_distribution<float> dist(min, max);
+	return dist(rng);
 }
+
 
 inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 {
@@ -668,14 +1195,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 			continue;
 		}
 
-		// scale I use as a free float used as flicker timer
-		auto& scale = light->light->local.scale;
-
 		auto& rt = light->light->GetLightRuntimeData();
-
-		// seems like everyone throws ambient away like Community shaders for example
-		// so we will do the same to act as 3 free floats we can store values in for flicker amplitude.
-		auto& pos = light->light->local.translate;
 
 		auto it = LightData::configIDToJsonCfg.find(rt.unk138);
 		if (it == LightData::configIDToJsonCfg.end())
@@ -694,90 +1214,84 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 			rt.diffuse.green = (config.diffuseColor[1] / 255.0f) * emittance.green;
 			rt.diffuse.blue = (config.diffuseColor[2] / 255.0f) * emittance.blue;
 		}
-		
-		uint32_t seed =
-			static_cast<uint32_t>(
-				reinterpret_cast<std::uintptr_t>(light.get()) & 0xFFFFFFFF);
 
-		//float r = 0.0f; 
-
-		// Flicker Randomness
-		// Check if the param flickerRandomness exist. If not, applies a default value that will be saved with the template next time the user saves it in the light editor.
-		// Otherwise apply the existing parameter value from the config.
-		// Since I don't know how you handle existing code when adding new values I made this check. 
-		// Tell me if there's another way to prevent the code from being weird when ReLight tries to inject a value that doesn't exist already in the configs...
-	//	if (config.flickerRandomness) {
-	//		r = getRandomFloat(-config.flickerRandomness , config.flickerRandomness, seed);
-
-	//	} else {
-
-			float r = getRandomFloat(-0.1f, 0.1f, seed);
-	//	}
-
-		scale += delta * (1.0f - r) * std::numbers::pi_v<float>;
-
-		rt.fade =
-			(config.startingFade +
-				NiSinQ(scale * config.flickersPerSecond) * config.flickerIntensity)
-			* globals::brightnessModifier;
-
-		// stop movement if flickers per second is off
 		if (config.flickersPerSecond <= 0.0f)
-			continue;
+			continue; // static light, no flicker/pulse
 
 		auto* pointLight = netimmerse_cast<RE::NiPointLight*>(light->light.get());
 		if (!pointLight)
 			continue;
 
-		// oscillation
-		if (pointLight->constAttenuation == 0.0f &&
-			pointLight->linearAttenuation == 0.0f &&
-			pointLight->quadraticAttenuation == 0.0f) {
+		auto& pos = light->light->local.translate;
 
-			pointLight->constAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed);
-			pointLight->linearAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 1);
-			pointLight->quadraticAttenuation = getRandomFloat(0.0f, RE::NI_TWO_PI, seed + 2);
+		RE::NiPoint3 basePos = light->light->worldBound.center; 
+
+		const float flickerDelta = delta * config.flickersPerSecond;
+
+		auto* ref = light->light->GetUserData();
+
+		//object reference scale 
+		float scale = ref ? ref->GetScale() : 1.0f;
+
+		//dont increase gets to messy, only handle mini objects like mini fires in windhelm otherwise too bright
+		if (scale >= 1.0f) scale = 1.0f;
+
+		if (!LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kPulse)) {
+
+			// ---- Flicker (matches vanilla kFlicker / kFlickerSlow) ----
+			auto constAttenOffset = std::fmod(pointLight->constAttenuation + getRandomFloat(1.1f, 13.1f) * flickerDelta, RE::NI_TWO_PI);
+			auto linearAttenOffset = std::fmod(pointLight->linearAttenuation + getRandomFloat(1.2f, 13.2f) * flickerDelta, RE::NI_TWO_PI);
+			auto quadraticAttenOffset = std::fmod(pointLight->quadraticAttenuation + getRandomFloat(1.3f, 19.3f) * flickerDelta, RE::NI_TWO_PI);
+
+			pointLight->constAttenuation = constAttenOffset;
+			pointLight->linearAttenuation = linearAttenOffset;
+			pointLight->quadraticAttenuation = quadraticAttenOffset;
+
+			const auto constAttenSine = NiSinQ(constAttenOffset + 1.7f);
+			const auto linearAttenSine = NiSinQ(linearAttenOffset + 0.5f);
+
+			float flickerMovementMult = (config.flickerAmplitude * constAttenSine) * linearAttenSine * 0.5f;
+			if ((flickerMovementMult + config.flickerAmplitude) <= 0.0f) {
+				flickerMovementMult = 0.0f;
+			}
+
+			pos.x = basePos.x + flickerMovementMult * constAttenSine;
+			pos.y = basePos.y + flickerMovementMult * linearAttenSine;
+			pos.z = basePos.z + flickerMovementMult * NiSinQ(quadraticAttenOffset + 0.3f);
+
+			const float halfIntensityAmplitude = config.flickerIntensity * 0.5f;
+			const float flickerIntensityVal = std::clamp(
+				(NiSinQImpl(linearAttenOffset * 1.3f * (512.0f / RE::NI_TWO_PI) + 52.966763f) + 1.0f) * 0.5f *
+				(NiSinQImpl(constAttenOffset * 1.1f * (512.0f / RE::NI_TWO_PI) + 152.38132f) + 1.0f) * 0.5f * 0.33333331f +
+				NiSinQImpl(quadraticAttenOffset * 3.0f * (512.0f / RE::NI_TWO_PI) + 73.3386f) * 0.2f,
+				-1.0f, 1.0f);
+
+			const float baseFade = config.startingFade * globals::brightnessModifier * scale;
+			rt.fade = ((halfIntensityAmplitude * flickerIntensityVal) + (1.0f - halfIntensityAmplitude)) * baseFade;
 		}
+		else {
+			// ---- Pulse (matches vanilla kPulse / kPulse) ----
+			auto constAttenuation = std::fmod(pointLight->constAttenuation + flickerDelta, RE::NI_TWO_PI);
+			pointLight->constAttenuation = constAttenuation;
 
-		const float speedBase = config.flickersPerSecond * std::numbers::pi_v<float>;
-		const float amp = config.flickerAmplitude;
+			const auto constAttenCosine = NiCosQ(constAttenuation);
+			const auto constAttenSine = NiSinQ(constAttenuation);
 
-		pointLight->constAttenuation = std::fmod(pointLight->constAttenuation + delta * speedBase * 0.91f, RE::NI_TWO_PI);
-		pointLight->linearAttenuation = std::fmod(pointLight->linearAttenuation + delta * speedBase * 1.13f, RE::NI_TWO_PI);
-		pointLight->quadraticAttenuation = std::fmod(pointLight->quadraticAttenuation + delta * speedBase * 1.37f, RE::NI_TWO_PI);
+			const float halfIntensityAmplitude = config.flickerIntensity * 0.5f;
+			const float baseFade = config.startingFade * globals::brightnessModifier * scale;
 
-		const float sx = NiSinQ(pointLight->constAttenuation);
-		const float sy = NiSinQ(pointLight->linearAttenuation);
-		const float sz = NiSinQ(pointLight->quadraticAttenuation);
+			rt.fade = ((constAttenCosine * halfIntensityAmplitude) + (1.0f - halfIntensityAmplitude)) * baseFade;
 
-		const auto& base = pointLight->local.translate; 
-
-		pos.x = base[0] + sx * amp;
-		pos.y = base[1] + sy * amp;
-		pos.z = base[2] + sz * (amp * 0.5f);
+			pos.x = basePos.x + config.flickerAmplitude * constAttenCosine;
+			pos.y = basePos.y + config.flickerAmplitude * constAttenSine;
+			pos.z = basePos.z + config.flickerAmplitude * (constAttenSine * constAttenCosine);
+		}
 
 		RE::NiUpdateData updateData{};
 		updateData.time = 0.0f;
 		updateData.flags = RE::NiUpdateData::Flag::kDirty;
-
-	
-
 		a_root->UpdateTransformAndBounds(updateData);
-
-    }
-        //shadow lights are persistance even if mesh dissapers, so if we want light to go away with mesh, must do this
-        if (!toRemove.empty()) {
-            auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-            if (!ssNode) {
-                logger::warn("ShadowSceneNode[0] is null!");
-                return;
-            }
-
-            for (auto& light : toRemove) {
-                if (!light.get()) continue; 
-                ssNode->RemoveLight(light.get()); 
-            }
-        }
+	}
 }
 
 //TODO:: Redo whatever the fuck this is 

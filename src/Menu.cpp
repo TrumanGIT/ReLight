@@ -655,13 +655,7 @@ namespace UI {
         // ---------------------------------------------------------------------
         // LOADED TEMPLATES LIST with fixed height of 450.0f, scrollable
         // ---------------------------------------------------------------------
-        {
-            if (ImGuiMCP::BeginChild("LightListChild", ImGuiMCP::ImVec2(0, 450.0f), true))
-            {
-                RenderLightList(lights, selectedIndex);
-            }
-            ImGuiMCP::EndChild();
-        }
+        RenderLightList(lights, selectedIndex);
 
         // ---------------------------------------------------------------------
         // SELECTED TEMPLATE SETTINGS — fixed height of 450.0f, scrollable
@@ -697,7 +691,7 @@ namespace UI {
                     bool isTorch = (selectedLight->light->name == "RLtorch");
                     bool isShadowLight = config.shadowLight;
 
-                    if (ImGuiMCP::BeginChild("SelectedLightSettingsChild", ImGuiMCP::ImVec2(0, 450.0f), true))
+                    if (ImGuiMCP::BeginChild("SelectedLightSettingsChild", ImGuiMCP::ImVec2(0, 680.0f), true))
                     {
                         if (globals::enableDebugLines && !(config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight))) {
 
@@ -724,8 +718,6 @@ namespace UI {
                         }
 
                         ImGuiMCP::PushID(selectedLight->light.get());
-
-                        ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
 
                         //////////////////////////////////////////////////////////////////////////////////////////////////////
                         // TemplateEditor - Now dynamically sized based on content (height: 0 = auto-size)
@@ -826,6 +818,10 @@ namespace UI {
                                 FlagCheckbox("Outdoor", config.flags, LIGHT_FLAGS::kOutdoor,
                                     "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
                                     "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
+
+                                FlagCheckbox("Pulse", config.flags, LIGHT_FLAGS::kPulse,
+                                    "Light will pulse instead of flicker, good for flower lights ect"
+                                   );
 
                                 ImGuiMCP::End();
                             }
@@ -1035,9 +1031,9 @@ namespace UI {
                             ImGuiMCP::BeginDisabled(isTorch);
 
                             ImGuiMCP::SliderFloat(
-                                "Flickers / Second",
+                                "Flicker Rate",
                                 &config.flickersPerSecond,
-                                0.0f, 5.0f, "%.2f");
+                                0.0f, 1.0f, "%.2f");
 
                             ImGuiMCP::BeginDisabled(config.flickersPerSecond == 0.0);
 
@@ -1098,6 +1094,12 @@ namespace UI {
                                             l->light->local.translate.x = config.position[0];
                                             l->light->local.translate.y = config.position[1];
                                             l->light->local.translate.z = config.position[2];
+
+                                            // 3 free floats used to store merged light positions, needed for flicker calcs movement
+                                            l->light->worldBound.center.x = config.position[0];
+                                            l->light->worldBound.center.y = config.position[1];
+                                            l->light->worldBound.center.z = config.position[2];
+
                                             if (auto* parent = l->light->parent) {
                                                 RE::NiUpdateData updateData{};
                                                 updateData.time = 0.0f;
@@ -1111,6 +1113,12 @@ namespace UI {
                                             l->light->local.translate.x = config.position[0];
                                             l->light->local.translate.y = config.position[1];
                                             l->light->local.translate.z = config.position[2];
+
+                                            // 3 free floats used to store merged light positions, needed for flicker calcs movement
+                                            l->light->worldBound.center.x = config.position[0];
+                                            l->light->worldBound.center.y = config.position[1];
+                                            l->light->worldBound.center.z = config.position[2];
+
                                             if (auto* parent = l->light->parent) {
                                                 RE::NiUpdateData updateData{};
                                                 updateData.time = 0.0f;
@@ -1425,7 +1433,7 @@ namespace UI {
         static RE::FormID lastSelected = 0;
         static RE::FormID previewRef = 0;
         static int previewSelectedIndex = -1;
-        static std::vector<std::tuple<RE::FormID, LightConfig, bool>> configDisplay;
+        static std::vector<std::tuple<std::variant<RE::FormID, std::string>, LightConfig, bool>> configDisplay;
         static std::unordered_set<std::string> seenMenuNames;
         static int selectedIndex = -1;
         static std::vector<LightConfig> selectedCfgs;
@@ -1961,7 +1969,7 @@ namespace UI {
 
                 seenMenuNames.clear();
 
-                auto tryAdd = [&](RE::FormID key, const std::vector<LightConfig>& cfgVec, bool isExterior) {
+                auto tryAddBase = [&](RE::FormID key, const std::vector<LightConfig>& cfgVec, bool isExterior) {
                     if (cfgVec.empty()) return;
                     const auto& cfg = cfgVec[0];
                     std::string name = cfg.menuName.empty() ? std::format("0x{:08X}", key) : cfg.menuName;
@@ -1971,10 +1979,25 @@ namespace UI {
                     }
                     };
 
+                auto tryAddMesh = [&](const std::string& key, const std::vector<LightConfig>& cfgVec, bool isExterior) {
+                    if (cfgVec.empty()) return;
+                    const auto& cfg = cfgVec[0];
+                    std::string name = cfg.menuName.empty() ? key : cfg.menuName;
+                    std::string nameLower = toLowerImmut(name);
+                    if (seenMenuNames.insert(nameLower).second) {
+                        configDisplay.push_back({ key, cfg, isExterior });
+                    }
+                    };
+
                 for (auto& [key, cfgVec] : LightData::baseFormIDToJsonCfg)
-                    tryAdd(key, cfgVec, false);
+                    tryAddBase(key, cfgVec, false);
                 for (auto& [key, cfgVec] : LightData::baseFormIDToJsonCfgExteriors)
-                    tryAdd(key, cfgVec, true);
+                    tryAddBase(key, cfgVec, true);
+
+                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfg)
+                    tryAddMesh(key, cfgVec, false);
+                for (auto& [key, cfgVec] : LightData::meshPathToJsonCfgExteriors)
+                    tryAddMesh(key, cfgVec, true);
 
                 std::sort(configDisplay.begin(), configDisplay.end(),
                     [](const auto& a, const auto& b)
@@ -2003,11 +2026,23 @@ namespace UI {
             }
             const auto& [selectedKey, selectedCfg, isExterior] = configDisplay[selectedIndex];
             selectedCfgs.clear();
-            auto& map = isExterior
-                ? LightData::baseFormIDToJsonCfgExteriors
-                : LightData::baseFormIDToJsonCfg;
-            if (auto it = map.find(selectedKey); it != map.end())
-                selectedCfgs = it->second;
+
+            if (std::holds_alternative<RE::FormID>(selectedKey)) {
+                auto formKey = std::get<RE::FormID>(selectedKey);
+                auto& map = isExterior
+                    ? LightData::baseFormIDToJsonCfgExteriors
+                    : LightData::baseFormIDToJsonCfg;
+                if (auto it = map.find(formKey); it != map.end())
+                    selectedCfgs = it->second;
+            }
+            else {
+                auto meshKey = std::get<std::string>(selectedKey);
+                auto& map = isExterior
+                    ? LightData::meshPathToJsonCfgExteriors
+                    : LightData::meshPathToJsonCfg;
+                if (auto it = map.find(meshKey); it != map.end())
+                    selectedCfgs = it->second;
+            }
 
             if (selectedCfgs.empty()) {
                 centerNextItem(220.0f);

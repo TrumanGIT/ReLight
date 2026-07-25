@@ -79,6 +79,11 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 	niPointLight->local.translate.x = cfg.position[0];
 	niPointLight->local.translate.y = cfg.position[1];
 	niPointLight->local.translate.z = cfg.position[2];
+
+	// free floats used for merged lights position, needed for movement in flicker calcs
+	niPointLight->worldBound.center.x = cfg.position[0];
+	niPointLight->worldBound.center.y = cfg.position[1];
+	niPointLight->worldBound.center.z = cfg.position[2];
 }
 
 void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg) {
@@ -156,7 +161,7 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 
 	p.dynamic = true;    // dynamic = game updates it every frame? 
 	p.shadowLight = cfg.shadowLight;   
-	p.portalStrict = cfg.portalStrict; // should always be on something to do with culling / optimizaitons
+	p.portalStrict = cfg.portalStrict; // should always be on something to do with portals
 	p.affectLand = cfg.affectLand; 
 	p.affectWater = cfg.affectWater; 
 	p.neverFades = cfg.neverFades; // no draw back apparently to set true (rob from skyblivion)
@@ -164,7 +169,7 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	p.fov = GetFOV(cfg);          // for spotlights and hemi spheres maybe? 
 	p.falloff = cfg.falloff;    // shadows (I think)
 	p.nearDistance = cfg.nearDistance; // shadows (I think)
-	p.depthBias = cfg.depthBias; // shadows (I think)
+	p.depthBias = cfg.depthBias; // shadows 
 
 	p.sceneGraphIndex = 0;      // always use 0 ?
 
@@ -192,7 +197,6 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 
 	cfg.flickerIntensity = baseConfig.flickerIntensity;
 	cfg.flickersPerSecond = baseConfig.flickersPerSecond;
-//	cfg.flickerRandomness = baseConfig.flickerRandomness;
 
 	if (globals::islInstalled) {
 
