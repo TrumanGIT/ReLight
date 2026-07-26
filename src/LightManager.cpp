@@ -981,7 +981,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 			 worldMid.y = numY / denom;
 		 }
 
-		float originalLocalZ =p.light->local.translate.z;
+		float originalLocalZ = p.light->local.translate.z;
 
 		 auto* parent = p.light->parent; 
 

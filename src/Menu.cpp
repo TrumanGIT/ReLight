@@ -17,7 +17,9 @@ namespace UI {
     static buttonTicker saveINIButton{};
     static buttonTicker defaultButton{};
     static buttonTicker deleteButton{};
-    static vector<RE::NiPointer<RE::BSLight>> lights = {};
+    static vector<RE::NiPointer<RE::BSLight>> relightLights = {};
+    //vanilla, elfx, lux ect
+    static vector<RE::NiPointer<RE::BSLight>> pluginLights = {};
     static bool lightsLoaded = false;
     static bool enableLightEditor = false;
     static bool lightAlreadyInList = false;
@@ -685,7 +687,7 @@ namespace UI {
                         BuildRegionList(regionList);
                     }
 
-                    bool isSpotLight = config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight);
+                    bool isSpotLight = LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
                     float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
                     bool isTorch = (selectedLight->light->name == "RLtorch");
@@ -737,6 +739,7 @@ namespace UI {
                             std::string flagsLabel = std::string("Flags ") + flagIcon;
                             ImGuiMCP::ImVec2 flagsTextSize{};
                             ImGuiMCP::CalcTextSize(&flagsTextSize, flagsLabel.c_str(), nullptr, false, -1.0f);
+
                             float flagsButtonWidth = flagsTextSize.x + style->FramePadding.x * 2.0f;
 
                             ImGuiMCP::Text("Name:");
@@ -746,85 +749,28 @@ namespace UI {
 
                             ImGuiMCP::ImVec2 avail{};
                             ImGuiMCP::GetContentRegionAvail(&avail);
+
                             float nameInputWidth = avail.x - flagsButtonWidth - kButtonSpacing;
-                            if (nameInputWidth < 50.0f) nameInputWidth = 50.0f; // safety floor so it never collapses to nothing
+                            if (nameInputWidth < 50.0f) {
+                                nameInputWidth = 50.0f;
+                            }
 
                             ImGuiMCP::SetNextItemWidth(nameInputWidth);
                             ImGuiMCP::InputText("##templateName", newTemplateName, sizeof(newTemplateName));
+
                             if (ImGuiMCP::IsItemHovered()) {
-                                ImGuiMCP::SetTooltip("This updates how the template name appears in the light editor.");
+                                ImGuiMCP::SetTooltip(
+                                    "This updates how the template name appears in the light editor."
+                                );
                             }
 
-                            if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuName != newTemplateName)
-                            {
+                            if (ImGuiMCP::IsItemDeactivatedAfterEdit() && config.menuName != newTemplateName) {
                                 config.menuName = newTemplateName;
                             }
 
                             ImGuiMCP::SameLine(0.0f, kButtonSpacing);
 
-                            static bool showFlagWindow = false;
-
-                            if (ImGuiMCP::Button(flagsLabel.c_str())) {
-                                showFlagWindow = !showFlagWindow;
-                            }
-
-                            if (showFlagWindow) {
-                                ImGuiMCP::Begin("Flag Window", &showFlagWindow, ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None);
-
-                                auto FlagCheckbox = [](const char* label, uint32_t& flags, LIGHT_FLAGS flag, const char* tooltip)
-                                    {
-                                        bool checked = (flags & static_cast<uint32_t>(flag)) != 0;
-                                        if (ImGuiMCP::Checkbox(label, &checked))
-                                        {
-                                            if (checked)
-                                                flags |= static_cast<uint32_t>(flag);
-                                            else
-                                                flags &= ~static_cast<uint32_t>(flag);
-                                        }
-
-                                        if (ImGuiMCP::IsItemHovered())
-                                        {
-                                            ImGuiMCP::SetTooltip("%s", tooltip);
-                                        }
-                                    };
-
-                                FlagCheckbox("Candle", config.flags, LIGHT_FLAGS::kCandle,
-                                    "Important for light flicker prevention. Also allows the light to merge with any other "
-                                    "light created from a relight json file which also has the Candle flag.");
-
-                                FlagCheckbox("Chandelier", config.flags, LIGHT_FLAGS::kChandelier,
-                                    "Important for light flicker prevention.");
-
-                                FlagCheckbox("Fire", config.flags, LIGHT_FLAGS::kFire,
-                                    "Important for light flicker prevention. Also allows the light to merge with any other "
-                                    "light created from a relight json file which also has the Fire flag.");
-
-                                FlagCheckbox("Giant Campfire", config.flags, LIGHT_FLAGS::kGiantCampfire,
-                                    "Allows merging with any other light created by a relight json config with the Fire flag (needed).");
-
-                                FlagCheckbox("Other", config.flags, LIGHT_FLAGS::kOther,
-                                    "Allows merging with any other light created by a relight json config with the Other flag.");
-
-                                FlagCheckbox("Increased Merge Distance", config.flags, LIGHT_FLAGS::kIncreasedMergeDistance,
-                                    "Grants a significantly larger merge distance to lights. Currently used for ruin candles.");
-
-                                FlagCheckbox("Increased Menu XYZ Scale", config.flags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
-                                    "Increases the in-game menu XYZ position slider range from 250 to 1250, for positioning "
-                                    "lights on larger objects.");
-
-                                FlagCheckbox("No Merging", config.flags, LIGHT_FLAGS::kNoMerging,
-                                    "Light sources of this type will never merge.");
-
-                                FlagCheckbox("Outdoor", config.flags, LIGHT_FLAGS::kOutdoor,
-                                    "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
-                                    "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
-
-                                FlagCheckbox("Pulse", config.flags, LIGHT_FLAGS::kPulse,
-                                    "Light will pulse instead of flicker, good for flower lights ect"
-                                   );
-
-                                ImGuiMCP::End();
-                            }
+                            RenderRelightFlags(config.flags);
 
                             ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
 
@@ -890,6 +836,7 @@ namespace UI {
                                 ImGuiMCP::SetTooltip("Select a region used for external emittance (Change light colors based on time of day, good for window lights)");
                             }
                         }
+
                         ImGuiMCP::EndChild(); // TemplateEditor
 
                         ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));

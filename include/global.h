@@ -107,7 +107,6 @@ namespace globals
     inline float lightFadeMax = 2.0f;    // maximum total fade multiplier
     inline float lightRadiusMax = 2.0f;  // maximum total radius multiplier
 
-
     // used to reinitialize lights based on this distance as we put lights into object geomatry
     inline float fLODFadeOutMultObjects = 9000;
 
@@ -122,6 +121,7 @@ namespace globals
     inline std::unordered_set<RE::FormID> excludedRefFormIDs{};
 
     inline std::unordered_set<RE::FormID> excludedBaseFormIDs{
+        //scripted fires either in castle volkihar or skyhaven temple or both i forget
      0x0003BD2E,
      0x001092E2,
      0x0001838F  

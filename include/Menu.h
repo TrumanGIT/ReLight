@@ -66,7 +66,8 @@ namespace UI {
                 "  startingBrightness{}\n"
                 "  radius            {}\n"
                 "  flickerIntensity  {}\n"
-                "  flickersPerSecond {}\n"
+                "  flickerRate       {}\n"
+                "  flickerMovement       {}\n"
                 "  worldPos          {}\n"
                 "  unk060            {}\n"
                 "  configID          {}",
@@ -76,6 +77,7 @@ namespace UI {
                 lightRt.radius,
                 cfg.flickerIntensity,
                 cfg.flickersPerSecond,
+                cfg.flickerAmplitude,
                 light->light->world.translate,
                 light->unk060,
                 cfg.configID
@@ -863,7 +865,7 @@ namespace UI {
             static_cast<float>(groupData.uncategorized.size()) * itemHeight;
 
         // Minimum height so the list isn't tiny
-        constexpr float minListHeight = 250.0f;
+        constexpr float minListHeight = 150.0f;
 
         desiredHeight = std::clamp(
             desiredHeight,
@@ -936,8 +938,77 @@ namespace UI {
         ImGuiMCP::EndChild();
     }
 
+    void RenderRelightFlags(uint32_t& flags)
+    {
+        static bool showFlagWindow = false;
 
-   
+        if (ImGuiMCP::Button((std::string("Flags ") + flagIcon).c_str())) {
+            showFlagWindow = !showFlagWindow;
+        }
+
+        if (showFlagWindow) {
+            ImGuiMCP::Begin(
+                "Flag Window",
+                &showFlagWindow,
+                ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None
+            );
+
+            auto FlagCheckbox = [](const char* label, uint32_t& flags, LIGHT_FLAGS flag, const char* tooltip)
+                {
+                    bool checked = (flags & static_cast<uint32_t>(flag)) != 0;
+
+                    if (ImGuiMCP::Checkbox(label, &checked)) {
+                        if (checked) {
+                            flags |= static_cast<uint32_t>(flag);
+                        }
+                        else {
+                            flags &= ~static_cast<uint32_t>(flag);
+                        }
+                    }
+
+                    if (ImGuiMCP::IsItemHovered()) {
+                        ImGuiMCP::SetTooltip("%s", tooltip);
+                    }
+                };
+
+            FlagCheckbox("Candle", flags, LIGHT_FLAGS::kCandle,
+                "Important for light flicker prevention. Also allows the light to merge with any other "
+                "light created from a relight json file which also has the Candle flag.");
+
+            FlagCheckbox("Chandelier", flags, LIGHT_FLAGS::kChandelier,
+                "Important for light flicker prevention.");
+
+            FlagCheckbox("Fire", flags, LIGHT_FLAGS::kFire,
+                "Important for light flicker prevention. Also allows the light to merge with any other "
+                "light created from a relight json file which also has the Fire flag.");
+
+            FlagCheckbox("Giant Campfire", flags, LIGHT_FLAGS::kGiantCampfire,
+                "Allows merging with any other light created by a relight json config with the Fire flag (needed).");
+
+            FlagCheckbox("Other", flags, LIGHT_FLAGS::kOther,
+                "Allows merging with any other light created by a relight json config with the Other flag.");
+
+            FlagCheckbox("Increased Merge Distance", flags, LIGHT_FLAGS::kIncreasedMergeDistance,
+                "Grants a significantly larger merge distance to lights. Currently used for ruin candles.");
+
+            FlagCheckbox("Increased Menu XYZ Scale", flags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
+                "Increases the in-game menu XYZ position slider range from 250 to 1250, for positioning "
+                "lights on larger objects.");
+
+            FlagCheckbox("No Merging", flags, LIGHT_FLAGS::kNoMerging,
+                "Light sources of this type will never merge.");
+
+            FlagCheckbox("Outdoor", flags, LIGHT_FLAGS::kOutdoor,
+                "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
+                "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
+
+            FlagCheckbox("Pulse", flags, LIGHT_FLAGS::kPulse,
+                "Light will pulse instead of flicker, good for flower lights ect.");
+
+            ImGuiMCP::End();
+        }
+    }
+
     //RenderAttachRemove FUNTIONS
     ///////////////////////////////
 
