@@ -19,6 +19,7 @@ B(portalStrict, true) \
 B(affectLand, true) \
 B(affectWater, true) \
 B(neverFades, true) \
+B(isPluginLight, false) \
 
 #define FOREACH_FLOAT(F) \
 F(brightness, 2.0f) \
@@ -30,7 +31,6 @@ F(depthBias, 1.0f) \
 F(ambientRatio, 0.1f) \
 F(flickerIntensity, 0.1f) \
 F(flickersPerSecond, 0.1f) \
-F(flickerTime, 0.0f) \
 F(flickerAmplitude, 0.0f) \
 F(startingFade, 0.f) \
 F(size, 2.0f) \
@@ -67,8 +67,38 @@ inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
     { LIGHT_FLAGS::kNoMerging, "NoMerging" },
     { LIGHT_FLAGS::kOutdoor, "Outdoor" },
-     { LIGHT_FLAGS::kPulse, "Pulse" }
+    { LIGHT_FLAGS::kPulse, "Pulse" }
 };
+
+inline constexpr std::array<std::pair<RE::TES_LIGHT_FLAGS, std::string_view>, 14> flagNames{ {
+     { RE::TES_LIGHT_FLAGS::kDynamic,        "Dynamic" },
+     { RE::TES_LIGHT_FLAGS::kCanCarry,       "CanCarry" },
+     { RE::TES_LIGHT_FLAGS::kNegative,       "Negative" },
+     { RE::TES_LIGHT_FLAGS::kFlicker,        "Flicker" },
+     { RE::TES_LIGHT_FLAGS::kDeepCopy,       "DeepCopy" },
+     { RE::TES_LIGHT_FLAGS::kOffByDefault,   "OffByDefault" },
+     { RE::TES_LIGHT_FLAGS::kFlickerSlow,     "FlickerSlow" },
+     { RE::TES_LIGHT_FLAGS::kPulse,          "Pulse" },
+     { RE::TES_LIGHT_FLAGS::kPulseSlow,      "PulseSlow" },
+     { RE::TES_LIGHT_FLAGS::kSpotlight,      "Spotlight" },
+     { RE::TES_LIGHT_FLAGS::kSpotShadow,     "SpotShadow" },
+     { RE::TES_LIGHT_FLAGS::kHemiShadow,     "HemiShadow" },
+     { RE::TES_LIGHT_FLAGS::kOmniShadow,     "OmniShadow" },
+     { RE::TES_LIGHT_FLAGS::kPortalStrict,   "PortalStrict" }
+ } };
+
+inline nlohmann::json TESLightFlagsToJson(uint32_t mask)
+{
+    nlohmann::json arr = nlohmann::json::array();
+
+    for (const auto& [flag, name] : flagNames) {
+        if (mask & static_cast<uint32_t>(flag)) {
+            arr.push_back(name);
+        }
+    }
+
+    return arr;
+}
 
 struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
@@ -90,16 +120,25 @@ struct LightConfig {
     uint32_t configID = 0;       // used to lookup configs fast in flicker calcs ect
     uint16_t jsonIndex = 0;      // used to keep track of multi lights
 
-    inline void printFlags(uint32_t mask)
+    inline void printFlags(uint32_t mask, bool isPluginLight)
     {
         if (!mask) {
             logger::info("  <none>");
             return;
         }
 
-        for (const auto& [flag, name] : LightFlagNames) {
-            if (mask & static_cast<uint32_t>(flag)) {
-                logger::info("  {}", name);
+        if (isPluginLight) {
+            for (const auto& [flag, name] : LightFlagNames) {
+                if (mask & static_cast<uint32_t>(flag)) {
+                    logger::info("  {}", name);
+                }
+            }
+        }
+        else {
+            for (const auto& [flag, name] : flagNames) {
+                if (mask & static_cast<uint32_t>(flag)) {
+                    logger::info("  {}", name);
+                }
             }
         }
     }
@@ -121,7 +160,7 @@ struct LightConfig {
         logger::info(" config ID: {}", configID);
         logger::info(" json Index: {}", jsonIndex);
         logger::info(" flags    :");
-        printFlags(flags);
+        printFlags(flags, isPluginLight);
 
         logger::info(" attachPath    :");
         for (const auto& i : attachPath) {
@@ -212,9 +251,13 @@ bool AddFormIDToAllJsonEntries(
 
 std::size_t CountJsonEntriesInFile(const std::string& configPath); 
 
-uint32_t ParseFlags(const nlohmann::json& j);
+uint32_t ParseRelightFlags(const nlohmann::json& j);
 
-nlohmann::json FlagsToJson(uint32_t mask);
+nlohmann::json RelightFlagsToJson(uint32_t mask);
+
+void ApplyTESLightFlags(
+    RE::TESObjectLIGH* light,
+    const LightConfig& cfg); 
 
 bool loadConfiguration(LightConfig& config, const nlohmann::json& data);
 
@@ -235,6 +278,9 @@ bool AppendNewConfigEntryFromLight(
     RE::FormID refFormID,
     RE::FormID baseFormID,
     bool preserveConfigID);
+
+// used for skyrim lights
+void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName);
 
 void parseTemplates();
 

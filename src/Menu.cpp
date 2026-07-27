@@ -24,19 +24,7 @@ namespace UI {
     static bool enableLightEditor = false;
     static bool lightAlreadyInList = false;
 
-    auto lightbulbIcon = FontAwesome::UnicodeToUtf8(0xf0eb);
-
-    auto palletIcon = FontAwesome::UnicodeToUtf8(0xf53f); 
-
-    auto coordinatesIcon = FontAwesome::UnicodeToUtf8(0xf601);
-
-    auto editorIcon = FontAwesome::UnicodeToUtf8(0xf044);
-
-    auto trashIcon = FontAwesome::UnicodeToUtf8(0xf1f8);
-
-    auto plusIcon = FontAwesome::UnicodeToUtf8(0xf055);
-
-    auto flagIcon = FontAwesome::UnicodeToUtf8(0xf024);
+  
 
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
@@ -491,7 +479,8 @@ namespace UI {
 
     void __stdcall RenderLightEditor() {
 
-        static int selectedIndex = -1;
+        static int relightSelectedIndex = -1;
+        static int pluginSelectedIndex = -1;
 
         ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
@@ -502,20 +491,16 @@ namespace UI {
         ImGuiMCP::SameLine();
 
         bool saveClicked = ImGuiMCP::Button("Save");
-
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Save the currently selected light template's settings");
 
         ImGuiMCP::SameLine(0, 10.0f);
 
         bool defaultClicked = ImGuiMCP::Button("Default");
-
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Restore the currently selected light template's settings to what they were at game start");
 
         ImGuiMCP::SameLine(0, 10.0f);
 
-        bool deleteClicked =
-            ImGuiMCP::Button(trashIcon.c_str());
-
+        bool deleteClicked = ImGuiMCP::Button(trashIcon.c_str());
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Delete the Json file from Relight/Configs. You will need to restart the game for changes to take effect");
 
         ImGuiMCP::ImVec2 rectMax;
@@ -528,13 +513,18 @@ namespace UI {
         float iconX = (rectMax.x - winPos.x) + 10.0f;
         float iconY = (rectMin.y - winPos.y) + 4.0f;
 
+        // resolve which list currently owns the selection, if any
+        ActiveLightSelection active = ResolveActiveSelection(
+            relightLights, relightSelectedIndex,
+            pluginLights, pluginSelectedIndex);
+
         if (saveClicked) {
 
             bool ok = false;
             saveButton.set(buttonState::Working);
 
-            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
-                RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
+            if (active.valid()) {
+                RE::NiPointer<RE::BSLight> selectedLight = active.get();
                 auto niLight = selectedLight->light.get();
                 if (!niLight) {
                     logger::error("no ni light from bslight when saving template");
@@ -548,6 +538,7 @@ namespace UI {
                     return;
                 }
 
+                // strip whichever prefix applies ("RL" or "PL")
                 auto lightName = removePrefix(lightNameRL, "RL");
 
                 LightConfig cfg;
@@ -562,13 +553,41 @@ namespace UI {
                         logger::warn("Failed to update runtime config caches for '{}'", lightName);
                     }
 
-                    if (!cfg.configPath.empty()) {
-                        saveConfiguration(cfg);
-                        ok = true;
+                    // Plugin light: create a new JSON config if one doesn't already exist
+                    if (baseConfig.isPluginLight) {
+
+                        bool configExists =
+                            !baseConfig.configPath.empty() &&
+                            std::filesystem::exists(baseConfig.configPath);
+
+                        if (!configExists) {
+                            logger::info(
+                                "Plugin light '{}' has no existing config file. Creating new configuration.",
+                                lightName
+                            );
+                            saveNewConfiguration(cfg);
+                            logger::info("created new json file for {} at path {} ", baseConfig.menuName, cfg.configPath);
+                            ok = true;
+                        }
+                        else {
+                            // Existing plugin config — save normally
+                            saveConfiguration(cfg);
+                            ok = true;
+                        }
                     }
                     else {
-                        logger::warn("Config for '{}' has no configPath, cannot save", lightName);
-                        ok = false;
+                        // Existing Relight / normal light
+                        if (!cfg.configPath.empty()) {
+                            saveConfiguration(cfg);
+                            ok = true;
+                        }
+                        else {
+                            logger::warn(
+                                "Config for '{}' has no configPath, cannot save",
+                                lightName
+                            );
+                            ok = false;
+                        }
                     }
                 }
                 else {
@@ -589,8 +608,8 @@ namespace UI {
             bool ok = false;
             defaultButton.set(buttonState::Working);
 
-            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
-                auto selectedLight = lights[selectedIndex];
+            if (active.valid()) {
+                auto selectedLight = active.get();
                 restoreLightToDefaults(selectedLight->light);
                 logger::info("Restored defaults for '{}'", selectedLight->light->name.c_str());
                 ok = true;
@@ -602,8 +621,9 @@ namespace UI {
 
             defaultButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
         }
+
         if (deleteClicked) {
-            if (selectedIndex >= 0 && selectedIndex < lights.size()) {
+            if (active.valid()) {
                 ImGuiMCP::OpenPopup("Confirm Delete Light Template");
             }
             else {
@@ -625,11 +645,11 @@ namespace UI {
             {
                 deleteButton.set(buttonState::Working);
 
-                bool ok = DeleteSelectedLightTemplate(selectedIndex, lights);
+                bool ok = active.valid()
+                    ? DeleteSelectedLightTemplate(*active.index, *active.list)
+                    : false;
 
-                deleteButton.set(
-                    ok ? buttonState::Success : buttonState::Fail,
-                    2.0f);
+                deleteButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
 
                 ImGuiMCP::CloseCurrentPopup();
                 return;
@@ -650,20 +670,37 @@ namespace UI {
         ImGuiMCP::Separator();
 
         if (lightRefreshTicker.shouldTick()) {
-            refreshAllLights(selectedIndex, lights);
+            refreshAllLights(relightSelectedIndex, relightLights, "RL");
+            refreshAllLights(pluginSelectedIndex, pluginLights, " P");
             didRefreshThisFrame = !didRefreshThisFrame;
         }
 
         // ---------------------------------------------------------------------
-        // LOADED TEMPLATES LIST with fixed height of 450.0f, scrollable
+        // LOADED TEMPLATES LISTS — relight, then plugin. Mutual exclusivity
+        // enforced by clearing the other index whenever one changes.
         // ---------------------------------------------------------------------
-        RenderLightList(lights, selectedIndex);
+        int prevRelight = relightSelectedIndex;
+        RenderLightList(relightLights, relightSelectedIndex, "Loaded ReLight Templates", false);
+        if (relightSelectedIndex != prevRelight && relightSelectedIndex != -1) {
+            pluginSelectedIndex = -1;
+        }
+
+        int prevPlugin = pluginSelectedIndex;
+        RenderLightList(pluginLights, pluginSelectedIndex, "Loaded Plugin Lights", true);
+        if (pluginSelectedIndex != prevPlugin && pluginSelectedIndex != -1) {
+            relightSelectedIndex = -1;
+        }
+
+        // re-resolve after list rendering, since selection may have changed this frame
+        active = ResolveActiveSelection(
+            relightLights, relightSelectedIndex,
+            pluginLights, pluginSelectedIndex);
 
         // ---------------------------------------------------------------------
-        // SELECTED TEMPLATE SETTINGS — fixed height of 450.0f, scrollable
+        // SELECTED TEMPLATE SETTINGS
         // ---------------------------------------------------------------------
-        if (selectedIndex >= 0 && selectedIndex < lights.size()) {
-            RE::NiPointer<RE::BSLight> selectedLight = lights[selectedIndex];
+        if (active.valid()) {
+            RE::NiPointer<RE::BSLight> selectedLight = active.get();
             auto& lightData = selectedLight->light->GetLightRuntimeData();
             auto it = LightData::configIDToJsonCfg.find(lightData.unk138);
 
@@ -687,7 +724,12 @@ namespace UI {
                         BuildRegionList(regionList);
                     }
 
-                    bool isSpotLight = LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
+                    bool isSpotLight =
+                        config.isPluginLight
+                        ? (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight))
+                        : LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
+
+
                     float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
                     bool isTorch = (selectedLight->light->name == "RLtorch");
@@ -770,7 +812,11 @@ namespace UI {
 
                             ImGuiMCP::SameLine(0.0f, kButtonSpacing);
 
-                            RenderRelightFlags(config.flags);
+                          if (!config.isPluginLight)  RenderRelightFlags(config.flags);
+
+                          else {
+                              RenderTESLightFlags(config.flags);
+                          }
 
                             ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
 
@@ -857,6 +903,7 @@ namespace UI {
                             ImGuiMCP::Separator();
 
                             if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, brightnessToUse, "%.1f")) {
+
                                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                                 if (ssNode) {
                                     auto& rt = ssNode->GetRuntimeData();
@@ -874,6 +921,8 @@ namespace UI {
                                     }
                                 }
                             }
+
+                         //   if (config.radius > radiusToUse) radiusToUse = config.radius * 2; 
 
                             if (!globals::islInstalled) {
                                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
@@ -939,6 +988,7 @@ namespace UI {
                                 }
                             }
                         }
+
                         ImGuiMCP::EndChild(); // BrightnessBox
                         ImGuiMCP::NextColumn();
 
@@ -977,22 +1027,68 @@ namespace UI {
 
                             ImGuiMCP::BeginDisabled(isTorch);
 
-                            ImGuiMCP::SliderFloat(
+                            if (ImGuiMCP::SliderFloat(
                                 "Flicker Rate",
                                 &config.flickersPerSecond,
-                                0.0f, 1.0f, "%.2f");
+                                0.0f, 1.0f, "%.2f"))
+                            {
+                                if (config.isPluginLight) {
+                                    if (auto* light = LightData::GetTESObjectLightFromNiLight(selectedLight->light.get())) {
+                                        light->data.flickerPeriodRecip = config.flickersPerSecond;
+                                    }
+                                }
+                            }
 
-                            ImGuiMCP::BeginDisabled(config.flickersPerSecond == 0.0);
+                            if (config.isPluginLight && ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip(
+                                    "Warning: This setting is stored on the base light object "
+                                    "and affects every reference using this base light not just this one."
+                                );
+                            }
 
-                            ImGuiMCP::SliderFloat(
+                            ImGuiMCP::BeginDisabled(config.flickersPerSecond == 0.0f);
+
+                            if (ImGuiMCP::SliderFloat(
                                 "Flicker Intensity",
                                 &config.flickerIntensity,
-                                0.0f, 1.0f, "%.2f");
+                                0.0f, 1.0f, "%.2f"))
+                            {
+                                if (config.isPluginLight) {
+                                    if (auto* light = LightData::GetTESObjectLightFromNiLight(selectedLight->light.get())) {
+                                        light->data.flickerIntensityAmplitude = config.flickerIntensity;
+                                    }
+                                }
+                            }
 
-                            ImGuiMCP::SliderFloat(
+                            if (config.isPluginLight && ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip(
+                                    "Warning: This setting is stored on the base light object "
+                                    "and affects every reference using this base light not just this one."
+                                );
+                            }
+
+                            float movementMax = config.isPluginLight ? 50.0f : 1.0f;
+
+                            if (ImGuiMCP::SliderFloat(
                                 "Movement",
                                 &config.flickerAmplitude,
-                                0.0f, 1.0f, "%.2f");
+                                0.0f,
+                                movementMax,
+                                "%.2f"))
+                            {
+                                if (config.isPluginLight) {
+                                    if (auto* light = LightData::GetTESObjectLightFromNiLight(selectedLight->light.get())) {
+                                        light->data.flickerMovementAmplitude = config.flickerAmplitude;
+                                    }
+                                }
+                            }
+
+                            if (config.isPluginLight && ImGuiMCP::IsItemHovered()) {
+                                ImGuiMCP::SetTooltip(
+                                    "Warning: This setting is stored on the base light object "
+                                    "and affects every reference using this base light."
+                                );
+                            }
 
                             ImGuiMCP::EndDisabled();
                             ImGuiMCP::EndDisabled();
@@ -1087,7 +1183,7 @@ namespace UI {
                                 {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 
-                                    if (ssNode)
+                                    if (ssNode && config.isPluginLight)
                                     {
                                         auto& rt = ssNode->GetRuntimeData();
 

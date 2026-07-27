@@ -7,6 +7,20 @@
 
 namespace UI {
 
+    inline auto lightbulbIcon = FontAwesome::UnicodeToUtf8(0xf0eb);
+
+    inline auto palletIcon = FontAwesome::UnicodeToUtf8(0xf53f);
+
+    inline auto coordinatesIcon = FontAwesome::UnicodeToUtf8(0xf601);
+
+    inline auto editorIcon = FontAwesome::UnicodeToUtf8(0xf044);
+
+    inline auto trashIcon = FontAwesome::UnicodeToUtf8(0xf1f8);
+
+    inline auto plusIcon = FontAwesome::UnicodeToUtf8(0xf055);
+
+    inline auto flagIcon = FontAwesome::UnicodeToUtf8(0xf024);
+
     struct LightGroupData
     {
         // All lights in the scene, keyed by their index in the global `lights` vector.
@@ -48,8 +62,8 @@ namespace UI {
 
             std::string lightName = light->light->name.c_str();
 
-            if (lightName[0] != 'R' || lightName[1] != 'L')
-                continue;
+            //if (lightName[0] != 'R' || lightName[1] != 'L')
+              //  continue;
 
             const auto& lightRt = light->light->GetLightRuntimeData();
             auto it = LightData::configIDToJsonCfg.find(lightRt.unk138);
@@ -271,71 +285,7 @@ namespace UI {
        }
    }
 
-   //TODO:: clean and only use isl overlay if its installed
-   inline void getAllLights(std::vector<RE::NiPointer<RE::BSLight>>& lights, bool& lightAlreadyInList) {
-       auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-       if (!ssNode) {
-           logger::warn("ShadowSceneNode[0] is null!");
-           return;
-       }
-
-       auto& rt = ssNode->GetRuntimeData();
-
-       for (auto& light : rt.activeLights) {
-           if (!light) continue;
-
-           std::string lightName = light->light->name.c_str();
-
-           if (lightName[0] != 'R' || lightName[1] != 'L')
-               continue;
-
-           const auto& currentRt = light->light->GetLightRuntimeData();
-
-           for (auto& existingLight : lights) {
-
-               if (!existingLight) continue;
-               // unk138 is a config id in this case, do this to handle editing multiple lights to 1 mesh 
-               if (existingLight->light->unk138 == currentRt.unk138) {
-                   // Light already exists in the list, skip adding
-                   lightAlreadyInList = true;
-                   break;
-               }
-           }
-
-           if (!lightAlreadyInList) {
-
-               lights.push_back(light);
-           }
-
-           lightAlreadyInList = false;
-       }
-
-       for (auto& shadowLight : rt.activeShadowLights) {
-           if (!shadowLight) continue;
-
-           std::string lightName = shadowLight->light->name.c_str();
-
-           if (lightName[0] != 'R' || lightName[1] != 'L')
-               continue;
-
-           const auto& currentRt = shadowLight->light->GetLightRuntimeData();
-
-           //const auto& cfg = LightData::configIDToJsonCfg[currentRt.unk138];
-
-           bool shadowLightAlreadyInList = false;
-           for (auto& existingLight : lights) {
-               if (existingLight->light->unk138 == currentRt.unk138) {
-                   shadowLightAlreadyInList = true;
-                   break;
-               }
-           }
-
-           if (!shadowLightAlreadyInList) {
-               lights.push_back(shadowLight);
-           }
-       }
-   }
-
+  
     inline int getLightKey(const RE::NiPointer<RE::BSLight>& l) {
         if (!l || !l->light) return -1;
         return l->light->GetLightRuntimeData().unk138;  // runtime configID key
@@ -345,12 +295,13 @@ namespace UI {
         const RE::NiPointer<RE::BSLight>& activeLight,
         std::vector<RE::NiPointer<RE::BSLight>>& refreshedLights,
         std::unordered_map<int, int>& keyToIndex,
-        std::unordered_set<int>& seen) {
-
+        std::unordered_set<int>& seen,
+        std::string_view prefix)
+    {
         if (!activeLight || !activeLight->light) return;
 
-        const char* name = activeLight->light->name.c_str();
-        if (!name || name[0] != 'R' || name[1] != 'L')
+        std::string_view name{ activeLight->light->name.c_str() };
+        if (name.size() < prefix.size() || name.substr(0, prefix.size()) != prefix)
             return;
 
         int key = activeLight->light->GetLightRuntimeData().unk138;
@@ -359,13 +310,10 @@ namespace UI {
         seen.insert(key);
 
         auto it = LightData::configIDToJsonCfg.find(key);
-        if (it != LightData::configIDToJsonCfg.end()) {
-        }
-        else {
+        if (it == LightData::configIDToJsonCfg.end()) {
             logger::debug("light :{} (key={}) has no json cfg entry", name, key);
         }
 
-             // Refresh light pointer in list or add if new
         auto itIdx = keyToIndex.find(key);
         if (itIdx == keyToIndex.end()) {
             refreshedLights.push_back(activeLight);
@@ -376,14 +324,17 @@ namespace UI {
         }
     }
 
-    inline void refreshAllLights(int& selectedIndex, std::vector<RE::NiPointer<RE::BSLight>>& lights) {
 
+    inline void refreshAllLights(
+        int& selectedIndex,
+        std::vector<RE::NiPointer<RE::BSLight>>& lights,
+        std::string_view prefix)
+    {
         auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
         if (!ssNode) {
             logger::warn("ShadowSceneNode[0] is null!");
             return;
         }
-
         auto& rt = ssNode->GetRuntimeData();
 
         int selectedKey = -1;
@@ -391,7 +342,6 @@ namespace UI {
             selectedKey = getLightKey(lights[selectedIndex]);
         }
 
-        // Build light indices map
         std::unordered_map<int, int> keyToIndex;
         keyToIndex.reserve(lights.size());
         for (int i = 0; i < (int)lights.size(); ++i) {
@@ -399,18 +349,16 @@ namespace UI {
             if (key >= 0) keyToIndex[key] = i;
         }
 
-        // For tracking seen keys
         std::unordered_set<int> seen;
         seen.reserve(256);
 
         for (auto& activeLight : rt.activeLights) {
-            refreshLight(activeLight, lights, keyToIndex, seen);
+            refreshLight(activeLight, lights, keyToIndex, seen, prefix);
         }
         for (auto& activeShadowLight : rt.activeShadowLights) {
-            refreshLight(activeShadowLight, lights, keyToIndex, seen);
+            refreshLight(activeShadowLight, lights, keyToIndex, seen, prefix);
         }
 
-        // Removes non-active lights from the list
         lights.erase(std::remove_if(lights.begin(), lights.end(),
             [&](const RE::NiPointer<RE::BSLight>& l) {
                 int key = getLightKey(l);
@@ -418,8 +366,6 @@ namespace UI {
             }),
             lights.end());
 
-
-        // Update selectded index after sorting
         selectedIndex = -1;
         if (selectedKey >= 0) {
             for (int i = 0; i < (int)lights.size(); ++i) {
@@ -673,6 +619,8 @@ namespace UI {
             if (indices.empty())
                 continue;
 
+
+
             auto& firstLight = lights[indices.front()];
             if (!firstLight || !firstLight->light)
                 continue;
@@ -747,7 +695,8 @@ namespace UI {
         const std::string& configPath,
         const LightGroupData& groupData,
         const std::vector<RE::NiPointer<RE::BSLight>>& lights,
-        int& selectedIndex)
+        int& selectedIndex,
+        bool isPluginLights)
     {
         auto pathIt = groupData.byConfigPath.find(configPath);
         if (pathIt == groupData.byConfigPath.end() || pathIt->second.empty())
@@ -779,8 +728,48 @@ namespace UI {
             groupMenuName += " (" + cfgIt->second.meshPaths[0] + ")";
         }
 
+        if (cfgIt->second.isPluginLight)
+        {
+            ImGuiMCP::PushID(configPath.c_str());
+
+            for (int i : indices)
+            {
+                auto& light = lights[i];
+
+                if (!light || !light->light)
+                    continue;
+
+                auto configID =
+                    light->light->GetLightRuntimeData().unk138;
+
+                auto it =
+                    LightData::configIDToJsonCfg.find(configID);
+
+                if (it == LightData::configIDToJsonCfg.end())
+                    continue;
+
+                std::string itemName =
+                    ResolveMenuName(it->second);
+
+                ImGuiMCP::PushID(i);
+
+                if (ImGuiMCP::Selectable(
+                    itemName.c_str(),
+                    i == selectedIndex))
+                {
+                    selectedIndex = i;
+                }
+
+                ImGuiMCP::PopID();
+            }
+
+            ImGuiMCP::PopID();
+
+            return;
+        }
+
         const bool multiEntry =
-            (CountJsonEntriesInFile(cfgIt->second.configPath) > 1);
+            CountJsonEntriesInFile(cfgIt->second.configPath) > 1;
 
         if (multiEntry)
         {
@@ -839,106 +828,89 @@ namespace UI {
 
     inline void RenderLightList(
         const std::vector<RE::NiPointer<RE::BSLight>>& lights,
-        int& selectedIndex)
+        int& selectedIndex,
+        const char* headerLabel, bool isPluginLights)
     {
-        if (!ImGuiMCP::CollapsingHeader("Loaded Light Templates"))
+        if (!ImGuiMCP::CollapsingHeader(headerLabel))
             return;
 
-        LightGroupData groupData = BuildCatagorizedLights(lights);
+        ImGuiMCP::PushID(headerLabel);
 
-        // -------------------------------------------------------------
-        // Calculate desired height
-        // -------------------------------------------------------------
+        LightGroupData groupData = BuildCatagorizedLights(lights);
 
         constexpr float maxListHeight = 450.0f;
         constexpr float categoryHeight = 24.0f;
         constexpr float itemHeight = 24.0f;
 
         float desiredHeight = 0.0f;
+        desiredHeight += static_cast<float>(groupData.byCategory.size()) * categoryHeight;
+        desiredHeight += static_cast<float>(groupData.uncategorized.size()) * itemHeight;
 
-        // Category headers
-        desiredHeight +=
-            static_cast<float>(groupData.byCategory.size()) * categoryHeight;
-
-        // Uncategorized items
-        desiredHeight +=
-            static_cast<float>(groupData.uncategorized.size()) * itemHeight;
-
-        // Minimum height so the list isn't tiny
         constexpr float minListHeight = 150.0f;
+        desiredHeight = std::clamp(desiredHeight, minListHeight, maxListHeight);
 
-        desiredHeight = std::clamp(
-            desiredHeight,
-            minListHeight,
-            maxListHeight);
-
-        // -------------------------------------------------------------
-        // Begin dynamically-sized child
-        // -------------------------------------------------------------
-
-        if (ImGuiMCP::BeginChild(
-            "LightListChild",
-            ImGuiMCP::ImVec2(0, desiredHeight),
-            true))
+        if (ImGuiMCP::BeginChild("LightListChild", ImGuiMCP::ImVec2(0, desiredHeight), true))
         {
-            // ---------------------------------------------------------
-            // Sort categories alphabetically
-            // ---------------------------------------------------------
-
             std::vector<std::string> sortedCategories;
             sortedCategories.reserve(groupData.byCategory.size());
-
             for (auto& [cat, _] : groupData.byCategory)
                 sortedCategories.push_back(cat);
 
-            std::sort(
-                sortedCategories.begin(),
-                sortedCategories.end(),
+            std::sort(sortedCategories.begin(), sortedCategories.end(),
                 [](const std::string& a, const std::string& b)
                 {
                     return compareLightNames(a.c_str(), b.c_str());
                 });
 
-            // ---------------------------------------------------------
-            // Render categorized groups
-            // ---------------------------------------------------------
-
             for (const auto& category : sortedCategories)
             {
                 if (ImGuiMCP::TreeNode(category.c_str()))
                 {
-                    for (const auto& configPath :
-                        groupData.byCategory.at(category))
+                    for (const auto& configPath : groupData.byCategory.at(category))
                     {
-                        DrawCatagoryGroup(
-                            configPath,
-                            groupData,
-                            lights,
-                            selectedIndex);
+                        DrawCatagoryGroup(configPath, groupData, lights, selectedIndex, isPluginLights);
                     }
-
                     ImGuiMCP::TreePop();
                 }
             }
 
-            // ---------------------------------------------------------
-            // Render uncategorized groups
-            // ---------------------------------------------------------
-
             for (const auto& configPath : groupData.uncategorized)
             {
-                DrawCatagoryGroup(
-                    configPath,
-                    groupData,
-                    lights,
-                    selectedIndex);
+                DrawCatagoryGroup(configPath, groupData, lights, selectedIndex, isPluginLights);
             }
         }
-
         ImGuiMCP::EndChild();
+
+        ImGuiMCP::PopID();
     }
 
-    void RenderRelightFlags(uint32_t& flags)
+    struct ActiveLightSelection {
+        std::vector<RE::NiPointer<RE::BSLight>>* list = nullptr;
+        int* index = nullptr;
+
+        bool valid() const {
+            return list && index && *index >= 0 && *index < (int)list->size();
+        }
+
+        RE::NiPointer<RE::BSLight> get() const {
+            return valid() ? (*list)[*index] : RE::NiPointer<RE::BSLight>{};
+        }
+    };
+
+    inline ActiveLightSelection ResolveActiveSelection(
+        std::vector<RE::NiPointer<RE::BSLight>>& relightLights, int& relightSelectedIndex,
+        std::vector<RE::NiPointer<RE::BSLight>>& pluginLights, int& pluginSelectedIndex)
+    {
+        if (relightSelectedIndex >= 0 && relightSelectedIndex < (int)relightLights.size())
+            return { &relightLights, &relightSelectedIndex };
+
+        if (pluginSelectedIndex >= 0 && pluginSelectedIndex < (int)pluginLights.size())
+            return { &pluginLights, &pluginSelectedIndex };
+
+        return {};
+    }
+
+  inline void RenderRelightFlags(uint32_t& flags)
     {
         static bool showFlagWindow = false;
 
@@ -1009,6 +981,232 @@ namespace UI {
         }
     }
 
+  inline void RenderTESLightFlags(std::uint32_t& flags)
+  {
+      static bool showFlagWindow = false;
+
+      if (ImGuiMCP::Button((std::string("TES Flags ") + flagIcon).c_str())) {
+          showFlagWindow = !showFlagWindow;
+      }
+
+      if (showFlagWindow) {
+          ImGuiMCP::Begin(
+              "TES Light Flags",
+              &showFlagWindow,
+              ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None
+          );
+
+          auto FlagCheckbox =
+              [](const char* label,
+                  std::uint32_t& flags,
+                  RE::TES_LIGHT_FLAGS flag,
+                  const char* tooltip)
+              {
+                  const auto flagValue = static_cast<std::uint32_t>(flag);
+                  bool checked = (flags & flagValue) != 0;
+
+                  if (ImGuiMCP::Checkbox(label, &checked)) {
+                      if (checked) {
+                          flags |= flagValue;
+                      }
+                      else {
+                          flags &= ~flagValue;
+                      }
+                  }
+
+                  if (ImGuiMCP::IsItemHovered()) {
+                      ImGuiMCP::SetTooltip("%s", tooltip);
+                  }
+              };
+
+          FlagCheckbox(
+              "Dynamic",
+              flags,
+              RE::TES_LIGHT_FLAGS::kDynamic,
+              "Light is dynamic."
+          );
+
+          FlagCheckbox(
+              "Can Carry",
+              flags,
+              RE::TES_LIGHT_FLAGS::kCanCarry,
+              "Light can be carried."
+          );
+
+          FlagCheckbox(
+              "Negative",
+              flags,
+              RE::TES_LIGHT_FLAGS::kNegative,
+              "Light has negative lighting."
+          );
+
+          FlagCheckbox(
+              "Flicker",
+              flags,
+              RE::TES_LIGHT_FLAGS::kFlicker,
+              "Light flickers."
+          );
+
+
+          if (ImGuiMCP::IsItemHovered()) {
+              ImGuiMCP::SetTooltip(
+                  "Warning: This setting is stored on the base light object "
+                  "and affects every reference using this base light not just this one."
+              );
+          }
+
+          FlagCheckbox(
+              "Deep Copy",
+              flags,
+              RE::TES_LIGHT_FLAGS::kDeepCopy,
+              "Light data is deep copied."
+          );
+
+          FlagCheckbox(
+              "Off By Default",
+              flags,
+              RE::TES_LIGHT_FLAGS::kOffByDefault,
+              "Light is off by default."
+          );
+
+          FlagCheckbox(
+              "Flicker Slow",
+              flags,
+              RE::TES_LIGHT_FLAGS::kFlickerSlow,
+              "Light uses the slow flicker behavior."
+          );
+
+
+          if (ImGuiMCP::IsItemHovered()) {
+              ImGuiMCP::SetTooltip(
+                  "Warning: This setting is stored on the base light object "
+                  "and affects every reference using this base light not just this one."
+              );
+          }
+
+          FlagCheckbox(
+              "Pulse",
+              flags,
+              RE::TES_LIGHT_FLAGS::kPulse,
+              "Light pulses instead of flickering."
+          );
+
+
+          if (ImGuiMCP::IsItemHovered()) {
+              ImGuiMCP::SetTooltip(
+                  "Warning: This setting is stored on the base light object "
+                  "and affects every reference using this base light not just this one."
+              );
+          }
+
+          FlagCheckbox(
+              "Pulse Slow",
+              flags,
+              RE::TES_LIGHT_FLAGS::kPulseSlow,
+              "Light uses the slow pulse behavior."
+          );
+
+
+          if (ImGuiMCP::IsItemHovered()) {
+              ImGuiMCP::SetTooltip(
+                  "Warning: This setting is stored on the base light object "
+                  "and affects every reference using this base light not just this one."
+              );
+          }
+
+          FlagCheckbox(
+              "Spotlight",
+              flags,
+              RE::TES_LIGHT_FLAGS::kSpotlight,
+              "Light is treated as a spotlight."
+          );
+
+          FlagCheckbox(
+              "Spot Shadow",
+              flags,
+              RE::TES_LIGHT_FLAGS::kSpotShadow,
+              "Light casts a spotlight shadow."
+          );
+
+          FlagCheckbox(
+              "Hemi Shadow",
+              flags,
+              RE::TES_LIGHT_FLAGS::kHemiShadow,
+              "Light uses hemispherical shadowing."
+          );
+
+          FlagCheckbox(
+              "Omni Shadow",
+              flags,
+              RE::TES_LIGHT_FLAGS::kOmniShadow,
+              "Light casts an omnidirectional shadow."
+          );
+
+          FlagCheckbox(
+              "Portal Strict",
+              flags,
+              RE::TES_LIGHT_FLAGS::kPortalStrict,
+              "Light uses strict portal behavior."
+          );
+
+          ImGuiMCP::End();
+      }
+  }
+
+  inline std::vector<std::string> GetAllConfigKeys()
+  {
+      std::vector<std::string> result;
+      result.reserve(256);
+
+      std::unordered_set<std::string> seen;
+
+      auto collect = [&](const auto& map)
+          {
+              for (const auto& [key, _] : map) {
+                  if (seen.insert(key).second) {
+                      result.push_back(key);
+                  }
+              }
+          };
+
+      collect(LightData::meshPathToJsonCfg);
+      collect(LightData::meshPathToJsonCfgExteriors);
+
+      return result;
+  }
+
+
+  inline void BuildRegionList(std::vector<std::pair<std::string, RE::TESRegion*>>& out)
+  {
+      out.clear();
+
+      auto& regions = RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESRegion>();
+
+      for (auto* region : regions) {
+          if (!region) {
+              continue;
+          }
+
+          auto editorID = clib_util::editorID::get_editorID(region);
+          if (editorID.empty()) {
+              continue;
+          }
+
+          // filter: only FX* or Weather*
+          if (!editorID.starts_with("FX") &&
+              !editorID.starts_with("Weather")) {
+              continue;
+          }
+
+          out.emplace_back(editorID, region);
+      }
+
+      std::sort(out.begin(), out.end(),
+          [](const auto& a, const auto& b) {
+              return a.first < b.first;
+          });
+  }
+
     //RenderAttachRemove FUNTIONS
     ///////////////////////////////
 
@@ -1055,60 +1253,7 @@ namespace UI {
             });
     }
 
-    inline std::vector<std::string> GetAllConfigKeys()
-    {
-        std::vector<std::string> result;
-        result.reserve(256);
-
-        std::unordered_set<std::string> seen;
-
-        auto collect = [&](const auto& map)
-            {
-                for (const auto& [key, _] : map) {
-                    if (seen.insert(key).second) {
-                        result.push_back(key);
-                    }
-                }
-            };
-
-        collect(LightData::meshPathToJsonCfg);
-        collect(LightData::meshPathToJsonCfgExteriors);
-
-        return result;
-    }
-
-  
-
-    inline void BuildRegionList(std::vector<std::pair<std::string, RE::TESRegion*>>& out)
-    {
-        out.clear();
-
-        auto& regions = RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESRegion>();
-
-        for (auto* region : regions) {
-            if (!region) {
-                continue;
-            }
-
-            auto editorID = clib_util::editorID::get_editorID(region);
-            if (editorID.empty()) {
-                continue;
-            }
-
-            // filter: only FX* or Weather*
-            if (!editorID.starts_with("FX") &&
-                !editorID.starts_with("Weather")) {
-                continue;
-            }
-
-            out.emplace_back(editorID, region);
-        }
-
-        std::sort(out.begin(), out.end(),
-            [](const auto& a, const auto& b) {
-                return a.first < b.first;
-            });
-    }
+   
 
 
 }

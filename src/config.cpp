@@ -24,6 +24,65 @@ else { \
     config.C = I; \
 } \
 
+// used for skyrim lights
+void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObjectLIGH* light, RE::TESObjectREFR * ref, std::string& edid, std::string& modName) {
+	auto& rt = niLight->GetLightRuntimeData();
+	cfg.brightness = rt.fade;
+	cfg.startingFade = rt.fade;
+	cfg.radius = rt.radius.x;
+	cfg.diffuseColor[0] = rt.diffuse.red * 255;
+	cfg.diffuseColor[1] = rt.diffuse.blue * 255;
+	cfg.diffuseColor[2] = rt.diffuse.green * 255;
+
+	cfg.position[0] = niLight->local.translate.x;
+	cfg.position[1] = niLight->local.translate.y;
+	cfg.position[2] = niLight->local.translate.z;
+
+	RE::NiPoint3 angles;
+	niLight->local.rotate.ToEulerAnglesXYZ(angles);
+
+	cfg.rotation[0] = RE::rad_to_deg(angles.x);
+	cfg.rotation[1] = RE::rad_to_deg(angles.y);
+	cfg.rotation[2] = RE::rad_to_deg(angles.z);
+
+	cfg.flickerIntensity = light->data.flickerIntensityAmplitude;
+	cfg.flickersPerSecond = light->data.flickerPeriodRecip;
+	cfg.flickerAmplitude = light->data.flickerMovementAmplitude;
+	
+	cfg.nearDistance = light->data.nearDistance; 
+	cfg.fov = light->data.fov; 
+	cfg.falloff = light->data.fallofExponent; 
+
+	auto xlig = ref->extraList.GetByType<RE::ExtraLightData>();
+
+	if (xlig) {
+		cfg.depthBias = xlig->data.shadowDepthBias;
+		logger::debug("extra light data does exist"); 
+	}
+	else {
+		cfg.depthBias = 5.0f;
+	}
+	
+	cfg.configID = ref->GetFormID(); 
+	cfg.menuCategory = modName;
+	cfg.menuName = std::format("{} ({:08X})",edid, cfg.configID);
+	cfg.isPluginLight = true; 
+	cfg.refFormIDsAndModNames.push_back(forms::BuildFormIDAndModName(ref, false));
+	cfg.configPath = BuildConfigPath(cfg.refFormIDsAndModNames[0]);
+
+	cfg.flags = static_cast<uint32_t>(light->data.flags.underlying());
+
+	logger::debug(
+		"CREATED LIGHT | FormID {:08X} | EDID '{}' | modName '{}' | configPath '{}' | menuCategory '{}'",
+		cfg.configID,
+		edid,
+		modName,
+		cfg.configPath,
+		cfg.menuCategory
+	);
+
+}
+
 bool loadConfiguration(LightConfig& config, const json& data) {
 	try {
 		if (data.contains("menuName")) {
@@ -73,7 +132,9 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 		}
 
 		if (data.contains("flags")) {
-			config.flags = ParseFlags(data["flags"]);
+
+			if (!config.isPluginLight) config.flags = ParseRelightFlags(data["flags"]);
+			
 		}
 
 		if (data.contains("attachPath") && data["attachPath"].is_array()) {
@@ -189,40 +250,44 @@ bool saveConfiguration(const LightConfig& config) {
 		const float maxRadius = isSpotLight ? 5000.0f : 500.0f;
 
 			// brighness useses in game slider copy value for a more stable value
-		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
+		newEntry["brightness"] = truncateDecimals(config.startingFade, 3);
 		// clamp radius as community shaders can send brighntess / radius values to infinity
 		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, maxRadius), 2);
-		newEntry["fov"] = truncateDecimals(config.fov, 2);
-		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
-		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
-		newEntry["depthBias"] = truncateDecimals(config.depthBias, 2);
-		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 2);
-		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
-		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
-		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
-		//newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
+		newEntry["fov"] = truncateDecimals(config.fov, 3);
+		newEntry["falloff"] = truncateDecimals(config.falloff, 3);
+		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 3);
+		newEntry["depthBias"] = truncateDecimals(config.depthBias, 3);
+		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 3);
+		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 3);
+		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 3);
+		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 3);
+
 		//clamp to 0.1f
 		newEntry["cutoffOverride"] =
-			std::max(0.01f, static_cast<float>(truncateDecimals(config.cutoffOverride, 2)));
+			std::max(0.01f, static_cast<float>(truncateDecimals(config.cutoffOverride, 3)));
 
 		newEntry["size"] =
-			std::max(0.01f, static_cast<float>(truncateDecimals(config.size, 2)));
+			std::max(0.01f, static_cast<float>(truncateDecimals(config.size, 3)));
 
 		newEntry["color"] = { config.diffuseColor[0], config.diffuseColor[1], config.diffuseColor[2] };
 
 		newEntry["position"] = { 
-			truncateDecimals(config.position[0], 2),
-			truncateDecimals(config.position[1], 2),
-			truncateDecimals(config.position[2], 2)
+			truncateDecimals(config.position[0], 3),
+			truncateDecimals(config.position[1], 3),
+			truncateDecimals(config.position[2], 3)
 		};
 
 		newEntry["rotation"] = {
-		truncateDecimals(config.rotation[0], 2),
-		truncateDecimals(config.rotation[1], 2),
-		truncateDecimals(config.rotation[2], 2)
+		truncateDecimals(config.rotation[0], 3),
+		truncateDecimals(config.rotation[1], 3),
+		truncateDecimals(config.rotation[2], 3)
 		};
 
-		newEntry["flags"] = FlagsToJson(config.flags);
+		if (!config.isPluginLight) newEntry["flags"] = RelightFlagsToJson(config.flags);
+
+		else {
+			newEntry["flags"] = TESLightFlagsToJson(config.flags);
+		}
 
 		newEntry["attachPath"] = config.attachPath;
 
@@ -276,19 +341,18 @@ bool saveNewConfiguration(LightConfig& config)
 
 		const float maxRadius = isSpotLight ? 5000.0f : 500.0f;
 
-		newEntry["brightness"] = truncateDecimals(config.startingFade, 2);
-		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, maxRadius), 2);
-		newEntry["fov"] = truncateDecimals(config.fov, 2);
-		newEntry["falloff"] = truncateDecimals(config.falloff, 2);
-		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 2);
-		newEntry["depthBias"] = truncateDecimals(config.depthBias, 2);
-		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 2);
-		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 2);
-		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 2);
-		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 2);
-		//newEntry["flickerRandomness"] = truncateDecimals(config.flickerRandomness, 2);
-		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 2);
-		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 2);
+		newEntry["brightness"] = truncateDecimals(config.startingFade, 3);
+		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, maxRadius), 3);
+		newEntry["fov"] = truncateDecimals(config.fov, 3);
+		newEntry["falloff"] = truncateDecimals(config.falloff, 3);
+		newEntry["nearDistance"] = truncateDecimals(config.nearDistance, 3);
+		newEntry["depthBias"] = truncateDecimals(config.depthBias, 3);
+		newEntry["ambientRatio"] = truncateDecimals(config.ambientRatio, 3);
+		newEntry["flickerIntensity"] = truncateDecimals(config.flickerIntensity, 3);
+		newEntry["flickersPerSecond"] = truncateDecimals(config.flickersPerSecond, 3);
+		newEntry["flickerAmplitude"] = truncateDecimals(config.flickerAmplitude, 3);
+		newEntry["size"] = truncateDecimals(std::max(0.01f, config.size), 3);
+		newEntry["cutoffOverride"] = truncateDecimals(std::max(0.01f, config.cutoffOverride), 3);
 
 		newEntry["color"] = {
 			config.diffuseColor[0],
@@ -297,18 +361,23 @@ bool saveNewConfiguration(LightConfig& config)
 		};
 
 		newEntry["position"] = {
-			truncateDecimals(config.position[0], 2),
-			truncateDecimals(config.position[1], 2),
-			truncateDecimals(config.position[2], 2)
+			truncateDecimals(config.position[0], 3),
+			truncateDecimals(config.position[1], 3),
+			truncateDecimals(config.position[2], 3)
 		};
 
 		newEntry["rotation"] = {
-			truncateDecimals(config.rotation[0], 2),
-			truncateDecimals(config.rotation[1], 2),
-			truncateDecimals(config.rotation[2], 2)
+			truncateDecimals(config.rotation[0], 3),
+			truncateDecimals(config.rotation[1], 3),
+			truncateDecimals(config.rotation[2], 3)
 		};
 
-		newEntry["flags"] = FlagsToJson(config.flags);
+		if (!config.isPluginLight) newEntry["flags"] = RelightFlagsToJson(config.flags);
+
+		else {
+			newEntry["flags"] = TESLightFlagsToJson(config.flags);
+		}
+
 		newEntry["attachPath"] = config.attachPath;
 
 		std::filesystem::path outPath(config.configPath);
@@ -710,7 +779,7 @@ bool saveNewConfiguration(LightConfig& config)
 	  cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
   }
 
-inline uint32_t ParseFlags(const nlohmann::json& j)
+ uint32_t ParseRelightFlags(const nlohmann::json& j)
 {
 	uint32_t mask = 0;
 
@@ -737,7 +806,7 @@ inline uint32_t ParseFlags(const nlohmann::json& j)
 	return mask;
 }
 
-inline nlohmann::json FlagsToJson(uint32_t mask) {
+ nlohmann::json RelightFlagsToJson(uint32_t mask) {
 	nlohmann::json arr = nlohmann::json::array();
 
 	for (const auto& [flag, name] : LightFlagNames) {
@@ -747,6 +816,17 @@ inline nlohmann::json FlagsToJson(uint32_t mask) {
 	}
 
 	return arr;
+}
+
+ void ApplyTESLightFlags(
+	RE::TESObjectLIGH* light,
+	const LightConfig& cfg)
+{
+	if (!light)
+		return;
+
+	light->data.flags =
+		static_cast<RE::TES_LIGHT_FLAGS>(cfg.flags);
 }
 
 // ini parser already filled the users desired, priority nodes, so these ones have no priority
@@ -888,7 +968,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 {
 	try {
 		if (configPath.empty()) {
-			logger::warn("CountJsonEntriesInFile: configPath was empty");
+			//logger::warn("CountJsonEntriesInFile: configPath was empty");
 			return 0;
 		}
 
@@ -1030,7 +1110,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 			 truncateDecimals(cfg.rotation[2], 2)
 		 };
 
-		 newEntry["flags"] = FlagsToJson(cfg.flags);
+		 newEntry["flags"] = RelightFlagsToJson(cfg.flags);
 		 newEntry["attachPath"] = cfg.attachPath;
 
 		 if (jsonIndex > data.size()) {

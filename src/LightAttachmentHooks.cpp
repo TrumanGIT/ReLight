@@ -59,6 +59,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 		for (const auto& cfg : *refCfgs) {
 
+			if (cfg.isPluginLight) return niAVObject;
+
 			auto* light = LightManager::AttachLight(
 				cfg,
 				a_root,

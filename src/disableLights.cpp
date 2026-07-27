@@ -3,6 +3,7 @@
 #include "Utility.h"
 #include "LightManager.h"
 #include "forms.hpp"
+#include "config.hpp"
 
 
 //Po3's hook THIS DISABLES ALL LIGHTS TO START WITH A CLEAN BASE TO WORK FROM
@@ -18,17 +19,66 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 	if (!ref || !light)
 		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-	if (shouldDisableLight(light, ref))
+    std::string edid = clib_util::editorID::get_editorID(light);
+
+    const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+    std::string modName = refOriginFile ? refOriginFile->fileName : "";
+
+    std::vector<LightConfig>* refCfgs = nullptr; 
+
+    //pass true for is interior since tes light flags hae no such flag
+    refCfgs = LightManager::findConfigsForRef(ref, true);
+
+	if (!refCfgs && shouldDisableLight(light, ref, edid, modName))
 		return nullptr;
 
-    light->fade *= globals::vanillaBrightnessModifier; 
 
-    auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
-    if (niLight) {
-        niLight->fade *= globals::vanillaBrightnessModifier;
-    }
+        // no config exists for this yet, create one
+        if (!refCfgs) {
+            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-    return niLight;
+            if (!niLight) return niLight;
+
+            niLight->fade *= globals::vanillaBrightnessModifier;
+            LightConfig cfg;
+
+            CreateConfigFromRefLight(cfg, niLight, light, ref, edid, modName);
+
+            niLight->unk138 = ref->GetFormID();
+
+            LightData::configIDToJsonCfg[cfg.configID] = cfg;
+            LightData::defaultConfigs[cfg.configID] = cfg;
+            return niLight; 
+        }
+        
+        // this light has a relight config already, set data 
+        else {
+            if (refCfgs->empty()) return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+
+            auto& cfg = refCfgs->front();
+
+            auto backupLightData = light->data;
+
+            LightData::SetTESObjectLightDataFromConfig(light, cfg); 
+
+            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+
+            if (!niLight) return niLight;
+
+            //no scale needed to set
+            LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
+
+            light->data = backupLightData; 
+
+            //set flicker data after restoring
+            light->data.flickerPeriodRecip = cfg.flickersPerSecond;
+            light->data.flickerIntensityAmplitude = cfg.flickerIntensity;
+            light->data.flickerMovementAmplitude = cfg.flickerAmplitude;
+
+            return niLight; 
+        }
+       
+    return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 }
 
 void TESObjectLIGH_GenDynamic::Install() {
@@ -46,15 +96,13 @@ void TESObjectLIGH_GenDynamic::Install() {
 	logger::info("Installed TESObjectLIGH::GenDynamic patch");
 }
 
-bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref)
+bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName)
 {
 	if (!ref || !light || ref->IsDynamicForm()) {
 		return false;
 	}
 
-    std::string edid = clib_util::editorID::get_editorID(light);
-
-    toLower(edid);
+    toLowerImmut(edid);
 
     if (forms::ContainsEditorID(edid, globals::disableByEditorID)) return true;
 
@@ -77,10 +125,6 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
     if (!globals::disableGameLights) return false;
 
 	if (forms::ContainsEditorID(edid, globals::enableByEditorID)) return false;
-
-
-    const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
-    std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
     toLower(modName); 
 

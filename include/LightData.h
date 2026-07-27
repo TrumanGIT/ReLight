@@ -122,6 +122,11 @@ struct LightData {
 		logger::debug(" depthBias	 {}", params.depthBias);
 	}
 
+	static void SetTESObjectLightDataFromConfig(RE::TESObjectLIGH* light, const LightConfig& config); 
+
+	static RE::TESObjectLIGH* GetTESObjectLightFromNiLight(RE::NiLight* niLight); 
+
+	static RE::ExtraLightData* GetExtraLightData(RE::TESObjectREFR* ref);
 
 static bool HasLightFlag(uint32_t flags, LIGHT_FLAGS flag)
 	{

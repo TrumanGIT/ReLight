@@ -1258,7 +1258,6 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 	}
 }
 
-
  RE::NiLight* LightManager::AttachLight(
 	 const LightConfig& cfg,
 	 RE::NiNode* a_root,
@@ -1296,3 +1295,9 @@ void LightManager::ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightin
 	 return cloneLight;
  }
 
+ RE::TESObjectREFR* LightManager::GetRefFromLight(RE::NiLight* light) {
+ 
+	 auto ref = light->GetUserData(); 
+
+	 return ref; 
+ }

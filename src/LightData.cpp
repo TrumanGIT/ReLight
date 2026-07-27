@@ -142,6 +142,14 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 }
 
+void LightData::SetTESObjectLightDataFromConfig(RE::TESObjectLIGH* light, const LightConfig& config) {
+
+	light->data.fov = config.fov,
+	light->data.fallofExponent = config.falloff; 
+	light->data.nearDistance = config.nearDistance;
+	ApplyTESLightFlags(light, config);
+}
+
  float LightData::GetFOV(LightConfig cfg)
 {
 	if (!cfg.shadowLight) {
@@ -155,6 +163,8 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	return RE::NI_TWO_PI;
 }
 
+
+
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {
 	RE::ShadowSceneNode::LIGHT_CREATE_PARAMS p{};
@@ -166,8 +176,13 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	p.affectWater = cfg.affectWater; 
 	p.neverFades = cfg.neverFades; // no draw back apparently to set true (rob from skyblivion)
 
-	p.fov = GetFOV(cfg);          // for spotlights and hemi spheres maybe? 
-	p.falloff = cfg.falloff;    // shadows (I think)
+	//ISL reuses these size is controlled by the FOV  cutoff can be controlled by setting the Falloff Exponent parameter
+	// not sure if isl uses the TESObjectLigh parameters or this one prolly TESOBjectLigh
+
+		p.fov = GetFOV(cfg);          // for spotlights and hemi spheres maybe? 
+		p.falloff = cfg.falloff;    // shadows (I think)
+	
+
 	p.nearDistance = cfg.nearDistance; // shadows (I think)
 	p.depthBias = cfg.depthBias; // shadows 
 
@@ -178,6 +193,31 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 
 	return p;
 }
+
+ RE::TESObjectLIGH* LightData::GetTESObjectLightFromNiLight(RE::NiLight* niLight)
+{
+	if (!niLight)
+		return nullptr;
+
+	auto* ref = niLight->GetUserData();
+	if (!ref)
+		return nullptr;
+
+	auto* baseObject = ref->GetBaseObject();
+	if (!baseObject)
+		return nullptr;
+
+	return baseObject->As<RE::TESObjectLIGH>();
+}
+
+ RE::ExtraLightData* LightData::GetExtraLightData(RE::TESObjectREFR* ref)
+ {
+	 if (!ref) {
+		 return nullptr;
+	 }
+
+	 return ref->extraList.GetByType<RE::ExtraLightData>();
+ }
 
 bool LightData::foundConfigForLight(const RE::NiLight* light) {
 	return LightData::configIDToJsonCfg.contains(light->unk138);
@@ -190,10 +230,6 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 
 	cfg.radius = rt.radius.x;
 	cfg.brightness = cfg.startingFade;
-
-	//cfg.position[0] = niLight->local.translate.x;
-	//cfg.position[1] = niLight->local.translate.y;
-	//cfg.position[2] = niLight->local.translate.z;
 
 	cfg.flickerIntensity = baseConfig.flickerIntensity;
 	cfg.flickersPerSecond = baseConfig.flickersPerSecond;
