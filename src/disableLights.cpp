@@ -32,7 +32,6 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 	if (!refCfgs && shouldDisableLight(light, ref, edid, modName))
 		return nullptr;
 
-
         // no config exists for this yet, create one
         if (!refCfgs) {
             auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
@@ -69,11 +68,6 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
             LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
 
             light->data = backupLightData; 
-
-            //set flicker data after restoring
-            light->data.flickerPeriodRecip = cfg.flickersPerSecond;
-            light->data.flickerIntensityAmplitude = cfg.flickerIntensity;
-            light->data.flickerMovementAmplitude = cfg.flickerAmplitude;
 
             return niLight; 
         }

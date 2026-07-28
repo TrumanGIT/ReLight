@@ -44,10 +44,6 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 	cfg.rotation[0] = RE::rad_to_deg(angles.x);
 	cfg.rotation[1] = RE::rad_to_deg(angles.y);
 	cfg.rotation[2] = RE::rad_to_deg(angles.z);
-
-	cfg.flickerIntensity = light->data.flickerIntensityAmplitude;
-	cfg.flickersPerSecond = light->data.flickerPeriodRecip;
-	cfg.flickerAmplitude = light->data.flickerMovementAmplitude;
 	
 	cfg.nearDistance = light->data.nearDistance; 
 	cfg.fov = light->data.fov; 
@@ -133,7 +129,11 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 
 		if (data.contains("flags")) {
 
-			if (!config.isPluginLight) config.flags = ParseRelightFlags(data["flags"]);
+			if (config.isPluginLight) config.flags = ParseTESLightFlags(data["flags"]); 
+			
+			else {
+				config.flags = ParseRelightFlags(data["flags"]);
+			}
 			
 		}
 
@@ -817,6 +817,33 @@ bool saveNewConfiguration(LightConfig& config)
 
 	return arr;
 }
+
+ uint32_t ParseTESLightFlags(const nlohmann::json& j)
+ {
+	 uint32_t mask = 0;
+
+	 auto setFlag = [&](const std::string& f)
+		 {
+			 for (const auto& [flag, name] : flagNames) {
+				 if (f == name) {
+					 mask |= static_cast<uint32_t>(flag);
+					 break;
+				 }
+			 }
+		 };
+
+	 if (j.is_string()) {
+		 setFlag(j.get<std::string>());
+	 }
+	 else if (j.is_array()) {
+		 for (const auto& v : j) {
+			 if (!v.is_string()) continue;
+			 setFlag(v.get<std::string>());
+		 }
+	 }
+
+	 return mask;
+ }
 
  void ApplyTESLightFlags(
 	RE::TESObjectLIGH* light,

@@ -85,6 +85,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
    TreeActivateHook::Install(); 
    Activate::Install(); 
+   NiLightFlickerHook::Install(); 
 
    return true;
 }

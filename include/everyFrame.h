@@ -1072,13 +1072,19 @@ struct PlayerCharacter_Update {
     static void Install();
 };
 
+struct NiLightFlickerHook {
+	static void Install();
+	static void thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGHT* a_refrLight, RE::TESObjectREFR* a_ref, float a_value);
+
+	static inline REL::Relocation<decltype(thunk)> func;
+};
+
 inline float getRandomFloat(const float& min, const float& max)
 {
 	static std::mt19937 rng{ std::random_device{}() };
 	std::uniform_real_distribution<float> dist(min, max);
 	return dist(rng);
 }
-
 
 inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 {
@@ -1187,12 +1193,6 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		if (distSq > maxDistSq)
 			continue;
 
-		// this is to remove lights from the scene otherwise they stay after mesh unloads
-		auto a_root = light->light->parent;
-		if (!a_root) {
-			toRemove.push_back(light->light);
-			continue;
-		}
 
 		auto& rt = light->light->GetLightRuntimeData();
 
@@ -1201,6 +1201,15 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 			continue;
 
 		const auto& config = it->second;
+
+		if (config.isPluginLight) continue; 
+
+		// this is to remove lights from the scene otherwise they stay after mesh unloads
+		auto a_root = light->light->parent;
+		if (!a_root) {
+			toRemove.push_back(light->light);
+			continue;
+		}
 
 		if (config.emittanceRegion && updateExternalEmittance) {
 
@@ -1459,8 +1468,8 @@ static void DrawLightDebugSpheres(T& lights, RE::NiPoint3 playerPos, uint32_t co
 		if (light->light->unk138 != configID) continue;
 
 		// Name filter — only RL lights
-		auto name = std::string_view(light->light->name.c_str());
-		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') continue;
+		//auto name = std::string_view(light->light->name.c_str());
+		//if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') continue;
 
 		// Distance check
 		auto diff = light->light->world.translate - playerPos;

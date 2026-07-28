@@ -387,6 +387,9 @@ namespace UI {
 
                         const auto& cfg = it->second;
 
+                        // skip vanilla lights
+                        if (cfg.isPluginLight) continue;
+
                         auto ref = light->light->GetUserData(); 
 
                         if (ref) {
@@ -416,6 +419,12 @@ namespace UI {
             0.1f,
             2.0f,
             "%.2f")) {
+        }
+
+        if (ImGuiMCP::IsItemHovered()) {
+            ImGuiMCP::BeginTooltip();
+            ImGuiMCP::Text("This only works on cell reset");
+            ImGuiMCP::EndTooltip();
         }
 
         if (ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3)) {
@@ -726,7 +735,8 @@ namespace UI {
 
                     bool isSpotLight =
                         config.isPluginLight
-                        ? (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight))
+                        ? (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight) ||
+                            config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
                         : LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
 
 
@@ -905,7 +915,7 @@ namespace UI {
                             if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, brightnessToUse, "%.1f")) {
 
                                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                if (ssNode) {
+                                if (ssNode && !config.isPluginLight) {
                                     auto& rt = ssNode->GetRuntimeData();
                                     for (auto& l : rt.activeLights) {
                                         if (!l) continue;
@@ -922,12 +932,10 @@ namespace UI {
                                 }
                             }
 
-                         //   if (config.radius > radiusToUse) radiusToUse = config.radius * 2; 
-
                             if (!globals::islInstalled) {
                                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                    if (ssNode) {
+                                    if (ssNode && !config.isPluginLight) {
                                         auto& rt = ssNode->GetRuntimeData();
                                         for (auto& l : rt.activeLights) {
                                             if (!l) continue;
@@ -947,7 +955,7 @@ namespace UI {
                             else if (selectedIslRt) {
                                 if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                    if (ssNode) {
+                                    if (ssNode && !config.isPluginLight) {
                                         auto& rt = ssNode->GetRuntimeData();
                                         for (auto& l : rt.activeLights) {
                                             if (!l) continue;
@@ -968,7 +976,7 @@ namespace UI {
 
                                 if (ImGuiMCP::SliderFloat("Size (ISL)", &selectedIslRt->size, 0.0f, 10.0f, "%.2f")) {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                    if (ssNode) {
+                                    if (ssNode && !config.isPluginLight) {
                                         auto& rt = ssNode->GetRuntimeData();
                                         for (auto& l : rt.activeLights) {
                                             if (!l) continue;
@@ -1039,13 +1047,6 @@ namespace UI {
                                 }
                             }
 
-                            if (config.isPluginLight && ImGuiMCP::IsItemHovered()) {
-                                ImGuiMCP::SetTooltip(
-                                    "Warning: This setting is stored on the base light object "
-                                    "and affects every reference using this base light not just this one."
-                                );
-                            }
-
                             ImGuiMCP::BeginDisabled(config.flickersPerSecond == 0.0f);
 
                             if (ImGuiMCP::SliderFloat(
@@ -1058,13 +1059,6 @@ namespace UI {
                                         light->data.flickerIntensityAmplitude = config.flickerIntensity;
                                     }
                                 }
-                            }
-
-                            if (config.isPluginLight && ImGuiMCP::IsItemHovered()) {
-                                ImGuiMCP::SetTooltip(
-                                    "Warning: This setting is stored on the base light object "
-                                    "and affects every reference using this base light not just this one."
-                                );
                             }
 
                             float movementMax = config.isPluginLight ? 50.0f : 1.0f;
@@ -1083,12 +1077,6 @@ namespace UI {
                                 }
                             }
 
-                            if (config.isPluginLight && ImGuiMCP::IsItemHovered()) {
-                                ImGuiMCP::SetTooltip(
-                                    "Warning: This setting is stored on the base light object "
-                                    "and affects every reference using this base light."
-                                );
-                            }
 
                             ImGuiMCP::EndDisabled();
                             ImGuiMCP::EndDisabled();
@@ -1125,9 +1113,16 @@ namespace UI {
                             if (ImGuiMCP::SliderFloat3(
                                 "Position",
                                 &config.position[0],
-                                -sliderRange, sliderRange, "%.3f"))
-                            {
-                                if (!isTorch) {
+                                -sliderRange, sliderRange, "%.3f")) {
+
+                                bool isPluginWithFlicker = config.isPluginLight &&
+                                    (config.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
+                                        static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
+                                        static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
+                                        static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
+
+                                if (!isPluginWithFlicker) {
+
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                                     if (ssNode) {
                                         auto& rt = ssNode->GetRuntimeData();
@@ -1172,7 +1167,8 @@ namespace UI {
                                     }
                                 }
                             }
-                            if (isSpotLight && !isTorch)
+                        
+                            if (isSpotLight)
                             {
                                 if (ImGuiMCP::SliderFloat3(
                                     "Rotation",
@@ -1183,7 +1179,7 @@ namespace UI {
                                 {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 
-                                    if (ssNode && config.isPluginLight)
+                                    if (ssNode && !config.isPluginLight)
                                     {
                                         auto& rt = ssNode->GetRuntimeData();
 
@@ -1365,7 +1361,29 @@ namespace UI {
                             ImGuiMCP::BeginDisabled(isTorch);
 
                             if (ImGuiMCP::Button("Refresh Lights")) {
-                                RefreshNonRuntimeSettings(config);
+
+
+                                if (config.isPluginLight) {
+
+
+                                    auto handle = LightManager::GetRefFromLight(selectedLight->light.get())->GetHandle();
+
+                                    if (handle) {
+
+                                        handle.get()->Disable();
+
+                                        SKSE::GetTaskInterface()->AddTask([handle]() {
+                                            if (auto ref = handle.get()) {
+                                                ref->Enable(false);
+                                                LightData::ResetTriLightCache();
+                                            }
+                                        });
+                                    }
+
+                                }
+                                  else {
+                                    RefreshNonRuntimeSettings(config);
+                                  }
                             }
 
                             if (ImGuiMCP::IsItemHovered()) {

@@ -76,14 +76,23 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 		logger::warn("nullptr passed to set ni point light ambient and diffuse");
 		return;
 	}
+
+	if (cfg.isPluginLight && !cfg.isPluginLight &&
+		(cfg.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
+			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
+			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
+			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow))))
+	{ 
 	niPointLight->local.translate.x = cfg.position[0];
 	niPointLight->local.translate.y = cfg.position[1];
 	niPointLight->local.translate.z = cfg.position[2];
-
+	}
 	// free floats used for merged lights position, needed for movement in flicker calcs
+	if (!cfg.isPluginLight) {
 	niPointLight->worldBound.center.x = cfg.position[0];
 	niPointLight->worldBound.center.y = cfg.position[1];
 	niPointLight->worldBound.center.z = cfg.position[2];
+}
 }
 
 void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg) {
@@ -147,6 +156,8 @@ void LightData::SetTESObjectLightDataFromConfig(RE::TESObjectLIGH* light, const 
 	light->data.fov = config.fov,
 	light->data.fallofExponent = config.falloff; 
 	light->data.nearDistance = config.nearDistance;
+
+	light->data.flags.reset(); 
 	ApplyTESLightFlags(light, config);
 }
 

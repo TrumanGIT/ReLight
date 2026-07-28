@@ -127,7 +127,7 @@ struct LightConfig {
             return;
         }
 
-        if (isPluginLight) {
+        if (!isPluginLight) {
             for (const auto& [flag, name] : LightFlagNames) {
                 if (mask & static_cast<uint32_t>(flag)) {
                     logger::info("  {}", name);
@@ -160,6 +160,7 @@ struct LightConfig {
         logger::info(" config ID: {}", configID);
         logger::info(" json Index: {}", jsonIndex);
         logger::info(" flags    :");
+
         printFlags(flags, isPluginLight);
 
         logger::info(" attachPath    :");
@@ -254,6 +255,8 @@ std::size_t CountJsonEntriesInFile(const std::string& configPath);
 uint32_t ParseRelightFlags(const nlohmann::json& j);
 
 nlohmann::json RelightFlagsToJson(uint32_t mask);
+
+uint32_t ParseTESLightFlags(const nlohmann::json& j);
 
 void ApplyTESLightFlags(
     RE::TESObjectLIGH* light,
