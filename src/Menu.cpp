@@ -2150,6 +2150,7 @@ namespace UI {
                     newCfg.configPath = BuildConfigPath(refFormIDandModName);
                     newCfg.jsonIndex = 0;
                     newCfg.configID = globals::nextID++;
+                    newCfg.startingFade = newCfg.brightness; 
                     auto root = selected->Get3D();
 
                     if (!root) break;
