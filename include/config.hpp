@@ -56,6 +56,12 @@ enum class LIGHT_FLAGS : uint32_t
     kPulse = 1 << 10
 };
 
+enum class TES_LIGHT_FLAGS_EXT
+{
+    kInverseSquare = 1 << 14,
+    kLinear = 1 << 15
+};
+
 inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kCandle, "Candle" },
     { LIGHT_FLAGS::kChandelier, "Chandelier" },
@@ -70,35 +76,24 @@ inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
     { LIGHT_FLAGS::kPulse, "Pulse" }
 };
 
-inline constexpr std::array<std::pair<RE::TES_LIGHT_FLAGS, std::string_view>, 14> flagNames{ {
-     { RE::TES_LIGHT_FLAGS::kDynamic,        "Dynamic" },
-     { RE::TES_LIGHT_FLAGS::kCanCarry,       "CanCarry" },
-     { RE::TES_LIGHT_FLAGS::kNegative,       "Negative" },
-     { RE::TES_LIGHT_FLAGS::kFlicker,        "Flicker" },
-     { RE::TES_LIGHT_FLAGS::kDeepCopy,       "DeepCopy" },
-     { RE::TES_LIGHT_FLAGS::kOffByDefault,   "OffByDefault" },
-     { RE::TES_LIGHT_FLAGS::kFlickerSlow,     "FlickerSlow" },
-     { RE::TES_LIGHT_FLAGS::kPulse,          "Pulse" },
-     { RE::TES_LIGHT_FLAGS::kPulseSlow,      "PulseSlow" },
-     { RE::TES_LIGHT_FLAGS::kSpotlight,      "Spotlight" },
-     { RE::TES_LIGHT_FLAGS::kSpotShadow,     "SpotShadow" },
-     { RE::TES_LIGHT_FLAGS::kHemiShadow,     "HemiShadow" },
-     { RE::TES_LIGHT_FLAGS::kOmniShadow,     "OmniShadow" },
-     { RE::TES_LIGHT_FLAGS::kPortalStrict,   "PortalStrict" }
- } };
-
-inline nlohmann::json TESLightFlagsToJson(uint32_t mask)
-{
-    nlohmann::json arr = nlohmann::json::array();
-
-    for (const auto& [flag, name] : flagNames) {
-        if (mask & static_cast<uint32_t>(flag)) {
-            arr.push_back(name);
-        }
-    }
-
-    return arr;
-}
+inline constexpr std::array<std::pair<std::uint32_t, std::string_view>, 16> flagNames{ {
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kDynamic),        "Dynamic" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kCanCarry),       "CanCarry" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kNegative),       "Negative" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker),        "Flicker" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kDeepCopy),       "DeepCopy" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kOffByDefault),   "OffByDefault" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow),    "FlickerSlow" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse),          "Pulse" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow),      "PulseSlow" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight),      "Spotlight" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow),     "SpotShadow" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kHemiShadow),     "HemiShadow" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kOmniShadow),     "OmniShadow" },
+    { static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPortalStrict),   "PortalStrict" },
+    { static_cast<std::uint32_t>(TES_LIGHT_FLAGS_EXT::kInverseSquare),  "InverseSquare" },
+    { static_cast<std::uint32_t>(TES_LIGHT_FLAGS_EXT::kLinear),         "Linear" }
+} };
 
 struct LightConfig {
     FOREACH_BOOL(BOOL2DEF);
@@ -120,14 +115,14 @@ struct LightConfig {
     uint32_t configID = 0;       // used to lookup configs fast in flicker calcs ect
     uint16_t jsonIndex = 0;      // used to keep track of multi lights
 
-    inline void printFlags(uint32_t mask, bool isPluginLight)
+    inline void printFlags(uint32_t mask, bool isAPluginLight)
     {
         if (!mask) {
             logger::info("  <none>");
             return;
         }
 
-        if (!isPluginLight) {
+        if (!isAPluginLight) {
             for (const auto& [flag, name] : LightFlagNames) {
                 if (mask & static_cast<uint32_t>(flag)) {
                     logger::info("  {}", name);
@@ -257,6 +252,8 @@ uint32_t ParseRelightFlags(const nlohmann::json& j);
 nlohmann::json RelightFlagsToJson(uint32_t mask);
 
 uint32_t ParseTESLightFlags(const nlohmann::json& j);
+
+nlohmann::json TESLightFlagsToJson(uint32_t mask);
 
 void ApplyTESLightFlags(
     RE::TESObjectLIGH* light,

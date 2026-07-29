@@ -30,9 +30,10 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 	cfg.brightness = rt.fade;
 	cfg.startingFade = rt.fade;
 	cfg.radius = rt.radius.x;
+
 	cfg.diffuseColor[0] = rt.diffuse.red * 255;
-	cfg.diffuseColor[1] = rt.diffuse.blue * 255;
-	cfg.diffuseColor[2] = rt.diffuse.green * 255;
+	cfg.diffuseColor[1] = rt.diffuse.green * 255;
+	cfg.diffuseColor[2] = rt.diffuse.blue * 255;
 
 	cfg.position[0] = niLight->local.translate.x;
 	cfg.position[1] = niLight->local.translate.y;
@@ -48,6 +49,10 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 	cfg.nearDistance = light->data.nearDistance; 
 	cfg.fov = light->data.fov; 
 	cfg.falloff = light->data.fallofExponent; 
+
+	cfg.flickerAmplitude = light->data.flickerMovementAmplitude; 
+	cfg.flickerIntensity = light->data.flickerIntensityAmplitude;
+	cfg.flickersPerSecond = light->data.flickerPeriodRecip; 
 
 	auto xlig = ref->extraList.GetByType<RE::ExtraLightData>();
 
@@ -67,15 +72,39 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 	cfg.configPath = BuildConfigPath(cfg.refFormIDsAndModNames[0]);
 
 	cfg.flags = static_cast<uint32_t>(light->data.flags.underlying());
-
-	logger::debug(
-		"CREATED LIGHT | FormID {:08X} | EDID '{}' | modName '{}' | configPath '{}' | menuCategory '{}'",
-		cfg.configID,
-		edid,
-		modName,
-		cfg.configPath,
-		cfg.menuCategory
-	);
+	logger::debug("=== CREATED LIGHT FROM REFLIGHT ===");
+	logger::debug("  FormID           : {:08X}", cfg.configID);
+	logger::debug("  EDID             : {}", edid);
+	logger::debug("  Mod Name         : {}", modName);
+	logger::debug("  Config Path      : {}", cfg.configPath);
+	logger::debug("  Menu Category    : {}", cfg.menuCategory);
+	logger::debug("  Menu Name        : {}", cfg.menuName);
+	logger::debug("  isPluginLight    : {}", cfg.isPluginLight);
+	logger::debug("  Shadow Light     : {}", cfg.shadowLight);
+	logger::debug("  Portal Strict    : {}", cfg.portalStrict);
+	logger::debug("  Affect Land      : {}", cfg.affectLand);
+	logger::debug("  Affect Water     : {}", cfg.affectWater);
+	logger::debug("  Never Fades      : {}", cfg.neverFades);
+	logger::debug("");
+	logger::debug("  Brightness       : {:.2f}", cfg.brightness);
+	logger::debug("  Starting Fade    : {:.2f}", cfg.startingFade);
+	logger::debug("  Radius           : {:.2f}", cfg.radius);
+	logger::debug("  FOV              : {:.2f}", cfg.fov);
+	logger::debug("  Falloff          : {:.2f}", cfg.falloff);
+	logger::debug("  Near Distance    : {:.2f}", cfg.nearDistance);
+	logger::debug("  Depth Bias       : {:.2f}", cfg.depthBias);
+	logger::debug("  Ambient Ratio    : {:.2f}", cfg.ambientRatio);
+	logger::debug("  Size             : {:.2f}", cfg.size);
+	logger::debug("  Cutoff Override  : {:.2f}", cfg.cutoffOverride);
+	logger::debug("");
+	logger::debug("  Flicker Intensity    : {:.2f}", cfg.flickerIntensity);
+	logger::debug("  Flickers Per Second  : {:.2f}", cfg.flickersPerSecond);
+	logger::debug("  Flicker Amplitude    : {:.2f}", cfg.flickerAmplitude);
+	logger::debug("");
+	logger::debug("  Position         : [{:.2f}, {:.2f}, {:.2f}]", cfg.position[0], cfg.position[1], cfg.position[2]);
+	logger::debug("  Rotation         : [{:.2f}, {:.2f}, {:.2f}]", cfg.rotation[0], cfg.rotation[1], cfg.rotation[2]);
+	logger::debug(" color             : [{}, {}, {}] ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
+	cfg.LightConfig::printFlags(cfg.flags, cfg.isPluginLight); 
 
 }
 
@@ -100,7 +129,7 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 
 		config.startingFade = config.brightness;
 
-		// clamp radius
+		if (!config.isPluginLight)
 		config.radius = std::clamp(config.radius, 0.0f, 500.f);
 
 		if (data.contains("color") && data["color"].is_array()) {
@@ -247,7 +276,9 @@ bool saveConfiguration(const LightConfig& config) {
 			const bool isSpotLight =
 			(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
 
-		const float maxRadius = isSpotLight ? 5000.0f : 500.0f;
+		 float maxRadius = isSpotLight ? 5000.0f : 500.0f;
+
+		if (config.isPluginLight) maxRadius = config.radius; 
 
 			// brighness useses in game slider copy value for a more stable value
 		newEntry["brightness"] = truncateDecimals(config.startingFade, 3);
@@ -339,7 +370,9 @@ bool saveNewConfiguration(LightConfig& config)
 		const bool isSpotLight =
 		(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
 
-		const float maxRadius = isSpotLight ? 5000.0f : 500.0f;
+		 float maxRadius = isSpotLight ? 5000.0f : 500.0f;
+
+		if (config.isPluginLight) maxRadius = config.radius;
 
 		newEntry["brightness"] = truncateDecimals(config.startingFade, 3);
 		newEntry["radius"] = truncateDecimals(std::clamp(config.radius, 0.1f, maxRadius), 3);
@@ -844,6 +877,20 @@ bool saveNewConfiguration(LightConfig& config)
 
 	 return mask;
  }
+
+  nlohmann::json TESLightFlagsToJson(uint32_t mask)
+ {
+	 nlohmann::json arr = nlohmann::json::array();
+
+	 for (const auto& [flag, name] : flagNames) {
+		 if (mask & static_cast<uint32_t>(flag)) {
+			 arr.push_back(name);
+		 }
+	 }
+
+	 return arr;
+ }
+
 
  void ApplyTESLightFlags(
 	RE::TESObjectLIGH* light,

@@ -24,8 +24,6 @@ namespace UI {
     static bool enableLightEditor = false;
     static bool lightAlreadyInList = false;
 
-  
-
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
 
@@ -739,6 +737,12 @@ namespace UI {
                             config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
                         : LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
 
+                    bool isPluginWithFlicker = config.isPluginLight &&
+                        (config.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
+                            static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
+                            static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
+                            static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
+
 
                     float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
@@ -862,6 +866,7 @@ namespace UI {
 
                             static bool showEmittanceWindow = false;
 
+                            if (!config.isPluginLight) {
                             ImGuiMCP::SameLine();
                             if (ImGuiMCP::Button("External Emittance")) {
                                 showEmittanceWindow = !showEmittanceWindow;
@@ -892,7 +897,7 @@ namespace UI {
                                 ImGuiMCP::SetTooltip("Select a region used for external emittance (Change light colors based on time of day, good for window lights)");
                             }
                         }
-
+                    }
                         ImGuiMCP::EndChild(); // TemplateEditor
 
                         ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0, 5));
@@ -915,7 +920,7 @@ namespace UI {
                             if (ImGuiMCP::SliderFloat("Brightness", &config.startingFade, 0.0f, brightnessToUse, "%.1f")) {
 
                                 auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
-                                if (ssNode && !config.isPluginLight) {
+                                if (ssNode && !isPluginWithFlicker) {
                                     auto& rt = ssNode->GetRuntimeData();
                                     for (auto& l : rt.activeLights) {
                                         if (!l) continue;
@@ -1060,14 +1065,13 @@ namespace UI {
                                     }
                                 }
                             }
-
-                            float movementMax = config.isPluginLight ? 50.0f : 1.0f;
-
+                        
+ 
                             if (ImGuiMCP::SliderFloat(
                                 "Movement",
                                 &config.flickerAmplitude,
                                 0.0f,
-                                movementMax,
+                                50,
                                 "%.2f"))
                             {
                                 if (config.isPluginLight) {
@@ -1076,7 +1080,6 @@ namespace UI {
                                     }
                                 }
                             }
-
 
                             ImGuiMCP::EndDisabled();
                             ImGuiMCP::EndDisabled();
@@ -1113,13 +1116,7 @@ namespace UI {
                             if (ImGuiMCP::SliderFloat3(
                                 "Position",
                                 &config.position[0],
-                                -sliderRange, sliderRange, "%.3f")) {
-
-                                bool isPluginWithFlicker = config.isPluginLight &&
-                                    (config.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
-                                        static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
-                                        static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
-                                        static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
+                                -sliderRange, sliderRange, "%.3f")) {               
 
                                 if (!isPluginWithFlicker) {
 
@@ -1179,7 +1176,7 @@ namespace UI {
                                 {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 
-                                    if (ssNode && !config.isPluginLight)
+                                    if (ssNode)
                                     {
                                         auto& rt = ssNode->GetRuntimeData();
 
@@ -1362,9 +1359,7 @@ namespace UI {
 
                             if (ImGuiMCP::Button("Refresh Lights")) {
 
-
                                 if (config.isPluginLight) {
-
 
                                     auto handle = LightManager::GetRefFromLight(selectedLight->light.get())->GetHandle();
 
@@ -1372,6 +1367,7 @@ namespace UI {
 
                                         handle.get()->Disable();
 
+                                        //wait a frame before reattaching
                                         SKSE::GetTaskInterface()->AddTask([handle]() {
                                             if (auto ref = handle.get()) {
                                                 ref->Enable(false);
@@ -1415,33 +1411,36 @@ namespace UI {
                             ImGuiMCP::NextColumn();
 
                             ImGuiMCP::SliderFloat("Near Distance", &config.nearDistance, 0.0f, 5.0f, "%.2f");
-                            ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
+                           
+                            if (!config.isPluginLight) {
+                                ImGuiMCP::Checkbox("Is Shadow Light", &config.shadowLight);
 
-                            ImGuiMCP::BeginDisabled(!isShadowLight);
+                                ImGuiMCP::BeginDisabled(!isShadowLight);
 
-                            bool isSpot =
-                                (config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+                                bool isSpot =
+                                    (config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
 
-                            if (ImGuiMCP::Checkbox("SpotLight", &isSpot))
-                            {
-                                if (isSpot) {
-                                    config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
+                                if (ImGuiMCP::Checkbox("SpotLight", &isSpot))
+                                {
+                                    if (isSpot) {
+                                        config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
 
-                                    if (config.fov > 45.0f) {
-                                        config.fov = 45.0f;
+                                        if (config.fov > 45.0f) {
+                                            config.fov = 45.0f;
+                                        }
+                                    }
+                                    else {
+                                        config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
+                                        config.fov = 90.0f;
                                     }
                                 }
-                                else {
-                                    config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
-                                    config.fov = 90.0f;
+
+                                if (ImGuiMCP::IsItemHovered()) {
+                                    ImGuiMCP::SetTooltip("SpotLights only work for shadow lights, FOV and rotation can be used to edit them");
                                 }
-                            }
 
-                            if (ImGuiMCP::IsItemHovered()) {
-                                ImGuiMCP::SetTooltip("SpotLights only work for shadow lights, FOV and rotation can be used to edit them");
+                                ImGuiMCP::EndDisabled(); // closes !isShadowLight
                             }
-
-                            ImGuiMCP::EndDisabled(); // closes !isShadowLight
                             ImGuiMCP::EndDisabled(); // closes isTorch
                         }
                         ImGuiMCP::EndChild(); // NonRuntimeBox
@@ -2151,8 +2150,6 @@ namespace UI {
                     newCfg.configPath = BuildConfigPath(refFormIDandModName);
                     newCfg.jsonIndex = 0;
                     newCfg.configID = globals::nextID++;
-                    newCfg.diffuseColor = { 255, 162, 61 };
-                    newCfg.startingFade = 3.0f;
                     auto root = selected->Get3D();
 
                     if (!root) break;
@@ -2221,8 +2218,6 @@ namespace UI {
                     newCfg.configPath = BuildConfigPath(meshPath);
                     newCfg.jsonIndex = 0;
                     newCfg.configID = globals::nextID++;
-                    newCfg.diffuseColor = { 255, 162, 61 };
-                    newCfg.startingFade = 3.0f;
 
                     auto a_root = selected->Get3D();
                     if (!a_root) {

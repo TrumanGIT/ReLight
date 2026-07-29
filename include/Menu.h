@@ -96,6 +96,12 @@ namespace UI {
                 light->unk060,
                 cfg.configID
             );
+            float r = lightRt.diffuse.red;
+            float g = lightRt.diffuse.green;
+            float b = lightRt.diffuse.blue;
+
+            logger::debug("  color (raw)       : R={:.3f}, G={:.3f}, B={:.3f}", r, g, b);
+            logger::debug("  color (0-255)     : R={:.0f}, G={:.0f}, B={:.0f}", r * 255.0f, g * 255.0f, b * 255.0f);
 
             if (globals::islInstalled) {
 
@@ -695,8 +701,7 @@ namespace UI {
         const std::string& configPath,
         const LightGroupData& groupData,
         const std::vector<RE::NiPointer<RE::BSLight>>& lights,
-        int& selectedIndex,
-        bool isPluginLights)
+        int& selectedIndex)
     {
         auto pathIt = groupData.byConfigPath.find(configPath);
         if (pathIt == groupData.byConfigPath.end() || pathIt->second.empty())
@@ -868,7 +873,7 @@ namespace UI {
                 {
                     for (const auto& configPath : groupData.byCategory.at(category))
                     {
-                        DrawCatagoryGroup(configPath, groupData, lights, selectedIndex, isPluginLights);
+                        DrawCatagoryGroup(configPath, groupData, lights, selectedIndex);
                     }
                     ImGuiMCP::TreePop();
                 }
@@ -876,7 +881,7 @@ namespace UI {
 
             for (const auto& configPath : groupData.uncategorized)
             {
-                DrawCatagoryGroup(configPath, groupData, lights, selectedIndex, isPluginLights);
+                DrawCatagoryGroup(configPath, groupData, lights, selectedIndex);
             }
         }
         ImGuiMCP::EndChild();
@@ -985,7 +990,7 @@ namespace UI {
   {
       static bool showFlagWindow = false;
 
-      if (ImGuiMCP::Button((std::string("TES Flags ") + flagIcon).c_str())) {
+      if (ImGuiMCP::Button((std::string("Flags ") + flagIcon).c_str())) {
           showFlagWindow = !showFlagWindow;
       }
 
@@ -999,7 +1004,7 @@ namespace UI {
           auto FlagCheckbox =
               [](const char* label,
                   std::uint32_t& flags,
-                  RE::TES_LIGHT_FLAGS flag,
+                  uint32_t flag,
                   const char* tooltip)
               {
                   const auto flagValue = static_cast<std::uint32_t>(flag);
@@ -1022,133 +1027,147 @@ namespace UI {
           FlagCheckbox(
               "Dynamic",
               flags,
-              RE::TES_LIGHT_FLAGS::kDynamic,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kDynamic),
               "Light is dynamic."
           );
 
           FlagCheckbox(
               "Can Carry",
               flags,
-              RE::TES_LIGHT_FLAGS::kCanCarry,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kCanCarry),
               "Light can be carried."
           );
 
           FlagCheckbox(
               "Negative",
               flags,
-              RE::TES_LIGHT_FLAGS::kNegative,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kNegative),
               "Light has negative lighting."
           );
 
           FlagCheckbox(
-              "Flicker",
-              flags,
-              RE::TES_LIGHT_FLAGS::kFlicker,
-              "Light flickers."
-          );
-
-
-          if (ImGuiMCP::IsItemHovered()) {
-              ImGuiMCP::SetTooltip(
-                  "Warning: This setting is stored on the base light object "
-                  "and affects every reference using this base light not just this one."
-              );
-          }
-
-          FlagCheckbox(
               "Deep Copy",
               flags,
-              RE::TES_LIGHT_FLAGS::kDeepCopy,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kDeepCopy),
               "Light data is deep copied."
           );
 
           FlagCheckbox(
               "Off By Default",
               flags,
-              RE::TES_LIGHT_FLAGS::kOffByDefault,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kOffByDefault),
               "Light is off by default."
           );
+
+          ImGuiMCP::BeginDisabled(true);
+
+          FlagCheckbox(
+              "Flicker",
+              flags,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker),
+              "Light flickers."
+          );
+
+          if (ImGuiMCP::IsItemHovered()) {
+              ImGuiMCP::SetTooltip(
+                  "Flicker is controlled via the flicker settings menu"
+              );
+          }
 
           FlagCheckbox(
               "Flicker Slow",
               flags,
-              RE::TES_LIGHT_FLAGS::kFlickerSlow,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow),
               "Light uses the slow flicker behavior."
           );
 
-
           if (ImGuiMCP::IsItemHovered()) {
               ImGuiMCP::SetTooltip(
-                  "Warning: This setting is stored on the base light object "
-                  "and affects every reference using this base light not just this one."
+                  "Flicker is controlled via the flicker settings menu"
               );
           }
 
           FlagCheckbox(
               "Pulse",
               flags,
-              RE::TES_LIGHT_FLAGS::kPulse,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kPulse),
               "Light pulses instead of flickering."
           );
 
-
           if (ImGuiMCP::IsItemHovered()) {
               ImGuiMCP::SetTooltip(
-                  "Warning: This setting is stored on the base light object "
-                  "and affects every reference using this base light not just this one."
+                  "Flicker is controlled via the flicker settings menu"
               );
           }
 
           FlagCheckbox(
               "Pulse Slow",
               flags,
-              RE::TES_LIGHT_FLAGS::kPulseSlow,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow),
               "Light uses the slow pulse behavior."
           );
 
-
           if (ImGuiMCP::IsItemHovered()) {
               ImGuiMCP::SetTooltip(
-                  "Warning: This setting is stored on the base light object "
-                  "and affects every reference using this base light not just this one."
+                  "Flicker is controlled via the flicker settings menu"
               );
           }
+
+          ImGuiMCP::EndDisabled();
 
           FlagCheckbox(
               "Spotlight",
               flags,
-              RE::TES_LIGHT_FLAGS::kSpotlight,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight),
               "Light is treated as a spotlight."
           );
 
           FlagCheckbox(
               "Spot Shadow",
               flags,
-              RE::TES_LIGHT_FLAGS::kSpotShadow,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow),
               "Light casts a spotlight shadow."
           );
 
           FlagCheckbox(
               "Hemi Shadow",
               flags,
-              RE::TES_LIGHT_FLAGS::kHemiShadow,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kHemiShadow),
               "Light uses hemispherical shadowing."
           );
 
           FlagCheckbox(
               "Omni Shadow",
               flags,
-              RE::TES_LIGHT_FLAGS::kOmniShadow,
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kOmniShadow),
               "Light casts an omnidirectional shadow."
           );
 
           FlagCheckbox(
               "Portal Strict",
               flags,
-              RE::TES_LIGHT_FLAGS::kPortalStrict,
-              "Light uses strict portal behavior."
+              static_cast<uint32_t>(RE::TES_LIGHT_FLAGS::kPortalStrict),
+              "Light uses strict portal behavior this should be on for shadow lights, i personally have it on for every light."
           );
 
+          if(globals::islInstalled){
+          // --- Extended Flags ---
+          ImGuiMCP::SeparatorText("Community Shaders Flags");
+
+          FlagCheckbox(
+              "Inverse Square",
+              flags,
+              static_cast<uint32_t>(TES_LIGHT_FLAGS_EXT::kInverseSquare),
+              "Uses inverse square falloff for attenuation for community shaders only."
+          );
+
+          FlagCheckbox(
+              "Linear",
+              flags,
+              static_cast<uint32_t>(TES_LIGHT_FLAGS_EXT::kLinear),
+              "Uses linear falloff for attenuation for community shaders only ."
+          );
+          }
           ImGuiMCP::End();
       }
   }

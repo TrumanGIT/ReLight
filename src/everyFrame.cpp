@@ -85,12 +85,16 @@ void PlayerCharacter_Update::Install()
 	logger::info("player chracter update hook installed");
 }
 
-
-
 void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGHT* a_refrLight, RE::TESObjectREFR* a_ref, float a_value) {
 	if (!a_refrLight) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
 	RE::NiLight* light = a_refrLight->light.get();
 	if (!light) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
+
+	// check for relight prefix 
+	//auto name = std::string_view(light->name.c_str());
+	//if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
+	//	return func(a_lightTemplate, a_refrLight, a_ref, a_value);
+	
 	auto& rt = light->GetLightRuntimeData();
 	auto it = LightData::configIDToJsonCfg.find(rt.unk138);
 	if (it == LightData::configIDToJsonCfg.end())
@@ -131,10 +135,13 @@ void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGH
 	}
 }
 
+// original func SE 14021f660 whos id is 17212
+
  void NiLightFlickerHook::Install() {
-	 // FUN_14026f480 - ID: 17613
+	 // jmp to original AE FUN_14026f480 - ID: 17613
+	 //jmp to original SE 17211	14021f640 
 	 // The JMP to TESObjectLIGH::UpdateFlicker is at offset 0xA
-	 REL::Relocation<std::uintptr_t> target(REL::VariantID(0, 17613, 0), REL::VariantOffset{ 0xA, 0xA, 0 });
+	 REL::Relocation<std::uintptr_t> target(REL::VariantID(17211, 17613, 0), REL::VariantOffset{ 0xA, 0xA, 0 });
 	 func = target.write_branch<5>(thunk);
 	 logger::info("NiLightFlickerHook installed at 0x{:X}", target.address());
  }

@@ -7,6 +7,8 @@
 
 
 //Po3's hook THIS DISABLES ALL LIGHTS TO START WITH A CLEAN BASE TO WORK FROM
+
+//EDIT i now use this to also edit 
 RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 	RE::TESObjectLIGH* light,
 	RE::TESObjectREFR* ref,
@@ -96,8 +98,6 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 		return false;
 	}
 
-    toLowerImmut(edid);
-
     if (forms::ContainsEditorID(edid, globals::disableByEditorID)) return true;
 
     auto formID = ref->GetFormID();
@@ -120,10 +120,10 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
 	if (forms::ContainsEditorID(edid, globals::enableByEditorID)) return false;
 
-    toLower(modName); 
+   auto modNameLower = toLowerImmut(modName); 
 
     for (const auto& whitelistedMod : globals::whitelist) {
-        if (modName.find(whitelistedMod) != std::string::npos) {
+        if (modNameLower.find(whitelistedMod) != std::string::npos) {
 
             logger::info("whitelisted ref 0x{:08X} from mod {} with edid {} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()), whitelistedMod, edid);
             return false;

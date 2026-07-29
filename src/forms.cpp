@@ -1,6 +1,7 @@
 #include "forms.hpp"
 #include "logger.hpp"
 #include "global.h"
+#include "utility.h"
 
 namespace forms {
 
@@ -8,21 +9,24 @@ namespace forms {
 		const std::string& edid,
 		const std::vector<std::string>& keywords)
 	{
+
 		if (edid.empty()) {
 			return false;
 		}
 
-		for (const auto& keyword : keywords) {
-			//	logger::debug("comparing vanilla light {} to {}", edid, keyword);
+		std::string lowerEdid = toLowerImmut(edid);  
 
-			if (edid.contains(keyword)) {
+		for (const auto& keyword : keywords) {
+				//logger::debug("comparing vanilla light {} to {}", lowerEdid, keyword);
+
+			if (lowerEdid.contains(keyword)) {
 
 				// special exception
 				if (edid.contains("solitudeinnsunlightshadow")) {
 					return false;
 				}
 
-				logger::info("Matched editorID '{}' with keyword '{}'", edid, keyword);
+				logger::info("Matched editorID '{}' with keyword '{}'", lowerEdid, keyword);
 				return true;
 			}
 		}
