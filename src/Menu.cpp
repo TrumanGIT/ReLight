@@ -47,7 +47,7 @@ namespace UI {
         {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
-            ImGuiMCP::Text("Light Flicker Prevention");
+            ImGuiMCP::Text("Light Flicker Prevention (This only works with relight overhauls that use relight flags)");
             ImGuiMCP::PopStyleColor();
 
             ImGuiMCP::SameLine(); 
@@ -678,7 +678,7 @@ namespace UI {
 
         if (lightRefreshTicker.shouldTick()) {
             refreshAllLights(relightSelectedIndex, relightLights, "RL");
-            refreshAllLights(pluginSelectedIndex, pluginLights, " P");
+            refreshAllLights(pluginSelectedIndex, pluginLights, "OL");
             didRefreshThisFrame = !didRefreshThisFrame;
         }
 
@@ -687,13 +687,13 @@ namespace UI {
         // enforced by clearing the other index whenever one changes.
         // ---------------------------------------------------------------------
         int prevRelight = relightSelectedIndex;
-        RenderLightList(relightLights, relightSelectedIndex, "Loaded ReLight Templates", false);
+        RenderLightList(relightLights, relightSelectedIndex, "Loaded ReLight Templates");
         if (relightSelectedIndex != prevRelight && relightSelectedIndex != -1) {
             pluginSelectedIndex = -1;
         }
 
         int prevPlugin = pluginSelectedIndex;
-        RenderLightList(pluginLights, pluginSelectedIndex, "Loaded Plugin Lights", true);
+        RenderLightList(pluginLights, pluginSelectedIndex, "Loaded Plugin Lights");
         if (pluginSelectedIndex != prevPlugin && pluginSelectedIndex != -1) {
             relightSelectedIndex = -1;
         }
@@ -735,7 +735,7 @@ namespace UI {
                         config.isPluginLight
                         ? (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight) ||
                             config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
-                        : LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
+                        : LightData::HasRelightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
 
                     bool isPluginWithFlicker = config.isPluginLight &&
                         (config.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
@@ -743,6 +743,16 @@ namespace UI {
                             static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
                             static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
 
+                    bool isPluginInverseSquare =
+                        !config.isPluginLight &&
+                        (config.flags & static_cast<std::uint32_t>(TES_LIGHT_FLAGS_EXT::kInverseSquare));
+
+                   /*bool hasExtEmittance = false;
+
+                    auto ref = LightManager::GetRefFromLight(selectedLight->light.get());
+
+                    if (ref) {
+                    }*/ 
 
                     float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
@@ -824,13 +834,11 @@ namespace UI {
                                 config.menuName = newTemplateName;
                             }
 
-                            ImGuiMCP::SameLine(0.0f, kButtonSpacing);
 
-                          if (!config.isPluginLight)  RenderRelightFlags(config.flags);
-
-                          else {
-                              RenderTESLightFlags(config.flags);
-                          }
+                            if (!config.isPluginLight) {
+                                ImGuiMCP::SameLine(0.0f, kButtonSpacing);
+                                RenderRelightFlags(config.flags);
+                            } 
 
                             ImGuiMCP::Dummy(ImGuiMCP::ImVec2(0.0f, 10.0f));
 
@@ -937,7 +945,11 @@ namespace UI {
                                 }
                             }
 
-                            if (!globals::islInstalled) {
+                            bool hideRadius =
+                                globals::islInstalled &&
+                                (!config.isPluginLight || isPluginInverseSquare);
+
+                            if (!hideRadius) {
                                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                                     if (ssNode && !config.isPluginLight) {
@@ -957,7 +969,8 @@ namespace UI {
                                     }
                                 }
                             }
-                            else if (selectedIslRt) {
+
+                             if (selectedIslRt && (isPluginInverseSquare || !config.isPluginLight)) {
                                 if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                                     if (ssNode && !config.isPluginLight) {
@@ -1038,7 +1051,7 @@ namespace UI {
 
                             ImGuiMCP::Separator();
 
-                            ImGuiMCP::BeginDisabled(isTorch);
+                            ImGuiMCP::BeginDisabled(isTorch || (config.isPluginLight && !isPluginWithFlicker));
 
                             if (ImGuiMCP::SliderFloat(
                                 "Flicker Rate",
@@ -1442,6 +1455,10 @@ namespace UI {
                                 ImGuiMCP::EndDisabled(); // closes !isShadowLight
                             }
                             ImGuiMCP::EndDisabled(); // closes isTorch
+                            
+                            if (config.isPluginLight) {
+                                RenderTESLightFlags(config.flags);
+                            }
                         }
                         ImGuiMCP::EndChild(); // NonRuntimeBox
 
@@ -1627,7 +1644,7 @@ namespace UI {
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
             centerNextItem(400.0f);
 
-            if (ImGuiMCP::Button("Add another Light")) {
+            if (RenderYellowButton("Add another Light")) {
 
                 multiLight = true;
 
@@ -1735,7 +1752,7 @@ namespace UI {
 
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("Add To Light Exclusion List")) {
+            if (RenderRedButton("Add To Light Exclusion List")) {
 
                 std::string refIDandModName = forms::BuildFormIDAndModName(selected, false);
 
@@ -1871,7 +1888,7 @@ namespace UI {
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
             centerNextItem(630.0f);
 
-            if (ImGuiMCP::Button("Add to a existing template")) {
+            if (RenderYellowButton("Add to a existing template")) {
                 createNewTemplate = false;
                 step = AttachLightStep::ChooseTemplate;
             }
@@ -1882,7 +1899,7 @@ namespace UI {
 
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("Create a new template")) {
+            if (RenderYellowButton("Create a new template")) {
                 createNewTemplate = true;
                 newCfg = LightConfig{};
                 step = AttachLightStep::ChooseScope;
@@ -1893,7 +1910,7 @@ namespace UI {
             }
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("Add To Light Exclusion List")) {
+            if (RenderRedButton("Add To Light Exclusion List")) {
 
                 std::string refIDandModName = forms::BuildFormIDAndModName(selected, false);
 
@@ -2079,7 +2096,7 @@ namespace UI {
 
             if (selectedIndex == -1) {
                 centerNextItem(60.0f);
-                if (ImGuiMCP::Button("Cancel")) {
+                if (RenderRedButton("Cancel")) {
                     resetState();
                 }
                 break;
@@ -2114,13 +2131,13 @@ namespace UI {
 
             centerNextItem(170.0f);
 
-            if (ImGuiMCP::Button("Confirm")) {
+            if (RenderYellowButton("Confirm")) {
                 step = AttachLightStep::ChooseScope;
             }
 
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("Cancel")) {
+            if (RenderRedButton("Cancel")) {
                 resetState();
             }
 
@@ -2137,7 +2154,7 @@ namespace UI {
 
             centerNextItem(330.0f);
 
-            if (ImGuiMCP::Button("This object only")) {
+            if (RenderYellowButton("This object only")) {
 
                 refLight = true;
 
@@ -2201,7 +2218,7 @@ namespace UI {
 
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("All like this")) {
+            if (RenderYellowButton("All like this")) {
                 refLight = false;
 
                 auto baseObj = selected->GetBaseObject();
@@ -2219,6 +2236,7 @@ namespace UI {
                     newCfg.configPath = BuildConfigPath(meshPath);
                     newCfg.jsonIndex = 0;
                     newCfg.configID = globals::nextID++;
+                    newCfg.startingFade = newCfg.brightness; 
 
                     auto a_root = selected->Get3D();
                     if (!a_root) {
@@ -2278,7 +2296,7 @@ namespace UI {
 
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("Cancel")) {
+            if (RenderRedButton("Cancel")) {
                 resetState();
                 step = AttachLightStep::SelectTarget;
             }
@@ -2356,7 +2374,7 @@ namespace UI {
 
             centerNextItem(180.0f);
 
-            if (ImGuiMCP::Button("Confirm")) {
+            if (RenderYellowButton("Confirm")) {
 
                 if (multiLight) {
                     entryCount = CountJsonEntriesInFile(newCfg.configPath);
@@ -2498,7 +2516,7 @@ namespace UI {
 
             ImGuiMCP::SameLine();
 
-            if (ImGuiMCP::Button("Cancel")) {
+            if (RenderRedButton("Cancel")) {
                 RE::ObjectRefHandle handle = selected->GetHandle();
 
                 if (!selectedCfgs.empty()) {
@@ -2535,7 +2553,7 @@ namespace UI {
             ImGuiMCP::Spacing();
 
             centerNextItem(50.0f);
-            if (ImGuiMCP::Button("Okay")) {
+            if (RenderYellowButton("Okay")) {
                 step = AttachLightStep::SelectTarget;
                 break;
             }

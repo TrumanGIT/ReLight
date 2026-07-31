@@ -21,6 +21,10 @@ namespace UI {
 
     inline auto flagIcon = FontAwesome::UnicodeToUtf8(0xf024);
 
+  //  inline auto plusIcon = FontAwesome::UnicodeToUtf8(0xf02b);
+
+    //inline auto blockIcon = FontAwesome::UnicodeToUtf8(0xf05e);
+
     struct LightGroupData
     {
         // All lights in the scene, keyed by their index in the global `lights` vector.
@@ -272,6 +276,7 @@ namespace UI {
                 }
             }
             };
+
         updateLightList(rt.activeLights);
         updateLightList(rt.activeShadowLights);
 
@@ -310,9 +315,38 @@ namespace UI {
         if (name.size() < prefix.size() || name.substr(0, prefix.size()) != prefix)
             return;
 
-        int key = activeLight->light->GetLightRuntimeData().unk138;
-        if (key < 0) return;
+        int key = getLightKey(activeLight); 
 
+        if (key == 0 && prefix == "OL") {
+            RE::NiLight* niLight = activeLight->light.get();
+            auto* ref = niLight->GetUserData();
+
+            if (ref) {
+                auto* baseObject = ref->GetBaseObject();
+                if (baseObject && baseObject->formType == RE::FormType::Light) {
+                    auto* lightTemplate = static_cast<RE::TESObjectLIGH*>(baseObject);
+
+                    std::string edid = clib_util::editorID::get_editorID(lightTemplate);
+                    const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+                    std::string modName = refOriginFile ? refOriginFile->fileName : "";
+
+                    LightConfig cfg;
+                    CreateConfigFromRefLight(cfg, niLight, lightTemplate, ref, edid, modName);
+
+                    LightData::configIDToJsonCfg[cfg.configID] = cfg;
+                    LightData::defaultConfigs[cfg.configID] = cfg;
+
+                    niLight->unk138 = cfg.configID;
+                    key = cfg.configID;
+
+                    logger::info("Created config for 'OB' light: {} (ID: {})", cfg.menuName, cfg.configID);
+                }
+            }
+        }
+
+        // If still no key, return (skip this light)
+        if (key <= 0) return;
+        
         seen.insert(key);
 
         auto it = LightData::configIDToJsonCfg.find(key);
@@ -329,7 +363,6 @@ namespace UI {
             refreshedLights[itIdx->second] = activeLight;
         }
     }
-
 
     inline void refreshAllLights(
         int& selectedIndex,
@@ -834,7 +867,7 @@ namespace UI {
     inline void RenderLightList(
         const std::vector<RE::NiPointer<RE::BSLight>>& lights,
         int& selectedIndex,
-        const char* headerLabel, bool isPluginLights)
+        const char* headerLabel)
     {
         if (!ImGuiMCP::CollapsingHeader(headerLabel))
             return;
@@ -1228,6 +1261,44 @@ namespace UI {
 
     //RenderAttachRemove FUNTIONS
     ///////////////////////////////
+
+  inline bool RenderYellowButton(const char* a_label)
+  {
+      ImGuiMCP::PushStyleVar(ImGuiMCP::ImGuiStyleVar_FrameRounding, 5.0F);
+      ImGuiMCP::PushStyleVar(ImGuiMCP::ImGuiStyleVar_FrameBorderSize, 1.0F);
+
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Button, ImGuiMCP::ImVec4{ 0.60F, 0.50F, 0.10F, 0.80F });
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_ButtonHovered, ImGuiMCP::ImVec4{ 0.80F, 0.65F, 0.15F, 0.90F });
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_ButtonActive, ImGuiMCP::ImVec4{ 0.40F, 0.35F, 0.05F, 1.00F });
+
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.00F, 0.95F, 0.90F, 1.00F });
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Border, ImGuiMCP::ImVec4{ 0.80F, 0.65F, 0.15F, 0.60F });
+
+      const bool clicked = ImGuiMCP::Button(a_label);
+
+      ImGuiMCP::PopStyleColor(5);
+      ImGuiMCP::PopStyleVar(2);
+
+      return clicked;
+  }
+
+  inline bool RenderRedButton(const char* a_label)
+  {
+      ImGuiMCP::PushStyleVar(ImGuiMCP::ImGuiStyleVar_FrameRounding, 5.0F);
+      ImGuiMCP::PushStyleVar(ImGuiMCP::ImGuiStyleVar_FrameBorderSize, 1.0F);
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Button, ImGuiMCP::ImVec4{ 0.6F, 0.1F, 0.1F, 0.8F });
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_ButtonHovered, ImGuiMCP::ImVec4{ 0.8F, 0.2F, 0.2F, 0.9F });
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_ButtonActive, ImGuiMCP::ImVec4{ 0.4F, 0.05F, 0.05F, 1.0F });
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0F, 0.9F, 0.9F, 1.0F });
+      ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Border, ImGuiMCP::ImVec4{ 0.8F, 0.2F, 0.2F, 0.6F });
+
+      const bool clicked = ImGuiMCP::Button(a_label);
+
+      ImGuiMCP::PopStyleColor(5);
+      ImGuiMCP::PopStyleVar(2);
+
+      return clicked;
+  }
 
     inline void RefreshNearbyObjectsByBase(RE::TESObjectREFR* selected, RE::FormID targetBaseFormID)
     {

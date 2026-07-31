@@ -26,55 +26,46 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
     std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
-    std::vector<LightConfig>* refCfgs = nullptr; 
+    auto formID = ref->GetFormID(); 
 
-    //pass true for is interior since tes light flags hae no such flag
-    refCfgs = LightManager::findConfigsForRef(ref, true);
+    auto it = LightData::configIDToJsonCfg.find(formID);
 
-	if (!refCfgs && shouldDisableLight(light, ref, edid, modName))
+    bool configExists = it != LightData::configIDToJsonCfg.end(); 
+
+	if (!configExists && shouldDisableLight(light, ref, edid, modName))
 		return nullptr;
 
-        // no config exists for this yet, create one
-        if (!refCfgs) {
-            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    if (configExists) {
+        auto& cfg = it->second;
 
-            if (!niLight) return niLight;
+        auto backupLightData = light->data;
 
-            niLight->fade *= globals::vanillaBrightnessModifier;
-            LightConfig cfg;
+        LightData::SetTESObjectLightDataFromConfig(light, cfg);
 
-            CreateConfigFromRefLight(cfg, niLight, light, ref, edid, modName);
+        auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-            niLight->unk138 = ref->GetFormID();
+        light->data = backupLightData;
 
-            LightData::configIDToJsonCfg[cfg.configID] = cfg;
-            LightData::defaultConfigs[cfg.configID] = cfg;
-            return niLight; 
-        }
-        
-        // this light has a relight config already, set data 
-        else {
-            if (refCfgs->empty()) return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+        if (!niLight) return niLight;
 
-            auto& cfg = refCfgs->front();
+        //no scale needed to set
+        LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
 
-            auto backupLightData = light->data;
+        // 
+        niLight->name = "OL";
 
-            LightData::SetTESObjectLightDataFromConfig(light, cfg); 
+        return niLight;
+    }
 
-            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-            if (!niLight) return niLight;
+    if (!niLight) return niLight;
 
-            //no scale needed to set
-            LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
+    //mark these lights so i can identify them and create a config for them if user opens the relight menu
+    // this allows me to filter placed object ref lights from hazard, magic and actor lights
+    niLight->name = "OL"; 
 
-            light->data = backupLightData; 
-
-            return niLight; 
-        }
-       
-    return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    return niLight; 
 }
 
 void TESObjectLIGH_GenDynamic::Install() {

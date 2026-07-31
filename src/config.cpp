@@ -63,8 +63,8 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 	else {
 		cfg.depthBias = 5.0f;
 	}
-	
-	cfg.configID = ref->GetFormID(); 
+
+	cfg.configID = ref->GetFormID();
 	cfg.menuCategory = modName;
 	cfg.menuName = std::format("{} ({:08X})",edid, cfg.configID);
 	cfg.isPluginLight = true; 

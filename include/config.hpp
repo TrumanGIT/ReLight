@@ -106,7 +106,7 @@ struct LightConfig {
     RE::TESRegion* emittanceRegion = nullptr;
     std::vector<std::string> refFormIDsAndModNames; // to attach light from config to objects with said reference form id
     std::vector<std::string> baseFormIDsAndModNames; // to attach light from config to objects with said base form id
-    std::array<int, COL_SIZE> diffuseColor{};     // NiPointLightRunflickerTime->data.color for main color
+    std::array<int, COL_SIZE> diffuseColor{255, 162, 61};     // NiPointLightRunflickerTime->data.color for main color
     //std::array<int, COL_SIZE> startingDiffuseColor{};     // NiPointLightRunflickerTime->data.color for main color
     std::array<float, POS_SIZE> position{0, 0, 30};       // RE::NiPointLight->local.translate.x, y z
     std::array<float, POS_SIZE> rotation{ 0, 0, 0 };       // RE::NiPointLight->local.rotation used for spotlights

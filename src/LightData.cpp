@@ -77,16 +77,33 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 		return;
 	}
 
-	if (cfg.isPluginLight && !cfg.isPluginLight &&
-		(cfg.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
-			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
-			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
-			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow))))
-	{ 
-	niPointLight->local.translate.x = cfg.position[0];
-	niPointLight->local.translate.y = cfg.position[1];
-	niPointLight->local.translate.z = cfg.position[2];
+	// flicker lights in vanillas position are set in their update hook using a offset. 
+	bool hasFlicker = (cfg.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
+		static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
+		static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
+		static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
+
+	if (!hasFlicker) {
+		niPointLight->local.translate.x = cfg.position[0];
+		niPointLight->local.translate.y = cfg.position[1];
+		niPointLight->local.translate.z = cfg.position[2];
 	}
+
+	bool isSpotlight = LightData::HasRelightFlag(cfg.flags, LIGHT_FLAGS::kSpotLight) ||
+		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight)) ||
+		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow));
+	RE::NiPoint3 angles;
+
+	if (isSpotlight) {
+		RE::NiPoint3 angles;
+		angles.x = RE::deg_to_rad(cfg.rotation[0]);
+		angles.y = RE::deg_to_rad(cfg.rotation[1]);
+		angles.z = RE::deg_to_rad(cfg.rotation[2]);
+		niPointLight->local.rotate.SetEulerAnglesXYZ(angles);
+	}
+
+	niPointLight->local.rotate.SetEulerAnglesXYZ(angles);
+
 	// free floats used for merged lights position, needed for movement in flicker calcs
 	if (!cfg.isPluginLight) {
 	niPointLight->worldBound.center.x = cfg.position[0];
@@ -173,8 +190,6 @@ void LightData::SetTESObjectLightDataFromConfig(RE::TESObjectLIGH* light, const 
 
 	return RE::NI_TWO_PI;
 }
-
-
 
 RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightConfig& cfg)
 {

@@ -509,7 +509,6 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 	return true;
 }
 
-
 //USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE. USUALLY WHEN GOING FROM INTERIOR TO EXTERIOR, BACK TO INTERIOR AND VICE VERSA
 RE::BSEventNotifyControl LightManager::ProcessEvent(const RE::BGSActorCellEvent* event,
 	RE::BSTEventSource<RE::BGSActorCellEvent>*) {

@@ -128,7 +128,7 @@ struct LightData {
 
 	static RE::ExtraLightData* GetExtraLightData(RE::TESObjectREFR* ref);
 
-static bool HasLightFlag(uint32_t flags, LIGHT_FLAGS flag)
+static bool HasRelightFlag(uint32_t flags, LIGHT_FLAGS flag)
 	{
 		return (flags & static_cast<uint32_t>(flag)) != 0;
 	}
@@ -136,13 +136,13 @@ static bool HasLightFlag(uint32_t flags, LIGHT_FLAGS flag)
 static bool ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
 	{
 		// same-type merges
-		if (HasLightFlag(refAflags, LIGHT_FLAGS::kCandle) &&
-			HasLightFlag(otherRefFlags, LIGHT_FLAGS::kCandle)) {
+		if (HasRelightFlag(refAflags, LIGHT_FLAGS::kCandle) &&
+			HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kCandle)) {
 			return true;
 		}
 
-		if (HasLightFlag(refAflags, LIGHT_FLAGS::kFire) &&
-			HasLightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) {
+		if (HasRelightFlag(refAflags, LIGHT_FLAGS::kFire) &&
+			HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) {
 			return true;
 		}
 
@@ -156,8 +156,8 @@ static bool ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
 			return true;
 		}
 
-		if (HasLightFlag(refAflags, LIGHT_FLAGS::kOther) &&
-			HasLightFlag(otherRefFlags, LIGHT_FLAGS::kOther)) {
+		if (HasRelightFlag(refAflags, LIGHT_FLAGS::kOther) &&
+			HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kOther)) {
 			return true;
 		}
 

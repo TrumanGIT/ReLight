@@ -1244,7 +1244,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		//dont increase gets to messy, only handle mini objects like mini fires in windhelm otherwise too bright
 		if (scale >= 1.0f) scale = 1.0f;
 
-		if (!LightData::HasLightFlag(config.flags, LIGHT_FLAGS::kPulse)) {
+		if (!LightData::HasRelightFlag(config.flags, LIGHT_FLAGS::kPulse)) {
 
 			// ---- Flicker (matches vanilla kFlicker / kFlickerSlow) ----
 			auto constAttenOffset = std::fmod(pointLight->constAttenuation + getRandomFloat(1.1f, 13.1f) * flickerDelta, RE::NI_TWO_PI);
