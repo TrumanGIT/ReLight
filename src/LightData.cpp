@@ -78,12 +78,13 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 	}
 
 	// flicker lights in vanillas position are set in their update hook using a offset. 
-	bool hasFlicker = (cfg.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
-		static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
-		static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
-		static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
+	bool isPluginLightWithFlicker = cfg.isPluginLight &&
+		(cfg.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
+			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlickerSlow) |
+			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulse) |
+			static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
 
-	if (!hasFlicker) {
+	if (!isPluginLightWithFlicker) {
 		niPointLight->local.translate.x = cfg.position[0];
 		niPointLight->local.translate.y = cfg.position[1];
 		niPointLight->local.translate.z = cfg.position[2];
@@ -92,7 +93,6 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 	bool isSpotlight = LightData::HasRelightFlag(cfg.flags, LIGHT_FLAGS::kSpotLight) ||
 		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight)) ||
 		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow));
-	RE::NiPoint3 angles;
 
 	if (isSpotlight) {
 		RE::NiPoint3 angles;
