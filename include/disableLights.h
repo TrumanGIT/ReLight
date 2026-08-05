@@ -3,7 +3,6 @@
 #include "global.h"
 #include <unordered_set>
 #include "LightData.h"
-//#include <chrono>
 
 //PO3's hook used to disable all lights tot start wiht a clean base
 struct TESObjectLIGH_GenDynamic {

@@ -87,13 +87,10 @@ void PlayerCharacter_Update::Install()
 
 void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGHT* a_refrLight, RE::TESObjectREFR* a_ref, float a_value) {
 	if (!a_refrLight) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
-	RE::NiLight* light = a_refrLight->light.get();
-	if (!light) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
 
-	// check for relight prefix 
-	//auto name = std::string_view(light->name.c_str());
-	//if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
-	//	return func(a_lightTemplate, a_refrLight, a_ref, a_value);
+	RE::NiLight* light = a_refrLight->light.get();
+
+	if (!light) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
 	
 	auto& rt = light->GetLightRuntimeData();
 	auto it = LightData::configIDToJsonCfg.find(rt.unk138);
@@ -106,7 +103,7 @@ void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGH
 	float backupFlickerRate = a_lightTemplate->data.flickerPeriodRecip;
 	float backupIntensity = a_lightTemplate->data.flickerIntensityAmplitude;
 
-	a_lightTemplate->fade = config.startingFade;
+	a_lightTemplate->fade = config.startingFade * globals::vanillaBrightnessModifier;
 	a_lightTemplate->data.flickerMovementAmplitude = config.flickerAmplitude;
 	a_lightTemplate->data.flickerPeriodRecip = config.flickersPerSecond;
 	a_lightTemplate->data.flickerIntensityAmplitude = config.flickerIntensity;
