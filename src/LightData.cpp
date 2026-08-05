@@ -94,6 +94,8 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight)) ||
 		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow));
 
+
+
 	if (isSpotlight) {
 		RE::NiPoint3 angles;
 		angles.x = RE::deg_to_rad(cfg.rotation[0]);
@@ -101,8 +103,6 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 		angles.z = RE::deg_to_rad(cfg.rotation[2]);
 		niPointLight->local.rotate.SetEulerAnglesXYZ(angles);
 	}
-
-	niPointLight->local.rotate.SetEulerAnglesXYZ(angles);
 
 	// free floats used for merged lights position, needed for movement in flicker calcs
 	if (!cfg.isPluginLight) {
@@ -145,7 +145,10 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 	// however we still scale mini objects like the 2 small fires on windhelm throne
 	if (scale >= 1.0f) scale = 1.0f; 
 
-	data.fade = cfg.brightness * scale * globals::brightnessModifier;
+	auto mult = cfg.isPluginLight ? globals::vanillaBrightnessModifier : globals::brightnessModifier; 
+
+	data.fade = cfg.brightness * scale * mult; 
+
 	data.radius = getNiPointLightRadius(cfg, scale);
 
 	// used for quick runtime acess in flicker calcs and the in game menu (quicker then string lookup)

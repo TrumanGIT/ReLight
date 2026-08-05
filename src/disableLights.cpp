@@ -65,6 +65,8 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     // this allows me to filter placed object ref lights from hazard, magic and actor lights
     niLight->name = "OL"; 
 
+    niLight->fade *= globals::vanillaBrightnessModifier; 
+
     return niLight; 
 }
 
