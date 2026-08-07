@@ -1303,6 +1303,20 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		updateData.flags = RE::NiUpdateData::Flag::kDirty;
 		a_root->UpdateTransformAndBounds(updateData);
 	}
+
+	if (!toRemove.empty()) {
+		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+		if (!ssNode) {
+			logger::warn("ShadowSceneNode[0] is null!");
+			return;
+		}
+
+		for (auto& light : toRemove) {
+			if (!light.get()) continue;
+			ssNode->RemoveLight(light.get());
+		}
+		toRemove.clear();
+	}
 }
 
 //TODO:: Redo whatever the fuck this is 

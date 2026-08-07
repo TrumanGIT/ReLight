@@ -2,7 +2,7 @@
 #include "ticker.h"
 #include "global.h"
 #include "disableLights.h"
-#include "everyFrame.h"
+
 #include "forms.hpp"
 #include "ini.hpp"
 
@@ -717,6 +717,8 @@ namespace UI {
                 Overlay* selectedIslRt = nullptr;
                 bool islReady = true;
 
+                auto selectedRef = selectedLight->light->GetUserData(); 
+
                 if (globals::islInstalled) {
                     selectedIslRt = Overlay::Get(selectedLight->light.get());
                     if (!selectedIslRt) {
@@ -747,17 +749,12 @@ namespace UI {
                         !config.isPluginLight &&
                         (config.flags & static_cast<std::uint32_t>(TES_LIGHT_FLAGS_EXT::kInverseSquare));
 
-                   /*bool hasExtEmittance = false;
-
-                    auto ref = LightManager::GetRefFromLight(selectedLight->light.get());
-
-                    if (ref) {
-                    }*/ 
-
                     float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
                     bool isTorch = (selectedLight->light->name == "RLtorch");
                     bool isShadowLight = config.shadowLight;
+
+                    static bool showEmittanceWindow = false;
 
                     if (ImGuiMCP::BeginChild("SelectedLightSettingsChild", ImGuiMCP::ImVec2(0, 680.0f), true))
                     {
@@ -872,39 +869,15 @@ namespace UI {
                                 config.menuCategory = newTemplateCategory;
                             }
 
-                            static bool showEmittanceWindow = false;
-
                             if (!config.isPluginLight) {
-                            ImGuiMCP::SameLine();
-                            if (ImGuiMCP::Button("External Emittance")) {
-                                showEmittanceWindow = !showEmittanceWindow;
+                                ImGuiMCP::SameLine();
+                                DrawExternalEmittanceSelector(
+                                    config,
+                                    selectedRef,
+                                    regionList,
+                                    showEmittanceWindow
+                                );
                             }
-
-                            if (showEmittanceWindow) {
-                                if (ImGuiMCP::Begin("External Emittance", &showEmittanceWindow, ImGuiMCP::ImGuiWindowFlags_NoCollapse |
-                                    ImGuiMCP::ImGuiWindowFlags_NoDocking)) {
-                                    if (ImGuiMCP::Selectable("None", config.emittanceRegion == nullptr)) {
-                                        config.emittanceRegion = nullptr;
-                                        config.externalEmittance = "";
-                                    }
-                                    for (auto& [editorID, region] : regionList) {
-                                        bool selected = config.emittanceRegion == region;
-                                        if (ImGuiMCP::Selectable(editorID.c_str(), selected)) {
-                                            config.emittanceRegion = region;
-                                            config.externalEmittance = editorID;
-                                            auto emittanceColor = config.emittanceRegion->emittanceColor;
-                                            UpdateRegionEmittance(emittanceColor, config.emittanceRegion);
-                                            showEmittanceWindow = false;
-                                        }
-                                    }
-                                    ImGuiMCP::End();
-                                }
-                            }
-
-                            if (ImGuiMCP::IsItemHovered()) {
-                                ImGuiMCP::SetTooltip("Select a region used for external emittance (Change light colors based on time of day, good for window lights)");
-                            }
-                        }
                     }
                         ImGuiMCP::EndChild(); // TemplateEditor
 
@@ -1458,6 +1431,13 @@ namespace UI {
                             
                             if (config.isPluginLight) {
                                 RenderTESLightFlags(config.flags);
+
+                                    DrawExternalEmittanceSelector(
+                                        config,
+                                        selectedRef,
+                                        regionList,
+                                        showEmittanceWindow
+                                    );
                             }
                         }
                         ImGuiMCP::EndChild(); // NonRuntimeBox
@@ -2563,4 +2543,4 @@ namespace UI {
      }
   }
 
-}
+ }

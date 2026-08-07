@@ -4,7 +4,7 @@
 #include <unordered_set>
 #include "LightData.h"
 
-//PO3's hook used to disable all lights tot start wiht a clean base
+//PO3's hook used to disable all lights tot start with a clean base
 struct TESObjectLIGH_GenDynamic {
     static RE::NiPointLight* thunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
         bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);

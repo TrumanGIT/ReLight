@@ -30,6 +30,32 @@ std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::baseFormIDTo
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
+RE::TESForm* LightData::GetRefLightEmittanceSource(RE::TESObjectREFR* ref) {
+
+	if (!ref)
+		return nullptr; 
+
+	auto emittanceData = ref->extraList.GetByType<RE::ExtraEmittanceSource>();
+
+	if (!emittanceData) return nullptr; 
+
+	auto form = emittanceData->source; 
+
+	if (!form) return nullptr; 
+
+	return form; 
+}
+
+void LightData::SetRefLightEmittanceSource(RE::TESObjectREFR* ref, RE::TESForm* form)
+{
+	if (!ref)
+		return;
+
+	if (auto* extra = ref->extraList.GetByType<RE::ExtraEmittanceSource>()) {
+		extra->source = form;
+	}
+}
+
 void LightData::ResetTriLightCache()
 {
 	// this is turned true 1 second later in the update hook giving some needed time to allow 
@@ -120,13 +146,17 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 	if (auto* overlay = Overlay::Get(niPointLight)) {
 
 		constexpr std::uint32_t kInverseSquare = 1u << 10;
-
-		overlay->flags |= kInverseSquare;
+		
+		//plugin lights get ISL support through their refs base object TESobjectLIGH flags
+		if (!cfg.isPluginLight) {
+			overlay->flags |= kInverseSquare;
+		}
+			
 		overlay->size = cfg.size; // isl
-		overlay->cutoffOverride = cfg.cutoffOverride; // isl 
-		overlay->lighFormId = 0; 
+		overlay->cutoffOverride = cfg.cutoffOverride; // isl  
 		logger::debug(" size set to: {} ", overlay->size);
 		logger::debug("cutoffOverride  set to {}", overlay->cutoffOverride);
+		logger::debug("Flags: 0x{:08X}",overlay->flags);
 	}
 }
 
@@ -239,14 +269,6 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	return baseObject->As<RE::TESObjectLIGH>();
 }
 
- RE::ExtraLightData* LightData::GetExtraLightData(RE::TESObjectREFR* ref)
- {
-	 if (!ref) {
-		 return nullptr;
-	 }
-
-	 return ref->extraList.GetByType<RE::ExtraLightData>();
- }
 
 bool LightData::foundConfigForLight(const RE::NiLight* light) {
 	return LightData::configIDToJsonCfg.contains(light->unk138);

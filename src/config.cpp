@@ -64,7 +64,14 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 		cfg.depthBias = 5.0f;
 	}
 
-	cfg.configID = ref->GetFormID();
+	auto extEmittance = LightData::GetRefLightEmittanceSource(ref);
+
+	if (extEmittance) {
+		std::string edid = clib_util::editorID::get_editorID(extEmittance);
+		cfg.externalEmittance = edid;
+	}
+
+	cfg.configID = globals::nextID++;
 	cfg.menuCategory = modName;
 	cfg.menuName = std::format("{} ({:08X})",edid, cfg.configID);
 	cfg.isPluginLight = true; 
@@ -72,39 +79,18 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 	cfg.configPath = BuildConfigPath(cfg.refFormIDsAndModNames[0]);
 
 	cfg.flags = static_cast<uint32_t>(light->data.flags.underlying());
+
+	auto refID = ref->GetFormID();
+
+	if ((refID & 0xFF000000) != 0xFE) {
+		refID &= 0x00FFFFFF;
+	}
+
+	LightData::refFormIDToJsonCfg[refID].push_back(cfg);
+
+
 	logger::debug("=== CREATED LIGHT FROM REFLIGHT ===");
-	logger::debug("  FormID           : {:08X}", cfg.configID);
-	logger::debug("  EDID             : {}", edid);
-	logger::debug("  Mod Name         : {}", modName);
-	logger::debug("  Config Path      : {}", cfg.configPath);
-	logger::debug("  Menu Category    : {}", cfg.menuCategory);
-	logger::debug("  Menu Name        : {}", cfg.menuName);
-	logger::debug("  isPluginLight    : {}", cfg.isPluginLight);
-	logger::debug("  Shadow Light     : {}", cfg.shadowLight);
-	logger::debug("  Portal Strict    : {}", cfg.portalStrict);
-	logger::debug("  Affect Land      : {}", cfg.affectLand);
-	logger::debug("  Affect Water     : {}", cfg.affectWater);
-	logger::debug("  Never Fades      : {}", cfg.neverFades);
-	logger::debug("");
-	logger::debug("  Brightness       : {:.2f}", cfg.brightness);
-	logger::debug("  Starting Fade    : {:.2f}", cfg.startingFade);
-	logger::debug("  Radius           : {:.2f}", cfg.radius);
-	logger::debug("  FOV              : {:.2f}", cfg.fov);
-	logger::debug("  Falloff          : {:.2f}", cfg.falloff);
-	logger::debug("  Near Distance    : {:.2f}", cfg.nearDistance);
-	logger::debug("  Depth Bias       : {:.2f}", cfg.depthBias);
-	logger::debug("  Ambient Ratio    : {:.2f}", cfg.ambientRatio);
-	logger::debug("  Size             : {:.2f}", cfg.size);
-	logger::debug("  Cutoff Override  : {:.2f}", cfg.cutoffOverride);
-	logger::debug("");
-	logger::debug("  Flicker Intensity    : {:.2f}", cfg.flickerIntensity);
-	logger::debug("  Flickers Per Second  : {:.2f}", cfg.flickersPerSecond);
-	logger::debug("  Flicker Amplitude    : {:.2f}", cfg.flickerAmplitude);
-	logger::debug("");
-	logger::debug("  Position         : [{:.2f}, {:.2f}, {:.2f}]", cfg.position[0], cfg.position[1], cfg.position[2]);
-	logger::debug("  Rotation         : [{:.2f}, {:.2f}, {:.2f}]", cfg.rotation[0], cfg.rotation[1], cfg.rotation[2]);
-	logger::debug(" color             : [{}, {}, {}] ", cfg.diffuseColor[0], cfg.diffuseColor[1], cfg.diffuseColor[2]);
-	cfg.LightConfig::printFlags(cfg.flags, cfg.isPluginLight); 
+	cfg.LightConfig::print(false);
 
 }
 
@@ -128,9 +114,6 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 			}
 
 		config.startingFade = config.brightness;
-
-		if (!config.isPluginLight)
-		config.radius = std::clamp(config.radius, 0.0f, 500.f);
 
 		if (data.contains("color") && data["color"].is_array()) {
 			auto& arr = data["color"];
@@ -728,6 +711,7 @@ bool saveNewConfiguration(LightConfig& config)
 
 			  const bool isLightPlugin = parsedID <= 0xFFF;
 
+			  if (isLightPlugin)
 			  logger::debug("light plugin found when parsing ids"); 
 
 			  auto* dataHandler = RE::TESDataHandler::GetSingleton();
@@ -737,7 +721,7 @@ bool saveNewConfiguration(LightConfig& config)
 			  }
 
 			  // unified resolver (handles normal mods + light mods + vanilla fallback)
-			  const RE::TESFile* file = forms::ResolveTESFileWithFallback(dataHandler, modName, isLightPlugin);
+			  const RE::TESFile* file = forms::ResolveTESFileWithFallback(dataHandler, modName, isLightPlugin, cfg.isPluginLight);
 
 			  if (!file) {
 				  logger::warn("Invalid mod name '{}' in {} '{}'", modName, key, id);

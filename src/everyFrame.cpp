@@ -85,6 +85,7 @@ void PlayerCharacter_Update::Install()
 	logger::info("player chracter update hook installed");
 }
 
+//vanillas flicker update func
 void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGHT* a_refrLight, RE::TESObjectREFR* a_ref, float a_value) {
 	if (!a_refrLight) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
 

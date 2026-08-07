@@ -26,35 +26,49 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
     std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
-    auto formID = ref->GetFormID(); 
+    auto configs = LightManager::findConfigsForRef(ref, true);
 
-    auto it = LightData::configIDToJsonCfg.find(formID);
-
-    bool configExists = it != LightData::configIDToJsonCfg.end(); 
+    bool configExists = configs != nullptr && !configs->empty();
 
 	if (!configExists && shouldDisableLight(light, ref, edid, modName))
 		return nullptr;
 
     if (configExists) {
-        auto& cfg = it->second;
 
-        auto backupLightData = light->data;
+        // there is only ever 1 config for plugin lights
+        for (auto& cfg : *configs) {
 
-        LightData::SetTESObjectLightDataFromConfig(light, cfg);
+            auto backupLightData = light->data;
 
-        auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+            LightData::SetTESObjectLightDataFromConfig(light, cfg);
 
-        light->data = backupLightData;
+            // TODO:: This is too late to set the emittance it would appear 
+            if (cfg.emittanceRegion) {
 
-        if (!niLight) return niLight;
+                    if (auto* form = RE::TESForm::LookupByEditorID(cfg.externalEmittance)) {
+                        LightData::SetRefLightEmittanceSource(ref, form);
+                    }
+                
+            }
 
-        //no scale needed to set
-        LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
+            // if external emittance is empty, on creation the plugin light never had ext emitt 
+            if (cfg.externalEmittance.empty()) {
+                LightData::SetRefLightEmittanceSource(ref, nullptr);
+            }
 
-        // 
-        niLight->name = "OL";
+            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
-        return niLight;
+            light->data = backupLightData;
+
+            if (!niLight) return niLight;
+
+            //no scale needed to set
+            LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
+
+            niLight->name = "OL";
+
+            return niLight;
+        }
     }
 
     auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);

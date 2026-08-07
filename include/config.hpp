@@ -158,6 +158,8 @@ struct LightConfig {
 
         printFlags(flags, isPluginLight);
 
+        logger::info("externalEmittance='{}' size={}", externalEmittance, externalEmittance.size());
+
         logger::info(" attachPath    :");
         for (const auto& i : attachPath) {
             logger::info("  {}", i);

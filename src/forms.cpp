@@ -192,7 +192,7 @@ namespace forms {
 	  // I think the idea was 0004502~embersxd.esp did not work for 0004502~skyrim.esp so i just use the base game ids as a fall back
 	   const RE::TESFile* ResolveTESFileWithFallback(
 		  RE::TESDataHandler* dataHandler,
-		  const std::string& modName, bool isLightPlugin)
+		  const std::string& modName, bool isLightPlugin, bool isPluginLight)
 	  {
 
 
@@ -215,7 +215,7 @@ namespace forms {
 			  return file;
 
 		  // light plugins shouldent use fall backs as it will cause unintended matches
-		  if (isLightPlugin) return nullptr;
+		  if (isLightPlugin || isPluginLight) return nullptr;
 
 		  // 2. Fallback to vanilla masters
 		  for (const auto& master : kVanillaFallbacks)

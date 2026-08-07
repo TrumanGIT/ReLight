@@ -24,6 +24,6 @@ namespace forms {
 
 	const RE::TESFile* ResolveTESFileWithFallback(
 		RE::TESDataHandler* dataHandler,
-		const std::string& modName, bool isLightPlugin);
+		const std::string& modName, bool isLightPlugin, bool isPluginLight);
 
 }

@@ -4,6 +4,7 @@
 #include "LightData.h"
 #include "Utility.h"
 #include "LightManager.h"
+#include "everyFrame.h"
 
 namespace UI {
 
@@ -20,10 +21,6 @@ namespace UI {
     inline auto plusIcon = FontAwesome::UnicodeToUtf8(0xf055);
 
     inline auto flagIcon = FontAwesome::UnicodeToUtf8(0xf024);
-
-  //  inline auto plusIcon = FontAwesome::UnicodeToUtf8(0xf02b);
-
-    //inline auto blockIcon = FontAwesome::UnicodeToUtf8(0xf05e);
 
     struct LightGroupData
     {
@@ -66,14 +63,11 @@ namespace UI {
 
             std::string lightName = light->light->name.c_str();
 
-            //if (lightName[0] != 'R' || lightName[1] != 'L')
-              //  continue;
-
             const auto& lightRt = light->light->GetLightRuntimeData();
             auto it = LightData::configIDToJsonCfg.find(lightRt.unk138);
             if (it == LightData::configIDToJsonCfg.end()) {
                 logger::warn("Config ID {:08X} not found in config map", lightRt.unk138);
-                continue;  // or continue depending on your function
+                continue; 
             }
 
             const auto& cfg = it->second;
@@ -115,6 +109,7 @@ namespace UI {
                     return;
 
                 logger::debug("Light size {} light cuttoff {}", islRt->size, islRt->cutoffOverride);
+                logger::debug("Flags: 0x{:08X}", islRt->flags);
 
             }
         }
@@ -182,6 +177,61 @@ namespace UI {
 
     // RenderLightEditor FUNCTIONS BELOW
     ////////////////////////////////////////
+
+  inline void DrawExternalEmittanceSelector(
+        LightConfig& config,
+        RE::TESObjectREFR* selectedRef,
+      const std::vector<std::pair<std::string, RE::TESRegion*>>& regionList,
+        bool& showEmittanceWindow)
+    {
+        if (ImGuiMCP::Button("External Emittance")) {
+            showEmittanceWindow = !showEmittanceWindow;
+        }
+
+        if (showEmittanceWindow) {
+            if (ImGuiMCP::Begin("External Emittance", &showEmittanceWindow,
+                ImGuiMCP::ImGuiWindowFlags_NoCollapse |
+                ImGuiMCP::ImGuiWindowFlags_NoDocking)) {
+
+                if (ImGuiMCP::Selectable("None", config.emittanceRegion == nullptr)) {
+                    config.emittanceRegion = nullptr;
+                    config.externalEmittance.clear();
+
+                    if (config.isPluginLight && selectedRef) {
+                        LightData::SetRefLightEmittanceSource(selectedRef, nullptr);
+                    }
+                }
+
+                for (auto& [editorID, region] : regionList) {
+                    bool selected = config.emittanceRegion == region;
+
+                    if (ImGuiMCP::Selectable(editorID.c_str(), selected)) {
+                        config.emittanceRegion = region;
+                        config.externalEmittance = editorID;
+
+                        auto emittanceColor = region->emittanceColor;
+                        UpdateRegionEmittance(emittanceColor, region);
+
+                        if (config.isPluginLight && selectedRef) {
+                            if (auto* form = RE::TESForm::LookupByEditorID(editorID)) {
+                                LightData::SetRefLightEmittanceSource(selectedRef, form);
+                            }
+                        }
+
+                        showEmittanceWindow = false;
+                    }
+                }
+
+                ImGuiMCP::End();
+            }
+        }
+
+        if (ImGuiMCP::IsItemHovered()) {
+            ImGuiMCP::SetTooltip(
+                "Select a region used for external emittance (Change light colors based on time of day, good for window lights)"
+            );
+        }
+    }
 
 
    inline void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
