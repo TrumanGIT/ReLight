@@ -52,6 +52,13 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	const auto baseFormID = baseObject->GetFormID();
 
+	//skips fires with base ids below with animations off 
+	// 1. Sky Haven chain activated fires
+	// 2. Castle Volkihar fires that turn on
+	if (!LightManager::IsAnimationsOn(a_this, baseFormID)) {
+		return niAVObject;
+	}
+
 	// this looks for refs
 	if (auto* refCfgs = LightData::findConfigsByFormID(refFormID, isInterior, false)) {
 
@@ -123,11 +130,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 
 	//mutable
 	toLower(meshName);
-
-	//async task to handle scritped fires, skips if animations are shut off
-	if (LightManager::HandleScriptedFires(a_this, baseFormID, meshName, isInterior)) {
-		return niAVObject;
-	}
 
 	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
 		globals::baseFormsWithAttachedLights.emplace(baseFormID);

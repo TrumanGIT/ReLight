@@ -9,36 +9,24 @@
 #include <type_traits>
 #include <array>
 
-bool LightManager::HandleScriptedFires(RE::TESObjectREFR* a_this, RE::FormID baseFormID, std::string& meshName, bool isInterior) {
-
-	// handle scripted fires 1. skyhaven chain actiated, 2. castle volkihar  
+bool LightManager::IsAnimationsOn(RE::TESObjectREFR* a_this, RE::FormID baseFormID)
+{
+	// handle scripted fires
+	// 1. Sky Haven chain activated
+	// 2. Castle Volkihar
 	if (baseFormID == 0x000AA71C || baseFormID == 0x0201838F) {
-		auto handle = a_this->GetHandle();
 
-		bool isInteriorCapture = isInterior;
-		SKSE::GetTaskInterface()->AddTask([handle,  isInteriorCapture, meshName]() {
-			auto ref = handle.get();
-			if (!ref) return;
-			
-			//check if animations of fire is turned off (then doesent need light_
-			float val = 0.f;
-			ref->GetGraphVariableFloat("fToggleBlend", val);
-			if (val == 0.0f) {
-				logger::info("scripted Fire Skipped");
-				return;
-			}
+		float val = 0.0f;
+		a_this->GetGraphVariableFloat("fToggleBlend", val);
 
-			// puzzle already solved, attach light
-			// get 3d fresh
-			auto* niObj = ref->Get3D();
-			if (!niObj) return;
-			auto* root = netimmerse_cast<RE::NiNode*>(niObj);
-			if (!root) return;
+		if (val == 0.0f) {
+			logger::info("scripted Fire Skipped");
+			return false;
+		}
 
-			LightManager::processByFilePath(ref.get(), meshName, root, isInteriorCapture);
-			});
-		return true; // return immediately, task handles it async
+		return true;
 	}
+
 	return false;
 }
 
