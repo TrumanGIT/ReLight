@@ -1101,7 +1101,7 @@ namespace UI {
 
                             ImGuiMCP::Separator();
 
-                            ImGuiMCP::BeginDisabled(isTorch);
+                           ImGuiMCP::BeginDisabled(isTorch);
 
                             if (ImGuiMCP::SliderFloat3(
                                 "Position",
