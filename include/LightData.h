@@ -6,10 +6,12 @@
 #include <array>
 #include <map>
 #include <unordered_map>
+#include <ClibUtil/EditorID.hpp>
+
 #include "logger.hpp"
-#include "ClibUtil/EditorID.hpp"
 #include "global.h"
 #include "config.hpp"
+
 
 class NiPointLight
 {
@@ -58,7 +60,7 @@ struct LightData {
 	struct TriLightCache
 	{
 		RE::BSLightingShaderProperty* lightShaderProp;
-		RE::BSLight* lights[7]; 
+		RE::BSLight* lights[7];
 	};
 
 	static std::mutex triLightCacheMutex;
@@ -81,7 +83,7 @@ struct LightData {
 
 	static std::unordered_map<uint32_t, LightConfig> defaultConfigs;
 
-	static RE::TESForm* GetRefLightEmittanceSource(RE::TESObjectREFR* ref); 
+	static RE::TESForm* GetRefLightEmittanceSource(RE::TESObjectREFR* ref);
 
 	static void SetRefLightEmittanceSource(RE::TESObjectREFR* ref, RE::TESForm* form);
 
@@ -95,13 +97,20 @@ struct LightData {
 
 	static RE::NiPoint3 getNiPointLightRadius(const LightConfig& cfg, const float scale);
 
+	static RE::TESObjectREFR* GetRefFromLight(RE::NiLight* light);
+
 	static void setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg);
 
-	static float GetFOV(LightConfig cfg);
+	static float GetFOV(const LightConfig& cfg);
 
 	static RE::ShadowSceneNode::LIGHT_CREATE_PARAMS makeLightParams(const LightConfig& cfg);
 
-	static bool foundConfigForLight(const RE::NiLight* light);
+	static bool foundConfigForLightByConfigID(const RE::NiLight* light);
+
+	static std::vector<LightConfig>* findConfigsByFormID(
+		RE::FormID formID,
+		bool isInterior,
+		bool isBaseID);
 
 	static void updateConfigFromLight(LightConfig& cfg, const LightConfig& baseConfig, RE::NiLight* niLight);
 
@@ -109,7 +118,7 @@ struct LightData {
 
 	static void InvalidateTriLightCacheForActivator(RE::TESObjectREFR* ref);
 
-    static void AddConfigToMaps(
+	static void AddConfigToMaps(
 		const LightConfig& cfg,
 		bool isRefLight,
 		RE::FormID refFormID);
@@ -126,49 +135,12 @@ struct LightData {
 		logger::debug(" depthBias	 {}", params.depthBias);
 	}
 
-	static void SetTESObjectLightDataFromConfig(RE::TESObjectLIGH* light, const LightConfig& config); 
+	static void SetTESObjectLightDataFromConfig(RE::TESObjectLIGH* light, const LightConfig& config);
 
-	static RE::TESObjectLIGH* GetTESObjectLightFromNiLight(RE::NiLight* niLight); 
+	static RE::TESObjectLIGH* GetTESObjectLightFromNiLight(RE::NiLight* niLight);
 
-static bool HasRelightFlag(uint32_t flags, LIGHT_FLAGS flag)
-	{
-		return (flags & static_cast<uint32_t>(flag)) != 0;
-	}
+	static bool HasRelightFlag(uint32_t flags, LIGHT_FLAGS flag);
 
-static bool ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
-	{
-		// same-type merges
-		if (HasRelightFlag(refAflags, LIGHT_FLAGS::kCandle) &&
-			HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kCandle)) {
-			return true;
-		}
+	static bool ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags);
 
-		if (HasRelightFlag(refAflags, LIGHT_FLAGS::kFire) &&
-			HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) {
-			return true;
-		}
-
-		// giant campfires should merge with fires
-		if ((refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire) &&
-			otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) ||
-
-			(refAflags & static_cast<uint32_t>(LIGHT_FLAGS::kFire) &&
-				otherRefFlags & static_cast<uint32_t>(LIGHT_FLAGS::kGiantCampfire)))
-		{
-			return true;
-		}
-
-		if (HasRelightFlag(refAflags, LIGHT_FLAGS::kOther) &&
-			HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kOther)) {
-			return true;
-		}
-
-		return false;
-	}
-	// void initialize();
-};
-
-
-
-
-
+}; 

@@ -53,7 +53,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	const auto baseFormID = baseObject->GetFormID();
 
 	// this looks for refs
-	if (auto* refCfgs = LightManager::findConfigsForRef(a_this, isInterior)) {
+	if (auto* refCfgs = LightData::findConfigsByFormID(refFormID, isInterior, false)) {
 
 		bool alreadyAttachedDebugMarker = false;
 
@@ -84,7 +84,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	}
 
 	// this looks for base
-	if (auto* baseCfgs = LightManager::findConfigsForBase(baseFormID, isInterior)) {
+	if (auto* baseCfgs = LightData::findConfigsByFormID(baseFormID, isInterior, true)) {
 
 		bool alreadyAttachedDebugMarker = false;
 

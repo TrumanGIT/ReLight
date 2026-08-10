@@ -1,12 +1,5 @@
 
-#include <cstdint>
-#include "global.h"
-#include "logger.hpp"
-#include "ClibUtil/EditorID.hpp"
-#include "config.hpp"
 #include "LightData.h"
-#include <string>
-#include <vector>
 #include  "Utility.h"
 
 NiPointLight LightData::masterNiPointLight;
@@ -211,10 +204,17 @@ void LightData::SetTESObjectLightDataFromConfig(RE::TESObjectLIGH* light, const 
 	ApplyTESLightFlags(light, config);
 }
 
- float LightData::GetFOV(LightConfig cfg)
+RE::TESObjectREFR* LightData::GetRefFromLight(RE::NiLight* light) {
+
+	auto ref = light->GetUserData();
+
+	return ref;
+}
+
+ float LightData::GetFOV(const LightConfig& cfg)
 {
 	if (!cfg.shadowLight) {
-		return 1.0;
+		return 90.0f;
 	}
 
 	if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight)) {
@@ -238,10 +238,9 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	//ISL reuses these size is controlled by the FOV  cutoff can be controlled by setting the Falloff Exponent parameter
 	// not sure if isl uses the TESObjectLigh parameters or this one prolly TESOBjectLigh
 
-		p.fov = GetFOV(cfg);          // for spotlights and hemi spheres maybe? 
-		p.falloff = cfg.falloff;    // shadows (I think)
+	p.fov = GetFOV(cfg);          // for spotlights and hemi spheres maybe? 
+	p.falloff = cfg.falloff;    // shadows (I think)
 	
-
 	p.nearDistance = cfg.nearDistance; // shadows (I think)
 	p.depthBias = cfg.depthBias; // shadows 
 
@@ -258,7 +257,7 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	if (!niLight)
 		return nullptr;
 
-	auto* ref = niLight->GetUserData();
+	auto ref = LightData::GetRefFromLight(niLight); 
 	if (!ref)
 		return nullptr;
 
@@ -269,9 +268,104 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	return baseObject->As<RE::TESObjectLIGH>();
 }
 
+  bool LightData::HasRelightFlag(uint32_t flags, LIGHT_FLAGS flag)
+ {
+	 return (flags & static_cast<uint32_t>(flag)) != 0;
+ }
 
-bool LightData::foundConfigForLight(const RE::NiLight* light) {
+  bool LightData::ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
+ {
+	 // same-type merges
+	 if (HasRelightFlag(refAflags, LIGHT_FLAGS::kCandle) &&
+		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kCandle)) {
+		 return true;
+	 }
+
+	 if (HasRelightFlag(refAflags, LIGHT_FLAGS::kFire) &&
+		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) {
+		 return true;
+	 }
+
+	 // giant campfires merge with fires
+	 if ((HasRelightFlag(refAflags, LIGHT_FLAGS::kGiantCampfire) &&
+		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) ||
+		 (HasRelightFlag(refAflags, LIGHT_FLAGS::kFire) &&
+			 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kGiantCampfire))) {
+		 return true;
+	 }
+
+	 if (HasRelightFlag(refAflags, LIGHT_FLAGS::kOther) &&
+		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kOther)) {
+		 return true;
+	 }
+
+	 return false;
+ }
+
+
+bool LightData::foundConfigForLightByConfigID(const RE::NiLight* light) {
 	return LightData::configIDToJsonCfg.contains(light->unk138);
+}
+
+std::vector<LightConfig>* LightData::findConfigsByFormID(
+	RE::FormID formID,
+	bool isInterior,
+	bool isBaseID)
+{
+	auto rawIndex = (formID & 0xFF000000) >> 24;
+
+	bool isLight = rawIndex == 0xFE;
+	if (!isLight) {
+		formID &= 0x00FFFFFF;
+	}
+	else {
+		formID &= 0xFFF;
+	}
+
+	auto& interiorMap = isBaseID
+		? LightData::baseFormIDToJsonCfg
+		: LightData::refFormIDToJsonCfg;
+
+	auto& exteriorMap = isBaseID
+		? LightData::baseFormIDToJsonCfgExteriors
+		: LightData::refFormIDToJsonCfgExteriors;
+
+
+	if (isInterior) {
+		auto it = interiorMap.find(formID);
+		if (it != interiorMap.end()) {
+			logger::debug("Found interior {} config for 0x{:08X} ({} configs)",
+				isBaseID ? "base" : "ref",
+				static_cast<std::uint32_t>(formID),
+				it->second.size());
+
+			return &it->second;
+		}
+	}
+	else {
+		auto it = exteriorMap.find(formID);
+		if (it != exteriorMap.end()) {
+			logger::debug("Found exterior {} config for 0x{:08X} ({} configs)",
+				isBaseID ? "base" : "ref",
+				static_cast<std::uint32_t>(formID),
+				it->second.size());
+
+			return &it->second;
+		}
+
+		// Exterior fallback to interior
+		auto it2 = interiorMap.find(formID);
+		if (it2 != interiorMap.end()) {
+			logger::debug("Fell back to interior {} config for exterior 0x{:08X} ({} configs)",
+				isBaseID ? "base" : "ref",
+				static_cast<std::uint32_t>(formID),
+				it2->second.size());
+
+			return &it2->second;
+		}
+	}
+
+	return nullptr;
 }
 
 void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseConfig, RE::NiLight* niLight) {
@@ -281,9 +375,6 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 
 	cfg.radius = rt.radius.x;
 	cfg.brightness = cfg.startingFade;
-
-	cfg.flickerIntensity = baseConfig.flickerIntensity;
-	cfg.flickersPerSecond = baseConfig.flickersPerSecond;
 
 	if (globals::islInstalled) {
 
@@ -394,16 +485,12 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 // torch or candle activators. 
 void LightData::InvalidateTriLightCacheForActivator(RE::TESObjectREFR* ref)
 {
-	if (!ref) {
+	if (!ref || !globals::secondAfterCellFullyLoaded.load()) {
 		return;
 	}
 
 	auto* baseObj = ref->GetBaseObject();
 	if (!baseObj || baseObj->GetFormType() != RE::FormType::Activator) {
-		return;
-	}
-
-	if (!globals::secondAfterCellFullyLoaded.load()) {
 		return;
 	}
 
@@ -430,10 +517,9 @@ void LightData::InvalidateTriLightCacheForActivator(RE::TESObjectREFR* ref)
 	SKSE::GetTaskInterface()->AddTask([]() {
 		logger::debug("nearby activator spawned, resetting light cache");
 		LightData::triLightCacheGeneration.fetch_add(1);
-		});
+	});
 }
 
-// LightData.cpp
 void LightData::AddConfigToMaps(
 	const LightConfig& cfg,
 	bool isRefLight,

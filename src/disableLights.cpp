@@ -26,9 +26,9 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
     std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
-    auto configs = LightManager::findConfigsForRef(ref, true);
+    auto refConfigs = LightData::findConfigsByFormID(ref->GetFormID(), true, false);
 
-    bool configExists = configs != nullptr && !configs->empty();
+    bool configExists = refConfigs != nullptr && !refConfigs->empty();
 
 	if (!configExists && shouldDisableLight(light, ref, edid, modName))
 		return nullptr;
@@ -36,7 +36,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     if (configExists) {
 
         // there is only ever 1 config for plugin lights
-        for (auto& cfg : *configs) {
+        for (auto& cfg : *refConfigs) {
 
             auto backupLightData = light->data;
 
@@ -69,6 +69,9 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 
             return niLight;
         }
+
+        // dead  return 
+        return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
     }
 
     auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);

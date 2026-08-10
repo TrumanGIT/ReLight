@@ -67,7 +67,7 @@ namespace UI {
             auto it = LightData::configIDToJsonCfg.find(lightRt.unk138);
             if (it == LightData::configIDToJsonCfg.end()) {
                 logger::warn("Config ID {:08X} not found in config map", lightRt.unk138);
-                continue; 
+                continue;
             }
 
             const auto& cfg = it->second;
@@ -346,8 +346,7 @@ namespace UI {
        }
    }
 
-  
-    inline int getLightKey(const RE::NiPointer<RE::BSLight>& l) {
+    inline int getLightConfigID(const RE::NiPointer<RE::BSLight>& l) {
         if (!l || !l->light) return -1;
         return l->light->GetLightRuntimeData().unk138;  // runtime configID key
     }
@@ -362,12 +361,21 @@ namespace UI {
         if (!activeLight || !activeLight->light) return;
 
         std::string_view name{ activeLight->light->name.c_str() };
-        if (name.size() < prefix.size() || name.substr(0, prefix.size()) != prefix)
+
+        //skyrim mod bruma lowercases all ni point light names somehow 
+        if (prefix == "OL") {
+            if (name.size() < 2 ||
+                std::toupper(name[0]) != 'O' ||
+                std::toupper(name[1]) != 'L')
+                return;
+        }
+        else if (name.size() < prefix.size() || name.substr(0, prefix.size()) != prefix) {
             return;
+        }
 
-        int key = getLightKey(activeLight); 
+        int configID = getLightConfigID(activeLight); 
 
-        if (key == 0 && prefix == "OL") {
+        if (configID == 0 && prefix == "OL") {
             RE::NiLight* niLight = activeLight->light.get();
             auto* ref = niLight->GetUserData();
 
@@ -387,7 +395,7 @@ namespace UI {
                     LightData::defaultConfigs[cfg.configID] = cfg;
 
                     niLight->unk138 = cfg.configID;
-                    key = cfg.configID;
+                    configID = cfg.configID;
 
                     logger::info("Created config for 'OB' light: {} (ID: {})", cfg.menuName, cfg.configID);
                 }
@@ -395,19 +403,19 @@ namespace UI {
         }
 
         // If still no key, return (skip this light)
-        if (key <= 0) return;
+        if (configID <= 0) return;
         
-        seen.insert(key);
+        seen.insert(configID);
 
-        auto it = LightData::configIDToJsonCfg.find(key);
+        auto it = LightData::configIDToJsonCfg.find(configID);
         if (it == LightData::configIDToJsonCfg.end()) {
-            logger::debug("light :{} (key={}) has no json cfg entry", name, key);
+            logger::debug("light :{} (config ID={}) has no json cfg entry", name, configID);
         }
 
-        auto itIdx = keyToIndex.find(key);
+        auto itIdx = keyToIndex.find(configID);
         if (itIdx == keyToIndex.end()) {
             refreshedLights.push_back(activeLight);
-            keyToIndex[key] = (int)refreshedLights.size() - 1;
+            keyToIndex[configID] = (int)refreshedLights.size() - 1;
         }
         else {
             refreshedLights[itIdx->second] = activeLight;
@@ -426,15 +434,15 @@ namespace UI {
         }
         auto& rt = ssNode->GetRuntimeData();
 
-        int selectedKey = -1;
+        int selectedConfigID = -1;
         if (selectedIndex >= 0 && selectedIndex < (int)lights.size()) {
-            selectedKey = getLightKey(lights[selectedIndex]);
+            selectedConfigID = getLightConfigID(lights[selectedIndex]);
         }
 
         std::unordered_map<int, int> keyToIndex;
         keyToIndex.reserve(lights.size());
         for (int i = 0; i < (int)lights.size(); ++i) {
-            int key = getLightKey(lights[i]);
+            int key = getLightConfigID(lights[i]);
             if (key >= 0) keyToIndex[key] = i;
         }
 
@@ -450,15 +458,15 @@ namespace UI {
 
         lights.erase(std::remove_if(lights.begin(), lights.end(),
             [&](const RE::NiPointer<RE::BSLight>& l) {
-                int key = getLightKey(l);
+                int key = getLightConfigID(l);
                 return key < 0 || (seen.find(key) == seen.end());
             }),
             lights.end());
 
         selectedIndex = -1;
-        if (selectedKey >= 0) {
+        if (selectedConfigID >= 0) {
             for (int i = 0; i < (int)lights.size(); ++i) {
-                if (getLightKey(lights[i]) == selectedKey) {
+                if (getLightConfigID(lights[i]) == selectedConfigID) {
                     selectedIndex = i;
                     break;
                 }

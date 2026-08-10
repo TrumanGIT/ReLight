@@ -47,8 +47,12 @@ namespace UI {
         {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
-            ImGuiMCP::Text("Light Flicker Prevention (This only works with relight overhauls that use relight flags)");
+            ImGuiMCP::Text("Light Flicker Prevention");
+
             ImGuiMCP::PopStyleColor();
+
+            ImGuiMCP::SameLine();
+            ImGuiMCP::Text("(This only works with relight overhauls that use relight flags)");
 
             ImGuiMCP::SameLine(); 
 
@@ -550,7 +554,7 @@ namespace UI {
 
                 LightConfig cfg;
 
-                if (LightData::foundConfigForLight(niLight)) {
+                if (LightData::foundConfigForLightByConfigID(niLight)) {
 
                     auto& baseConfig = LightData::configIDToJsonCfg[niLight->unk138];
 
@@ -1347,7 +1351,8 @@ namespace UI {
 
                                 if (config.isPluginLight) {
 
-                                    auto handle = LightManager::GetRefFromLight(selectedLight->light.get())->GetHandle();
+                                    auto* ref = LightData::GetRefFromLight(selectedLight->light.get());
+                                    auto handle = ref->GetHandle(); 
 
                                     if (handle) {
 
@@ -1675,7 +1680,7 @@ namespace UI {
 
                     refLight = false;
 
-                    auto* baseCfgs = LightManager::findConfigsForBase(baseFormID, globals::currentCellIsInterior);
+                    auto* baseCfgs = LightData::findConfigsByFormID(baseFormID, globals::currentCellIsInterior, true);
 
                     if (!baseCfgs || baseCfgs->empty()) {
                         logger::warn("attach another light: no base ID config found for ref {:08X}, base {:08X}",

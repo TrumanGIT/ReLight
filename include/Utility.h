@@ -1,8 +1,6 @@
 #pragma once
+
 #include <spdlog/sinks/basic_file_sink.h>
-#include "ClibUtil/EditorID.hpp"
-#include "LightData.h"
-#include "global.h"
 #include <fstream>
 #include <unordered_map>
 #include <map>
@@ -10,6 +8,11 @@
 #include <sstream>
 #include <iostream>
 #include <xbyak/xbyak.h>
+#include <ClibUtil/EditorID.hpp>
+
+#include "global.h"
+#include "LightData.h"
+
 
 namespace logger = SKSE::log;
 
