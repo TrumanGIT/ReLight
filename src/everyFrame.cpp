@@ -87,16 +87,21 @@ void PlayerCharacter_Update::Install()
 
 //vanillas flicker update func
 void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGHT* a_refrLight, RE::TESObjectREFR* a_ref, float a_value) {
-	if (!a_refrLight) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
+
+	// skip torches i coudlent get it to work (k can carry)
+	if (!a_refrLight || !a_lightTemplate || a_lightTemplate->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry))
+		return func(a_lightTemplate, a_refrLight, a_ref, a_value);
 
 	RE::NiLight* light = a_refrLight->light.get();
 
-	if (!light) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
+	if (!light ) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
 	
 	auto& rt = light->GetLightRuntimeData();
+
 	auto it = LightData::configIDToJsonCfg.find(rt.unk138);
 	if (it == LightData::configIDToJsonCfg.end())
 		return func(a_lightTemplate, a_refrLight, a_ref, a_value);
+
 	const auto& config = it->second;
 
 	float backupFade = a_lightTemplate->fade;
@@ -121,9 +126,7 @@ void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGH
 	a_lightTemplate->data.flickerPeriodRecip = backupFlickerRate;
 	a_lightTemplate->data.flickerIntensityAmplitude = backupIntensity;
 
-	// func()'s internal Update()/QueueUpdateNiObject already ran against the WRONG
-	// (near-zero) local.translate, before we corrected it above. Force a fresh
-	// transform/bounds update now so world-space position actually reflects the fix.
+	//Force a fresh transform/bounds update now so world-space position actually reflects the fix.
 	RE::NiUpdateData updateData{};
 	updateData.time = 0.0f;
 	updateData.flags = RE::NiUpdateData::Flag::kDirty;

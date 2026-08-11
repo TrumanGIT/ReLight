@@ -682,7 +682,7 @@ namespace UI {
 
         if (lightRefreshTicker.shouldTick()) {
             refreshAllLights(relightSelectedIndex, relightLights, "RL");
-            refreshAllLights(pluginSelectedIndex, pluginLights, "OL");
+            refreshAllLights(pluginSelectedIndex, pluginLights, "ol");
             didRefreshThisFrame = !didRefreshThisFrame;
         }
 
@@ -1028,7 +1028,7 @@ namespace UI {
 
                             ImGuiMCP::Separator();
 
-                            ImGuiMCP::BeginDisabled(isTorch || (config.isPluginLight && !isPluginWithFlicker));
+                            ImGuiMCP::BeginDisabled((config.isPluginLight && !isPluginWithFlicker));
 
                             if (ImGuiMCP::SliderFloat(
                                 "Flicker Rate",
@@ -1071,7 +1071,7 @@ namespace UI {
                                 }
                             }
 
-                            ImGuiMCP::EndDisabled();
+                           // ImGuiMCP::EndDisabled();
                             ImGuiMCP::EndDisabled();
                         }
                         ImGuiMCP::EndChild(); // FlickerBox

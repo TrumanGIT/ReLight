@@ -233,11 +233,11 @@ namespace UI {
         }
     }
 
-
    inline void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
-        if (!light) {
-            logger::warn("Selected light is null, cannot restore defaults");
-            return;
+       if (!light || light.get()) {
+            logger::error("Selected light is null, cannot restore defaults");
+            return
+                ;
         }
 
         const std::string lightName = light->name.c_str();
@@ -265,7 +265,7 @@ namespace UI {
         cfg.position = backupCfg.position;
 
 
-        auto ref = light->GetUserData();
+        auto ref = LightData::GetRefFromLight(light.get());
 
         if (!ref) {
             logger::warn("no ref for configID {} cant restore defaults", light->unk138);
@@ -293,7 +293,6 @@ namespace UI {
         cfg.flickerIntensity = backupCfg.flickerIntensity;
         cfg.flickersPerSecond = backupCfg.flickersPerSecond;
         cfg.flickerAmplitude = backupCfg.flickerAmplitude;
-      //  cfg.flickerRandomness = backupCfg.flickerRandomness;
         cfg.flags = backupCfg.flags;
         cfg.menuName = backupCfg.menuName;
         cfg.menuCategory = backupCfg.menuCategory;
@@ -362,20 +361,13 @@ namespace UI {
 
         std::string_view name{ activeLight->light->name.c_str() };
 
-        //skyrim mod bruma lowercases all ni point light names somehow 
-        if (prefix == "OL") {
-            if (name.size() < 2 ||
-                std::toupper(name[0]) != 'O' ||
-                std::toupper(name[1]) != 'L')
-                return;
-        }
-        else if (name.size() < prefix.size() || name.substr(0, prefix.size()) != prefix) {
+         if (name.size() < prefix.size() || name.substr(0, prefix.size()) != prefix) {
             return;
-        }
+          }
 
         int configID = getLightConfigID(activeLight); 
 
-        if (configID == 0 && prefix == "OL") {
+        if (configID == 0 && prefix == "ol") {
             RE::NiLight* niLight = activeLight->light.get();
             auto* ref = niLight->GetUserData();
 

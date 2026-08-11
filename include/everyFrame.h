@@ -1116,6 +1116,8 @@ inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 		auto& attachLightNode = globals::torchLightAttachNodes[i];
 
 		if (niLight->parent && niLight->parent == attachLightNode) {
+
+			//mark unk so we can skip this light light affect surface hook and relight flicker update
 			light->unk060 = 4;
 
 			std::string torchName = "torch";
@@ -1188,11 +1190,14 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
 			continue;
 
+		//i label torch bslight unk60 as 4 (torch flicker is handled by vanilla game flicker hook) 
+		if (light->unk060 == 4) continue; 
+
+		// dont update lights far from player
 		auto diff = light->light->world.translate - playerPos;
 		float distSq = diff.x * diff.x + diff.y * diff.y + diff.z * diff.z;
 		if (distSq > maxDistSq)
 			continue;
-
 
 		auto& rt = light->light->GetLightRuntimeData();
 
@@ -1202,6 +1207,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 
 		const auto& config = it->second;
 
+		// lights from a esp already covered by vanilla's flicker update
 		if (config.isPluginLight) continue; 
 
 		// this is to remove lights from the scene otherwise they stay after mesh unloads

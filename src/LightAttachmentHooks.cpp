@@ -169,8 +169,6 @@ void AddonNodes::thunk(
 
 		logger::debug("cloned node = {} a_node = {}", a_clonedNode->name.c_str(), a_node->name.c_str());
 
-		// delay with add task or the light hasent appeared in the shadow scene node active light list yet
-
 		auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
 		if (!ssNode || !a_node)
 			return;

@@ -55,8 +55,6 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
 
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
-        //getObjectFadeMult();
-        logger::debug("Users ini setting fLodFadeOutMultObjects setting = {}", globals::fLODFadeOutMultObjects);
 
         DebugAPI_IMPL::DebugOverlayMenu::Register();
         break;
@@ -68,9 +66,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
 
 SKSEPluginLoad(const SKSE::LoadInterface* skse) {
     SKSE::Init(skse);
-    setupLog(spdlog::level::info);
-    logger::info("Relight Plugin is Loaded");
-
+   setupLog(spdlog::level::info);
+   logger::info("Relight Plugin is Loaded");
    SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
    UI::Register();
    hasInverseSquareLighting();
@@ -86,7 +83,6 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    TreeActivateHook::Install(); 
    Activate::Install(); 
    NiLightFlickerHook::Install(); 
-
    return true;
 }
 

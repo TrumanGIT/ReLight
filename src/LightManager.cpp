@@ -27,7 +27,7 @@ bool LightManager::IsAnimationsOn(RE::TESObjectREFR* a_this, RE::FormID baseForm
 		return true;
 	}
 
-	return false;
+	return true; 
 }
 
 void LightManager::HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetRef) {

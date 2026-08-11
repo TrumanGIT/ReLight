@@ -89,7 +89,7 @@ namespace ReferenceEffect
                             "Deferred task: AttachLight found name={} ptr={}",
                             globals::magicLightAttachNode->name.c_str(),
                             static_cast<void*>(globals::magicLightAttachNode));
-                        });
+                    });
                 }
             }
 

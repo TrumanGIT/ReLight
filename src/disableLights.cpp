@@ -65,7 +65,8 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
             //no scale needed to set
             LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
 
-            niLight->name = "OL";
+            // ol == object light, only placed references come through this hook (no torch, magic ect)
+            niLight->name = "ol";
 
             return niLight;
         }
@@ -80,7 +81,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 
     //mark these lights so i can identify them and create a config for them if user opens the relight menu
     // this allows me to filter placed object ref lights from hazard, magic and actor lights
-    niLight->name = "OL"; 
+    niLight->name = "ol"; 
 
     niLight->fade *= globals::vanillaBrightnessModifier; 
 
@@ -120,7 +121,7 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
     }
 
     // double use of this vector can also disable vanilla lights its also used to prevent refs from getting relights  
-                                                               //remove load order index 
+                            
     if (globals::excludedRefFormIDs.contains(formID)) {
         logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));
         return false;
@@ -214,7 +215,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
         }
     }
 
-    // return here or crash on effect shaders  idk why
+    // return here or crash on effect shaders idk why
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
     // torches spells we marked in attachlight hooks so they can bypass here
