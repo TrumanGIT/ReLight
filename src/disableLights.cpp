@@ -10,102 +10,117 @@
 
 //EDIT i now use this to also edit 
 RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
-	RE::TESObjectLIGH* light,
-	RE::TESObjectREFR* ref,
-	RE::NiNode* node,
-	bool forceDynamic,
-	bool useLightRadius,
-	bool affectRequesterOnly)
+    RE::TESObjectLIGH* light,
+    RE::TESObjectREFR* ref,
+    RE::NiNode* node,
+    bool forceDynamic,
+    bool useLightRadius,
+    bool affectRequesterOnly)
 {
-
-	if (!ref || !light)
-		return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    if (!ref || !light)
+        return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
 
     std::string edid = clib_util::editorID::get_editorID(light);
 
-    const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
-    std::string modName = refOriginFile ? refOriginFile->fileName : "";
+    // For torches/lanterns (CanBeCarried), use the light's own FormID and base ID lookup
+    RE::FormID searchFormID = ref->GetFormID();
+    bool isBaseID = false;
+    std::string modName = "";
 
-    auto refConfigs = LightData::findConfigsByFormID(ref->GetFormID(), true, false);
+    if (light->CanBeCarried()) {
+        // Torch/lantern: use the light template's data
+        const RE::TESFile* baseOriginFile = light->GetDescriptionOwnerFile();
+        modName = baseOriginFile ? baseOriginFile->fileName : "";
+        searchFormID = light->GetFormID();
+        isBaseID = true; 
 
-    bool configExists = refConfigs != nullptr && !refConfigs->empty();
+        if (modName.empty()) {
+            logger::warn("Torch: baseOriginFile is null, using 'Skyrim.esm' as fallback");
+            modName = "Skyrim.esm";
+        }
+    }
+    else {
+        const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+        modName = refOriginFile ? refOriginFile->fileName : "";
+    }
 
-	if (!configExists && shouldDisableLight(light, ref, edid, modName))
-		return nullptr;
+    // Find config using the appropriate FormID and isBaseID flag
+    auto configs = LightData::findConfigsByFormID(searchFormID, true, isBaseID);
+    bool configExists = configs != nullptr && !configs->empty();
+
+    if (!configExists && shouldDisableLight(light, ref, edid, modName))
+        return nullptr;
 
     if (configExists) {
 
-        // there is only ever 1 config for plugin lights
-        for (auto& cfg : *refConfigs) {
-
+        for (auto& cfg : *configs) {
             auto backupLightData = light->data;
-
             LightData::SetTESObjectLightDataFromConfig(light, cfg);
 
-            // TODO:: This is too late to set the emittance it would appear 
             if (cfg.emittanceRegion) {
-
-                    if (auto* form = RE::TESForm::LookupByEditorID(cfg.externalEmittance)) {
-                        LightData::SetRefLightEmittanceSource(ref, form);
-                    }
-                
+                if (auto* form = RE::TESForm::LookupByEditorID(cfg.externalEmittance)) {
+                    LightData::SetRefLightEmittanceSource(ref, form);
+                }
             }
 
-            // if external emittance is empty, on creation the plugin light never had ext emitt 
             if (cfg.externalEmittance.empty()) {
                 LightData::SetRefLightEmittanceSource(ref, nullptr);
             }
 
             auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
-
             light->data = backupLightData;
 
             if (!niLight) return niLight;
 
-            //no scale needed to set
             LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
-
-            // ol == object light, only placed references come through this hook (no torch, magic ect)
             niLight->name = "ol";
-
             return niLight;
         }
-
-        // dead  return 
         return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
     }
 
+    // No config exists - create the light normally
     auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
-
     if (!niLight) return niLight;
 
-    //mark these lights so i can identify them and create a config for them if user opens the relight menu
-    // this allows me to filter placed object ref lights from hazard, magic and actor lights
-    niLight->name = "ol"; 
+    // For torches/lanterns, create a config automatically, skip already 
+    if (light->CanBeCarried()) {
 
-    niLight->fade *= globals::vanillaBrightnessModifier; 
+        LightConfig cfg;
+        CreateConfigFromPluginLight(cfg, niLight, light, ref, edid, modName, true);
 
-    return niLight; 
+        LightData::configIDToJsonCfg[cfg.configID] = cfg;
+        LightData::defaultConfigs[cfg.configID] = cfg;
+        niLight->unk138 = cfg.configID;
+
+        logger::info("Created config for torch/lantern: {} (ID: {})", cfg.menuName, cfg.configID);
+    }
+
+    niLight->name = "ol";
+    niLight->fade *= globals::vanillaBrightnessModifier;
+
+    return niLight;
 }
 
 void TESObjectLIGH_GenDynamic::Install() {
-	std::array targets{
-		std::make_pair(RELOCATION_ID(17206, 17603), 0x1D3),  // TESObjectLIGH::Clone3D
-		std::make_pair(RELOCATION_ID(19252, 19678), 0xB8),   // TESObjectREFR::AddLight
-	};
+    std::array targets{
+        std::make_pair(RELOCATION_ID(17206, 17603), 0x1D3),  // TESObjectLIGH::Clone3D
+        std::make_pair(RELOCATION_ID(19252, 19678), 0xB8),   // TESObjectREFR::AddLight
+        std::make_pair(RELOCATION_ID(0, 15704), 0xAC),       // FUN_140217160 -> TESObjectLIGH::GenDynamic 
+    };
 
-	for (const auto& [address, offset] : targets) {
-		REL::Relocation<std::uintptr_t> target{ address, offset };
-		auto& trampoline = SKSE::GetTrampoline();
-		TESObjectLIGH_GenDynamic::func = trampoline.write_call<5>(target.address(), TESObjectLIGH_GenDynamic::thunk);
-	}
+    for (const auto& [address, offset] : targets) {
+        REL::Relocation<std::uintptr_t> target{ address, offset };
+        auto& trampoline = SKSE::GetTrampoline();
+        TESObjectLIGH_GenDynamic::func = trampoline.write_call<5>(target.address(), TESObjectLIGH_GenDynamic::thunk);
+    }
 
-	logger::info("Installed TESObjectLIGH::GenDynamic patch");
+    logger::info("Installed TESObjectLIGH::GenDynamic patch");
 }
 
 bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName)
 {
-	if (!ref || !light || ref->IsDynamicForm()) {
+	if (!ref || !light || ref->IsDynamicForm() || light->CanBeCarried()) {
 		return false;
 	}
 

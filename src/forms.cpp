@@ -137,55 +137,35 @@ namespace forms {
 		return false;
 	}
 
-	  std::string BuildFormIDAndModName(RE::TESObjectREFR* ref, bool baseID)
+	 std::string BuildFormIDAndModName(RE::FormID formID, const std::string& modName)
 	 {
-		 if (!ref) {
+		 if (formID == 0) {
+			 logger::error("BuildFormIDAndModName: formID is 0");
 			 return "";
 		 }
-
-		 const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
-		 std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
 		 if (modName.empty()) {
-			 logger::warn("BuildRefIDAndModName: ref {:08X} has no owning file", ref->GetFormID());
+			 logger::error("BuildFormIDAndModName: modName is empty");
 			 return "";
 		 }
 
+		 auto rawIndex = (formID & 0xFF000000) >> 24;
+		 bool isLight = rawIndex == 0xFE;
 
-		 RE::FormID runtimeID = 0x0; 
-		 if (baseID) {
-			 auto baseObject = ref->GetBaseObject();
-			 if (!baseObject) return "";
-			 runtimeID = baseObject->GetFormID();
+
+		 if (isLight) {
+			 // Light plugin: use the local FormID (lower 12 bits)
+			 formID &= 0x00000FFF;
+			 logger::info("Built light plugin ref string: 0x{:X}~{}", formID, modName);
+			 return std::format("0x{:X}~{}", formID, modName);
 		 }
-
 		 else {
-			 runtimeID = ref->GetFormID();
+			 // Normal plugin: strip the load order index
+			 formID &= 0x00FFFFFF;
 		 }
 
-		 if (refOriginFile->IsLight()) {
-			 // Best option if available in your CommonLib version
-			 const auto localID = ref->GetLocalFormID();
-
-			 logger::info(
-				 "Built light plugin ref string: 0x{:X}~{} (runtime: 0x{:08X})",
-				 static_cast<std::uint32_t>(localID),
-				 modName,
-				 static_cast<std::uint32_t>(runtimeID));
-
-			 return std::format("0x{:X}~{}", static_cast<std::uint32_t>(localID), modName);
-		 }
-
-		 else {
-			 runtimeID &= 0x00FFFFFF;
-		 }
-
-		 logger::info(
-			 "Built non-light plugin ref string: 0x{:X}~{}",
-			 static_cast<std::uint32_t>(runtimeID),
-			 modName);
-
-		 return std::format("0x{:X}~{}", static_cast<std::uint32_t>(runtimeID), modName);
+		 logger::info("Built non-light plugin ref string: 0x{:X}~{}", formID, modName);
+		 return std::format("0x{:X}~{}", formID, modName);
 	 }
 
 

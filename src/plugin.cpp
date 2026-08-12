@@ -75,14 +75,13 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    TESObjectLIGH_GenDynamic::Install();
    Load3D::Install();
    PlayerCharacter_Update::Install();
-   AddonNodes::Install();
    BSLightingShaderProperty_IsLightAffectingSurface::Install();
    InventoryMenu::Install(); 
    CraftingMenu::Install();
    ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
    TreeActivateHook::Install(); 
    Activate::Install(); 
-   NiLightFlickerHook::Install(); 
+   NiLightFlickerHook::Install();  
    return true;
 }
 

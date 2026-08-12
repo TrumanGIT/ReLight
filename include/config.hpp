@@ -282,7 +282,7 @@ bool AppendNewConfigEntryFromLight(
     bool preserveConfigID);
 
 // used for skyrim lights
-void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName);
+void CreateConfigFromPluginLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName, bool useBaseID);
 
 void parseTemplates();
 

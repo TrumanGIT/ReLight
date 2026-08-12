@@ -25,7 +25,7 @@ else { \
 } \
 
 // used for skyrim lights
-void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObjectLIGH* light, RE::TESObjectREFR * ref, std::string& edid, std::string& modName) {
+void CreateConfigFromPluginLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObjectLIGH* light, RE::TESObjectREFR * ref, std::string& edid, std::string& modName, bool useBaseID) {
 	auto& rt = niLight->GetLightRuntimeData();
 	cfg.brightness = rt.fade;
 	cfg.startingFade = rt.fade;
@@ -54,39 +54,52 @@ void CreateConfigFromRefLight(LightConfig& cfg, RE::NiLight* niLight, RE::TESObj
 	cfg.flickerIntensity = light->data.flickerIntensityAmplitude;
 	cfg.flickersPerSecond = light->data.flickerPeriodRecip; 
 
-	auto xlig = ref->extraList.GetByType<RE::ExtraLightData>();
-
-	if (xlig) {
-		cfg.depthBias = xlig->data.shadowDepthBias;
-		logger::debug("extra light data does exist"); 
-	}
-	else {
-		cfg.depthBias = 5.0f;
-	}
-
-	auto extEmittance = LightData::GetRefLightEmittanceSource(ref);
-
-	if (extEmittance) {
-		std::string edid = clib_util::editorID::get_editorID(extEmittance);
-		cfg.externalEmittance = edid;
-	}
 
 	cfg.configID = globals::nextID++;
 	cfg.menuCategory = modName;
 	cfg.menuName = std::format("{} ({:08X})",edid, cfg.configID);
 	cfg.isPluginLight = true; 
-	cfg.refFormIDsAndModNames.push_back(forms::BuildFormIDAndModName(ref, false));
+
 	cfg.configPath = BuildConfigPath(cfg.refFormIDsAndModNames[0]);
 
 	cfg.flags = static_cast<uint32_t>(light->data.flags.underlying());
 
-	auto refID = ref->GetFormID();
+	auto formID = useBaseID ? light->GetFormID() : ref->GetFormID();
 
-	if ((refID & 0xFF000000) != 0xFE) {
-		refID &= 0x00FFFFFF;
+	// strip load order index (first 2 digits) if not a light plugin
+	if ((formID & 0xFF000000) != 0xFE) {
+		formID &= 0x00FFFFFF;
 	}
 
-	LightData::refFormIDToJsonCfg[refID].push_back(cfg);
+	// dont know how to set depth bias if no ref is present (handheld lights like torches) 
+	if (ref) {
+		auto xlig = ref->extraList.GetByType<RE::ExtraLightData>();
+
+		if (xlig) {
+			cfg.depthBias = xlig->data.shadowDepthBias;
+			logger::debug("extra light data does exist");
+		}
+		else {
+			cfg.depthBias = 5.0f;
+		}
+
+		auto extEmittance = LightData::GetRefLightEmittanceSource(ref);
+
+		if (extEmittance) {
+			std::string edid = clib_util::editorID::get_editorID(extEmittance);
+			cfg.externalEmittance = edid;
+		}
+
+		LightData::refFormIDToJsonCfg[formID].push_back(cfg);
+
+		cfg.refFormIDsAndModNames.push_back(forms::BuildFormIDAndModName(formID, modName));
+	}
+
+	if (useBaseID) {
+		cfg.baseFormIDsAndModNames.push_back(forms::BuildFormIDAndModName(formID, modName));
+
+		LightData::baseFormIDToJsonCfg[formID].push_back(cfg);
+	}
 
 
 	logger::debug("=== CREATED LIGHT FROM REFLIGHT ===");

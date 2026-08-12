@@ -755,8 +755,12 @@ namespace UI {
 
                     float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
-                    bool isTorch = (selectedLight->light->name == "RLtorch");
+                    bool isTorch = (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kCanCarry));
                     bool isShadowLight = config.shadowLight;
+
+                    bool hideRadius =
+                        globals::islInstalled &&
+                        (!config.isPluginLight || isPluginInverseSquare);
 
                     static bool showEmittanceWindow = false;
 
@@ -922,9 +926,7 @@ namespace UI {
                                 }
                             }
 
-                            bool hideRadius =
-                                globals::islInstalled &&
-                                (!config.isPluginLight || isPluginInverseSquare);
+                    
 
                             if (!hideRadius) {
                                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
@@ -1101,8 +1103,6 @@ namespace UI {
 
                             ImGuiMCP::Separator();
 
-                           ImGuiMCP::BeginDisabled(isTorch);
-
                             if (ImGuiMCP::SliderFloat3(
                                 "Position",
                                 &config.position[0],
@@ -1205,8 +1205,6 @@ namespace UI {
                                     }
                                 }
                             }
-
-                            ImGuiMCP::EndDisabled();
                         }
                         ImGuiMCP::EndChild(); // PositionBox
 
@@ -1489,6 +1487,7 @@ namespace UI {
         static std::string meshPath{};
         static std::string jsonFilePath{};
         static std::string menuCategory{};
+        static std::string modName{};
         static std::string menuName{};
         static std::string matched{};
         static RE::NiLight* niLight = nullptr;
@@ -1508,6 +1507,7 @@ namespace UI {
         static bool menuNameBufferInitialized = false;
         static char menuCategoryBuffer[128]{};
         static bool menuCategoryBufferInitialized = false;
+   
 
         static LightConfig newCfg;
 
@@ -1521,6 +1521,7 @@ namespace UI {
             jsonFilePath.clear();
             menuCategory.clear();
             menuName.clear();
+            modName.clear();
 
             niLight = nullptr;
             baseObject = nullptr;
@@ -1557,48 +1558,33 @@ namespace UI {
             return;
         }
 
+        RE::TESFile* refOriginFile = selected->GetDescriptionOwnerFile();
+         modName = refOriginFile ? refOriginFile->fileName : "";
+
+         baseObject = selected->GetBaseObject();
+         if (!baseObject) {
+             return;
+         }
+
+         baseFormID = baseObject->GetFormID();
+
+         model = baseObject->As<RE::TESModel>();
+         if (!model) {
+             return;
+         }
+
+         meshPath = extractMeshName(model->GetModel());
+         toLower(meshPath);
+
+
         if (selected->GetFormID() != lastSelected) {
 
             resetState();
 
-            baseObject = selected->GetBaseObject();
-            if (!baseObject) {
-                return;
-            }
-
-            baseFormID = baseObject->GetFormID();
-
-            model = baseObject->As<RE::TESModel>();
-            if (!model) {
-                return;
-            }
-
-            meshPath = extractMeshName(model->GetModel());
-            toLower(meshPath);
-
-            lastSelected = selected->GetFormID();
-        }
-
-        if (!baseObject || !model) {
-
-            baseObject = selected->GetBaseObject();
-            if (!baseObject) {
-                return;
-            }
-
-            baseFormID = baseObject->GetFormID();
-
-            model = baseObject->As<RE::TESModel>();
-            if (!model) {
-                return;
-            }
-
-            meshPath = extractMeshName(model->GetModel());
-            toLower(meshPath);
-
             lastSelected = selected->GetFormID();
             return;
         }
+
 
         switch (step)
         {
@@ -1695,7 +1681,7 @@ namespace UI {
                     jsonFilePath = selectedCfgs[0].configPath;
                     entryCount = CountJsonEntriesInFile(selectedCfgs[0].configPath);
 
-                    matched = forms::BuildFormIDAndModName(selected, true);
+                    matched = forms::BuildFormIDAndModName(baseFormID, modName);
 
                     newCfg = selectedCfgs[0];
 
@@ -1739,7 +1725,7 @@ namespace UI {
 
             if (RenderRedButton("Add To Light Exclusion List")) {
 
-                std::string refIDandModName = forms::BuildFormIDAndModName(selected, false);
+                std::string refIDandModName = forms::BuildFormIDAndModName(formID, modName);
 
                 if (!ini::AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
                     logger::error("Failed to append excluded ref {}", refIDandModName);
@@ -1897,7 +1883,7 @@ namespace UI {
 
             if (RenderRedButton("Add To Light Exclusion List")) {
 
-                std::string refIDandModName = forms::BuildFormIDAndModName(selected, false);
+                std::string refIDandModName = forms::BuildFormIDAndModName(formID, modName);
 
                 if (!ini::AppendMenuExcludedRefToINI("Data/SKSE/Plugins/ReLight.ini", refIDandModName)) {
                     logger::error("Failed to append excluded ref {}", refIDandModName);
@@ -2145,7 +2131,7 @@ namespace UI {
 
                 if (createNewTemplate) {
 
-                    auto refFormIDandModName = forms::BuildFormIDAndModName(selected, false);
+                    auto refFormIDandModName = forms::BuildFormIDAndModName(formID, modName);
 
                     newCfg.refFormIDsAndModNames.push_back(refFormIDandModName);
                     newCfg.menuName = refFormIDandModName;
@@ -2206,13 +2192,7 @@ namespace UI {
             if (RenderYellowButton("All like this")) {
                 refLight = false;
 
-                auto baseObj = selected->GetBaseObject();
-                if (!baseObj) {
-                    ImGuiMCP::Text("Could not resolve base object.");
-                    break;
-                }
-
-                std::string baseIDandModName = forms::BuildFormIDAndModName(selected, true);
+                std::string baseIDandModName = forms::BuildFormIDAndModName(baseFormID, modName);
 
                 if (createNewTemplate) {
 
@@ -2235,7 +2215,7 @@ namespace UI {
                         break;
                     }
 
-                    niLight = LightManager::AttachLight(newCfg, attachNode, selected, meshPath, selected->GetFormID(), attachedDebugMarker);
+                    niLight = LightManager::AttachLight(newCfg, attachNode, selected, meshPath, baseFormID, attachedDebugMarker);
                     LightData::configIDToJsonCfg[newCfg.configID] = newCfg;
 
 
@@ -2374,7 +2354,7 @@ namespace UI {
                             finalMenuCategory,
                             finalMenuName,
                             niLight,
-                            forms::BuildFormIDAndModName(selected, false),
+                            forms::BuildFormIDAndModName(formID, modName),
                             "",
                             newCfg,
                             true,
@@ -2396,8 +2376,8 @@ namespace UI {
                             newCfg,
                             false,
                             formID,
-                            baseFormID,       // <-- new
-                            false)) {         // <-- preserveConfigID was missing a value here before; check your original call had 8 args before "true"/false at the end — match order carefully
+                            baseFormID,       
+                            false)) {         
                             logger::error("Failed to append base ID multi-light config");
                         }
 
@@ -2427,7 +2407,7 @@ namespace UI {
 
                     if (!refLight) {
 
-                        std::string baseIDandModName = forms::BuildFormIDAndModName(selected, true);
+                        std::string baseIDandModName = forms::BuildFormIDAndModName(baseFormID, modName);
 
                         if (AddFormIDToAllJsonEntries(filePath, baseIDandModName, true)) {
                             logger::info("Added base ID to existing template successfully");
@@ -2455,7 +2435,7 @@ namespace UI {
                     // refid light
                     LightConfig refCfg = selectedCfgs[0];
 
-                    std::string refFormIDAndModName = forms::BuildFormIDAndModName(selected, false);
+                    std::string refFormIDAndModName = forms::BuildFormIDAndModName(formID, modName);
                     ini::RemoveFromIniExcludeRefID(selected, refFormIDAndModName);
                     refCfg.configPath = filePath;
                     refCfg.jsonIndex = static_cast<std::uint16_t>(CountJsonEntriesInFile(filePath));
@@ -2487,7 +2467,7 @@ namespace UI {
                         logger::error("Failed to save new template");
                     }
 
-                    LightData::AddConfigToMaps(newCfg, refLight, refLight ? selected->GetFormID() : baseFormID);
+                    LightData::AddConfigToMaps(newCfg, refLight, refLight ? formID : baseFormID);
                     globals::baseFormsWithAttachedLights.emplace(baseFormID);
 
                     if (!refLight) {

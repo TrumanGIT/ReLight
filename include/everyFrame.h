@@ -1108,37 +1108,6 @@ inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 			globals::magicLightAttachNode = nullptr;
 		}
 	}
-
-	std::vector<size_t> indicesToRemove;
-
-	// do the same as above for torches
-	for (size_t i = 0; i < globals::torchLightAttachNodes.size(); ++i) {
-		auto& attachLightNode = globals::torchLightAttachNodes[i];
-
-		if (niLight->parent && niLight->parent == attachLightNode) {
-
-			//mark unk so we can skip this light light affect surface hook and relight flicker update
-			light->unk060 = 4;
-
-			std::string torchName = "torch";
-
-			auto cfgs = findConfigsForMeshPath(torchName, globals::currentCellIsInterior);
-			if (cfgs.empty()) {
-				continue;
-			}
-
-			niLight->name = "RL" + torchName;
-			niLight->unk138 = cfgs[0].configID;
-
-			LightData::setNiPointLightDataFromCfg(niLight, cfgs[0], 1.0f);
-
-			indicesToRemove.push_back(i);
-		}
-	}
-
-	for (auto it = indicesToRemove.rbegin(); it != indicesToRemove.rend(); ++it) {
-		globals::torchLightAttachNodes.erase(globals::torchLightAttachNodes.begin() + *it);
-	}
 }
 
 //power of three light placer
@@ -1414,21 +1383,22 @@ inline void handlePendingMerges() {
         if (!cell) { reprocessQueue = std::move(nextQueue); continue; }
 
         auto cfgs = findConfigsForMeshPath(match, cell->IsInteriorCell());
-        if (cfgs.empty()) {
-            logger::warn("Dropping ref {:08X} no configs found", retryRefA->GetFormID());
-            // keep all other refs for retry
-            nextQueue.insert(nextQueue.end(), mergeGroup.begin(), mergeGroup.end());
-            reprocessQueue = std::move(nextQueue);
-            continue;
-        }
 
-        uint32_t flags = cfgs[0].flags;
+		if (cfgs.empty()) {
+			logger::warn("Dropping ref {:08X} no configs found", retryRefA->GetFormID());
+			// keep all other refs for retry
+			nextQueue.insert(nextQueue.end(), mergeGroup.begin(), mergeGroup.end());
+			reprocessQueue = std::move(nextQueue);
+			continue;
+		}
 
 		const auto allowLightMerge = cfgs[0].shadowLight ? globals::enableShadowLightMerging : globals::enableLightMerging;
+		
+		const auto isMutliLightConfig = cfgs.size() > 1;
   
-		if (cfgs.size() == 1 &&
+		if (!isMutliLightConfig &&
 			allowLightMerge &&
-			!(flags & static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging))) {
+			!LightData::HasRelightFlag(cfgs[0].flags, LIGHT_FLAGS::kNoMerging)) {
             auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
             if (!cloneLight) { reprocessQueue = std::move(nextQueue); continue; }
 
@@ -1486,10 +1456,6 @@ static void DrawLightDebugSpheres(T& lights, RE::NiPoint3 playerPos, uint32_t co
 
 		// only draw the selected light
 		if (light->light->unk138 != configID) continue;
-
-		// Name filter — only RL lights
-		//auto name = std::string_view(light->light->name.c_str());
-		//if (name.size() < 2 || name[0] != 'R' || name[1] != 'L') continue;
 
 		// Distance check
 		auto diff = light->light->world.translate - playerPos;

@@ -16,20 +16,6 @@ struct Load3D {
     static void Install();
 };
 
-// used for torches weapons / armors
-struct AddonNodes
-{
-    static void thunk(
-        RE::NiAVObject* a_clonedNode,
-        RE::NiAVObject* a_node,
-        std::int32_t a_slot,
-        RE::TESObjectREFR* a_actor,
-        RE::BSTSmartPointer<RE::BipedAnim>& a_bipedAnim);
-
-    static inline REL::Relocation<decltype(thunk)> func;
-
-    static void Install();
-};
 
 // used for scripted fires like castle volkihar that only turn on when activated
 struct Activate {
@@ -107,4 +93,7 @@ namespace ReferenceEffect
             logger::info("Hooked {}::Init", typeid(T).name());
         }
     };
+
+ 
 }
+

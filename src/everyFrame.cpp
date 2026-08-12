@@ -89,13 +89,13 @@ void PlayerCharacter_Update::Install()
 void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGHT* a_refrLight, RE::TESObjectREFR* a_ref, float a_value) {
 
 	// skip torches i coudlent get it to work (k can carry)
-	if (!a_refrLight || !a_lightTemplate || a_lightTemplate->data.flags.any(RE::TES_LIGHT_FLAGS::kCanCarry))
+	if (!a_refrLight || !a_lightTemplate)
 		return func(a_lightTemplate, a_refrLight, a_ref, a_value);
 
 	RE::NiLight* light = a_refrLight->light.get();
 
-	if (!light ) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
-	
+	if (!light) return func(a_lightTemplate, a_refrLight, a_ref, a_value);
+
 	auto& rt = light->GetLightRuntimeData();
 
 	auto it = LightData::configIDToJsonCfg.find(rt.unk138);
@@ -138,11 +138,31 @@ void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGH
 
 // original func SE 14021f660 whos id is 17212
 
- void NiLightFlickerHook::Install() {
-	 // jmp to original AE FUN_14026f480 - ID: 17613
-	 //jmp to original SE 17211	14021f640 
-	 // The JMP to TESObjectLIGH::UpdateFlicker is at offset 0xA
-	 REL::Relocation<std::uintptr_t> target(REL::VariantID(17211, 17613, 0), REL::VariantOffset{ 0xA, 0xA, 0 });
-	 func = target.write_branch<5>(thunk);
-	 logger::info("NiLightFlickerHook installed at 0x{:X}", target.address());
- }
+void NiLightFlickerHook::Install()
+{
+	// JMP to original AE FUN_14026f480 - ID: 17613
+	// JMP to original SE FUN_14021f640 - ID: 17211
+	// The JMP to TESObjectLIGH::UpdateFlicker is at offset 0xA
+
+	REL::Relocation<std::uintptr_t> target(
+		RELOCATION_ID(17211, 17613),
+		REL::VariantOffset{ 0xA, 0xA, 0 });
+
+	func = target.write_branch<5>(thunk);
+
+	logger::info("NiLightFlickerHook installed at 0x{:X}", target.address());
+
+	// PlayerCharacter::UpdateRefLight
+	
+	// AE ID: 40570, Address: 140742180
+	//SE ID: 39491 Address: 1406ad800
+
+	REL::Relocation<std::uintptr_t> playerRefLight(
+		RELOCATION_ID(39491, 40570),
+		REL::VariantOffset{ 0x1C7, 0x1C7, 0 });
+
+	playerRefLight.write_call<5>(thunk);
+
+	logger::info("NiLightFlickerHook PlayerCharacter call installed at 0x{:X}",
+		playerRefLight.address());
+}

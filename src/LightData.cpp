@@ -2,8 +2,10 @@
 #include "LightData.h"
 #include  "Utility.h"
 
+// all relight lights are cloned from this light which itself is a clone of a fresh nipoint light
 NiPointLight LightData::masterNiPointLight;
 
+// used for light flicker prevention mode (should light affect surface hook)
 std::deque<LightData::TriLightCache> LightData::triLightCache; 
 std::mutex LightData::triLightCacheMutex;
 std::atomic<uint16_t> LightData::triLightCacheGeneration = { 0 };

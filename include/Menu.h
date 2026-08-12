@@ -209,8 +209,9 @@ namespace UI {
                         config.emittanceRegion = region;
                         config.externalEmittance = editorID;
 
-                        auto emittanceColor = region->emittanceColor;
-                        UpdateRegionEmittance(emittanceColor, region);
+                        if (region) {
+                        UpdateRegionEmittance(region->emittanceColor, region);
+                        }
 
                         if (config.isPluginLight && selectedRef) {
                             if (auto* form = RE::TESForm::LookupByEditorID(editorID)) {
@@ -227,9 +228,18 @@ namespace UI {
         }
 
         if (ImGuiMCP::IsItemHovered()) {
-            ImGuiMCP::SetTooltip(
-                "Select a region used for external emittance (Change light colors based on time of day, good for window lights)"
-            );
+            ImGuiMCP::BeginTooltip();
+
+            ImGuiMCP::Text("Select a region used for external emittance "
+                "(Change light colors based on time of day, good for window lights)");
+
+            ImGuiMCP::Text("Current region:");
+
+            ImGuiMCP::SameLine();
+            ImGuiMCP::TextColored(ImGuiMCP::ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s",
+                config.externalEmittance.c_str());
+
+            ImGuiMCP::EndTooltip();
         }
     }
 
@@ -357,7 +367,7 @@ namespace UI {
         std::unordered_set<int>& seen,
         std::string_view prefix)
     {
-        if (!activeLight || !activeLight->light) return;
+        if (!activeLight || !activeLight->light || !activeLight->light.get()) return;
 
         std::string_view name{ activeLight->light->name.c_str() };
 
@@ -373,15 +383,20 @@ namespace UI {
 
             if (ref) {
                 auto* baseObject = ref->GetBaseObject();
+
                 if (baseObject && baseObject->formType == RE::FormType::Light) {
                     auto* lightTemplate = static_cast<RE::TESObjectLIGH*>(baseObject);
 
-                    std::string edid = clib_util::editorID::get_editorID(lightTemplate);
+                    if (!lightTemplate && activeLight->unk060 == 4) {
+                        logger::warn("torch  ref base object is not a tesobjectLIGH"); 
+                    }
+
+                    std::string edid = clib_util::editorID::get_editorID(baseObject);
                     const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
                     std::string modName = refOriginFile ? refOriginFile->fileName : "";
 
                     LightConfig cfg;
-                    CreateConfigFromRefLight(cfg, niLight, lightTemplate, ref, edid, modName);
+                    CreateConfigFromPluginLight(cfg, niLight, lightTemplate, ref, edid, modName, false);
 
                     LightData::configIDToJsonCfg[cfg.configID] = cfg;
                     LightData::defaultConfigs[cfg.configID] = cfg;
@@ -389,8 +404,11 @@ namespace UI {
                     niLight->unk138 = cfg.configID;
                     configID = cfg.configID;
 
-                    logger::info("Created config for 'OB' light: {} (ID: {})", cfg.menuName, cfg.configID);
+                    logger::info("Created config for 'ob' (object light) light: {} (ID: {})", cfg.menuName, cfg.configID);
                 }
+            }
+            else {
+                logger::warn("no reference for light {}", niLight->name.c_str()); 
             }
         }
 
