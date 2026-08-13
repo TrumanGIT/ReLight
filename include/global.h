@@ -36,7 +36,9 @@ namespace globals
     inline bool currentCellIsInterior = false;
 
     inline bool islInstalled = false;
-    inline bool disableISL = false; 
+    inline bool allRelightsAsISL = true;
+
+    inline bool isNativeLightFlickerFixInstalled = false;
 
     inline bool enableDebugLightBulbs = false;
 

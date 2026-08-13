@@ -258,9 +258,9 @@ namespace ini {
 			continue;
 		}
 
-		if (key == "disableisl") {
-			globals::disableISL = value == "true";
-			logger::info("disableisl = {}", globals::disableISL);
+		if (key == "allrelightsasisl") {
+			globals::allRelightsAsISL = value == "true";
+			logger::info("allRelightsAsISL = {}", globals::allRelightsAsISL);
 			continue;
 		}
 
@@ -448,7 +448,7 @@ namespace ini {
 		logger::error("Failed to open {} for writing!", path);
 		return false;
 	}
-	outFile << ";allow relight to disable all non relight lights(to start with a clean base)\n";
+	outFile << ";allow relight to disable all non relight lights(except those whos editor is in exclude section below)\n";
 	outFile << "disableGameLights=" << (globals::disableGameLights ? "true" : "false") << "\n\n";
 	outFile << "; enable light flicker prevention (Not for CS users)\n";
 	outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
@@ -464,8 +464,8 @@ namespace ini {
 	outFile << "enableDebugLines=" << (globals::enableDebugLines ? "true" : "false") << "\n\n";
 	outFile << "; max distance for debug lines (default = false)\n";
 	outFile << "maxDistanceForDrawDebuglines=" << globals::distanceForDrawDebugLines << "\n\n";
-	outFile << "; disable Inverse Squared Lighting (relight lights and menu will change to vanilla, Only works if ISL is disabled at boot in CS settings)\n";
-	outFile << "disableISL=" << (globals::disableISL ? "true" : "false") << "\n\n";
+	outFile << "; Make all Relights have Inverse Squared Lighting regardless of ISL flag\n";
+	outFile << "allRelightsAsISL=" << (globals::allRelightsAsISL ? "true" : "false") << "\n\n";
 	outFile << "; Logging Level (0: critical, 1: warnings/errors, 2: info, 3: debug)\n";
 	outFile << "loggingLevel=" << globals::loggingLevel << "\n";
 	outFile << "\n; Light merge settings\n\n";

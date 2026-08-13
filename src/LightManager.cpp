@@ -321,22 +321,21 @@ void LightManager::attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight
 		return;
 	}
 	
-	uint32_t mask = cfg.flags; 
+	uint32_t flags = cfg.flags; 
 
 	// we set this unk060 so we can fast lookup what lights belong to what kind of sources during is light affecting surface hook 
-	if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
+	if (LightData::HasRelightFlag(flags, RELIGHT_FLAGS::kCandle)) {
 		bsLight->unk060 = 1;
 	}
 
-	else if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
+	else if (LightData::HasRelightFlag(flags, RELIGHT_FLAGS::kChandelier)) {
 		bsLight->unk060 = 2;
 	}
 
-	else if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
+	else if (LightData::HasRelightFlag(flags, RELIGHT_FLAGS::kFire)) {
 		bsLight->unk060 = 3;
 	}
 
-	//else bsLight->unk060 = 4; 
 }
 
 
@@ -370,7 +369,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 	const auto isMultiLight = cfgs.size() > 1; 
 
 	// not a multi light, send off to merging logic
-	if (!isMultiLight && allowLightMerge && !LightData::HasRelightFlag(flags, LIGHT_FLAGS::kNoMerging)) {
+	if (!isMultiLight && allowLightMerge && !LightData::HasRelightFlag(flags, RELIGHT_FLAGS::kNoMerging)) {
 		auto cloneLight = cloneNiPointLight(LightData::masterNiPointLight.light.get());
 		if (!cloneLight) {
 			logger::warn("Failed to clone NiPointLight for ref {:08X} with mesh '{}' )", refFormID, meshName);
@@ -582,19 +581,19 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 									if (!reattachedBSLight) return RE::BSContainer::ForEachResult::kContinue;
 
-									uint32_t mask = config.flags;
+									uint32_t flags = config.flags;
 
-									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kCandle)) {
+									if (LightData::HasRelightFlag(flags, RELIGHT_FLAGS::kCandle)) {
 										reattachedBSLight->unk060 = 1;
 										continue;
 									}
 
-									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kChandelier)) {
+									if (LightData::HasRelightFlag(flags, RELIGHT_FLAGS::kChandelier)) {
 										reattachedBSLight->unk060 = 2;
 										continue; 
 									}
 
-									if (mask & static_cast<uint32_t>(LIGHT_FLAGS::kFire)) {
+									if (LightData::HasRelightFlag(flags, RELIGHT_FLAGS::kFire)) {
 										reattachedBSLight->unk060 = 3;
 									}
 								}
@@ -689,7 +688,7 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 
 			uint32_t otherRefFlags = otherRefCfg.flags;
 
-				if (!increasedMergeDistance && (LightData::HasRelightFlag(refAflags, LIGHT_FLAGS::kIncreasedMergeDistance) || LightData::HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kIncreasedMergeDistance))) {
+				if (!increasedMergeDistance && (LightData::HasRelightFlag(refAflags, RELIGHT_FLAGS::kIncreasedMergeDistance) || LightData::HasRelightFlag(otherRefFlags, RELIGHT_FLAGS::kIncreasedMergeDistance))) {
 					increasedMergeDistance = true;
 					logger::debug("increased distance used");
 				}

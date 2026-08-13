@@ -2,7 +2,7 @@
 #include "ticker.h"
 #include "global.h"
 #include "disableLights.h"
-
+#include "config.hpp"
 #include "forms.hpp"
 #include "ini.hpp"
 
@@ -741,7 +741,7 @@ namespace UI {
                         config.isPluginLight
                         ? (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight) ||
                             config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
-                        : LightData::HasRelightFlag(config.flags, LIGHT_FLAGS::kSpotLight);
+                        : LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kSpotLight);
 
                     bool isPluginWithFlicker = config.isPluginLight &&
                         (config.flags & (static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kFlicker) |
@@ -750,23 +750,23 @@ namespace UI {
                             static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kPulseSlow)));
 
                     bool isPluginInverseSquare =
-                        !config.isPluginLight &&
+                        config.isPluginLight &&
                         (config.flags & static_cast<std::uint32_t>(TES_LIGHT_FLAGS_EXT::kInverseSquare));
 
                     float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
-                    bool isTorch = (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kCanCarry));
+                    bool isTorch = config.isPluginLight && config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kCanCarry);
                     bool isShadowLight = config.shadowLight;
 
-                    bool hideRadius =
-                        globals::islInstalled &&
-                        (!config.isPluginLight || isPluginInverseSquare);
+                    bool showISLSliders = globals::islInstalled &&
+                        (isPluginInverseSquare ||
+                            (!config.isPluginLight && (LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kInverseSquare) || globals::allRelightsAsISL)));
 
                     static bool showEmittanceWindow = false;
 
                     if (ImGuiMCP::BeginChild("SelectedLightSettingsChild", ImGuiMCP::ImVec2(0, 680.0f), true))
                     {
-                        if (globals::enableDebugLines && !(config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight))) {
+                        if (globals::enableDebugLines && !isSpotLight) {
 
                             globals::skseMenuOpened = true;
                             globals::debugLinesNeedClear = true;
@@ -925,10 +925,9 @@ namespace UI {
                                     }
                                 }
                             }
-
                     
 
-                            if (!hideRadius) {
+                            if (!showISLSliders) {
                                 if (ImGuiMCP::SliderFloat("Radius", &lightData.radius.x, 1.0f, radiusToUse, "%.2f")) {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                                     if (ssNode && !config.isPluginLight) {
@@ -949,7 +948,7 @@ namespace UI {
                                 }
                             }
 
-                             if (selectedIslRt && (isPluginInverseSquare || !config.isPluginLight)) {
+                             if (selectedIslRt && showISLSliders) {
                                 if (ImGuiMCP::SliderFloat("Cutoff (ISL)", &selectedIslRt->cutoffOverride, 0.01f, 0.99f, "%.2f")) {
                                     auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
                                     if (ssNode && !config.isPluginLight) {
@@ -1030,7 +1029,7 @@ namespace UI {
 
                             ImGuiMCP::Separator();
 
-                            ImGuiMCP::BeginDisabled((config.isPluginLight && !isPluginWithFlicker));
+                            ImGuiMCP::BeginDisabled(config.isPluginLight && !isPluginWithFlicker);
 
                             if (ImGuiMCP::SliderFloat(
                                 "Flicker Rate",
@@ -1073,8 +1072,10 @@ namespace UI {
                                 }
                             }
 
-                           // ImGuiMCP::EndDisabled();
-                            ImGuiMCP::EndDisabled();
+                            ImGuiMCP::EndDisabled(); //  (config.flickersPerSecond == 0.0f)
+
+                            ImGuiMCP::EndDisabled(); // (!isPluginWithFlicker)
+
                         }
                         ImGuiMCP::EndChild(); // FlickerBox
 
@@ -1083,7 +1084,7 @@ namespace UI {
 
                         ImGuiMCP::Columns(2, nullptr, false);
 
-                        float sliderRange = (config.flags & static_cast<uint32_t>(LIGHT_FLAGS::kIncreasedMenuXYZScale))
+                        float sliderRange = !config.isPluginLight && LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kIncreasedMenuXYZScale)
                             ? 1250.0f
                             : 250.0f;
 
@@ -1155,7 +1156,7 @@ namespace UI {
                                 }
                             }
                         
-                            if (isSpotLight)
+                           if (isSpotLight)
                             {
                                 if (ImGuiMCP::SliderFloat3(
                                     "Rotation",
@@ -1324,9 +1325,8 @@ namespace UI {
 
                                     ApplyRuntimeColor(runtimeColor);
                                 }
-
-                                ImGuiMCP::End();
                             }
+                            ImGuiMCP::End();
                         }
 
                         ImGuiMCP::Columns(1);
@@ -1348,6 +1348,8 @@ namespace UI {
                             if (ImGuiMCP::Button("Refresh Lights")) {
 
                                 if (config.isPluginLight) {
+
+                                    LightData::updateRuntimeConfigCaches(config);
 
                                     auto* ref = LightData::GetRefFromLight(selectedLight->light.get());
                                     auto handle = ref->GetHandle(); 
@@ -1407,19 +1409,19 @@ namespace UI {
                                 ImGuiMCP::BeginDisabled(!isShadowLight);
 
                                 bool isSpot =
-                                    (config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+                                    LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kSpotLight);
 
                                 if (ImGuiMCP::Checkbox("SpotLight", &isSpot))
                                 {
                                     if (isSpot) {
-                                        config.flags |= static_cast<int>(LIGHT_FLAGS::kSpotLight);
+                                        config.flags |= static_cast<int>(RELIGHT_FLAGS::kSpotLight);
 
                                         if (config.fov > 45.0f) {
                                             config.fov = 45.0f;
                                         }
                                     }
                                     else {
-                                        config.flags &= ~static_cast<int>(LIGHT_FLAGS::kSpotLight);
+                                        config.flags &= ~static_cast<int>(RELIGHT_FLAGS::kSpotLight);
                                         config.fov = 90.0f;
                                     }
                                 }
@@ -1566,6 +1568,7 @@ namespace UI {
              return;
          }
 
+         formID = selected->GetFormID();
          baseFormID = baseObject->GetFormID();
 
          model = baseObject->As<RE::TESModel>();

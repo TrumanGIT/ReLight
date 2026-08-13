@@ -198,7 +198,7 @@ namespace UI {
                     config.externalEmittance.clear();
 
                     if (config.isPluginLight && selectedRef) {
-                        LightData::SetRefLightEmittanceSource(selectedRef, nullptr);
+                        LightData::SetPluginLightEmittanceSource(selectedRef, nullptr);
                     }
                 }
 
@@ -215,23 +215,19 @@ namespace UI {
 
                         if (config.isPluginLight && selectedRef) {
                             if (auto* form = RE::TESForm::LookupByEditorID(editorID)) {
-                                LightData::SetRefLightEmittanceSource(selectedRef, form);
+                                LightData::SetPluginLightEmittanceSource(selectedRef, form);
                             }
                         }
 
                         showEmittanceWindow = false;
                     }
                 }
-
-                ImGuiMCP::End();
             }
+            ImGuiMCP::End();
         }
 
-        if (ImGuiMCP::IsItemHovered()) {
+       if (ImGuiMCP::IsItemHovered()) {
             ImGuiMCP::BeginTooltip();
-
-            ImGuiMCP::Text("Select a region used for external emittance "
-                "(Change light colors based on time of day, good for window lights)");
 
             ImGuiMCP::Text("Current region:");
 
@@ -239,15 +235,19 @@ namespace UI {
             ImGuiMCP::TextColored(ImGuiMCP::ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "%s",
                 config.externalEmittance.c_str());
 
+
+            ImGuiMCP::Text("Select a region used for external emittance "
+                "(Change light colors based on time of day, good for window lights)");
+
             ImGuiMCP::EndTooltip();
         }
     }
 
    inline void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
-       if (!light || light.get()) {
+       if (!light || !light.get()) {
             logger::error("Selected light is null, cannot restore defaults");
-            return
-                ;
+            return;
+                
         }
 
         const std::string lightName = light->name.c_str();
@@ -397,9 +397,6 @@ namespace UI {
 
                     LightConfig cfg;
                     CreateConfigFromPluginLight(cfg, niLight, lightTemplate, ref, edid, modName, false);
-
-                    LightData::configIDToJsonCfg[cfg.configID] = cfg;
-                    LightData::defaultConfigs[cfg.configID] = cfg;
 
                     niLight->unk138 = cfg.configID;
                     configID = cfg.configID;
@@ -1031,7 +1028,7 @@ namespace UI {
                 ImGuiMCP::ImGuiWindowFlags_::ImGuiWindowFlags_None
             );
 
-            auto FlagCheckbox = [](const char* label, uint32_t& flags, LIGHT_FLAGS flag, const char* tooltip)
+            auto FlagCheckbox = [](const char* label, uint32_t& flags, RELIGHT_FLAGS flag, const char* tooltip)
                 {
                     bool checked = (flags & static_cast<uint32_t>(flag)) != 0;
 
@@ -1049,39 +1046,58 @@ namespace UI {
                     }
                 };
 
-            FlagCheckbox("Candle", flags, LIGHT_FLAGS::kCandle,
+            FlagCheckbox("Candle", flags, RELIGHT_FLAGS::kCandle,
                 "Important for light flicker prevention. Also allows the light to merge with any other "
                 "light created from a relight json file which also has the Candle flag.");
 
-            FlagCheckbox("Chandelier", flags, LIGHT_FLAGS::kChandelier,
+            FlagCheckbox("Chandelier", flags, RELIGHT_FLAGS::kChandelier,
                 "Important for light flicker prevention.");
 
-            FlagCheckbox("Fire", flags, LIGHT_FLAGS::kFire,
+            FlagCheckbox("Fire", flags, RELIGHT_FLAGS::kFire,
                 "Important for light flicker prevention. Also allows the light to merge with any other "
                 "light created from a relight json file which also has the Fire flag.");
 
-            FlagCheckbox("Giant Campfire", flags, LIGHT_FLAGS::kGiantCampfire,
+            FlagCheckbox("Giant Campfire", flags, RELIGHT_FLAGS::kGiantCampfire,
                 "Allows merging with any other light created by a relight json config with the Fire flag (needed).");
 
-            FlagCheckbox("Other", flags, LIGHT_FLAGS::kOther,
+            FlagCheckbox("Other", flags, RELIGHT_FLAGS::kOther,
                 "Allows merging with any other light created by a relight json config with the Other flag.");
 
-            FlagCheckbox("Increased Merge Distance", flags, LIGHT_FLAGS::kIncreasedMergeDistance,
+            FlagCheckbox("Increased Merge Distance", flags, RELIGHT_FLAGS::kIncreasedMergeDistance,
                 "Grants a significantly larger merge distance to lights. Currently used for ruin candles.");
 
-            FlagCheckbox("Increased Menu XYZ Scale", flags, LIGHT_FLAGS::kIncreasedMenuXYZScale,
+            FlagCheckbox("Increased Menu XYZ Scale", flags, RELIGHT_FLAGS::kIncreasedMenuXYZScale,
                 "Increases the in-game menu XYZ position slider range from 250 to 1250, for positioning "
                 "lights on larger objects.");
 
-            FlagCheckbox("No Merging", flags, LIGHT_FLAGS::kNoMerging,
+            FlagCheckbox("No Merging", flags, RELIGHT_FLAGS::kNoMerging,
                 "Light sources of this type will never merge.");
 
-            FlagCheckbox("Outdoor", flags, LIGHT_FLAGS::kOutdoor,
+            FlagCheckbox("Outdoor", flags, RELIGHT_FLAGS::kOutdoor,
                 "Light source is to be applied outdoors only. Lets you have interior/exterior lighting "
                 "separated -- e.g. an Outdoor-flagged lantern vs a regular one with no flags.");
 
-            FlagCheckbox("Pulse", flags, LIGHT_FLAGS::kPulse,
+            FlagCheckbox("Pulse", flags, RELIGHT_FLAGS::kPulse,
                 "Light will pulse instead of flicker, good for flower lights ect.");
+
+                if (globals::islInstalled) {
+                    // --- Extended Flags ---
+                    ImGuiMCP::SeparatorText("Community Shaders Flags");
+
+                    FlagCheckbox(
+                        "Inverse Square",
+                        flags,
+                        RELIGHT_FLAGS::kInverseSquare,
+                        "Uses inverse square falloff for attenuation, must refresh light for changes to take effect."
+                    );
+
+                    FlagCheckbox(
+                        "Linear",
+                        flags,
+                        RELIGHT_FLAGS::kLinear,
+                        "Applies linear lighting flag, must refresh light for changes to take effect"
+                    );
+                }
 
             ImGuiMCP::End();
         }
@@ -1259,14 +1275,14 @@ namespace UI {
               "Inverse Square",
               flags,
               static_cast<uint32_t>(TES_LIGHT_FLAGS_EXT::kInverseSquare),
-              "Uses inverse square falloff for attenuation for community shaders only."
+              "Uses inverse square falloff for attenuation"
           );
 
           FlagCheckbox(
               "Linear",
               flags,
               static_cast<uint32_t>(TES_LIGHT_FLAGS_EXT::kLinear),
-              "Uses linear falloff for attenuation for community shaders only ."
+              "Applies Linear Lighting flag ."
           );
           }
           ImGuiMCP::End();
@@ -1326,7 +1342,7 @@ namespace UI {
               return a.first < b.first;
           });
   }
-
+  
     //RenderAttachRemove FUNTIONS
     ///////////////////////////////
 

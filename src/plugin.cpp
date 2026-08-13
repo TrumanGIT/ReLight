@@ -43,9 +43,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         ini::IniParser();
 
         //cs installed dont need flicker prevention
-        if (globals::islInstalled) globals::enableLightFlickerPreventionMeasures = false;
-
-        if (globals::disableISL == true) globals::islInstalled = false; 
+        if (globals::islInstalled || globals::isNativeLightFlickerFixInstalled) globals::enableLightFlickerPreventionMeasures = false;
 
         //parse json files
         parseTemplates();
@@ -71,6 +69,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    SKSE::GetMessagingInterface()->RegisterListener(MessageHandler);
    UI::Register();
    hasInverseSquareLighting();
+   hasNativeMeshLightFlickerFix(); 
    SKSE::AllocTrampoline(1 << 8);
    TESObjectLIGH_GenDynamic::Install();
    Load3D::Install();

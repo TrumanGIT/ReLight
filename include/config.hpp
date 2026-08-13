@@ -41,7 +41,7 @@ F(cutoffOverride , 0.3f) \
 #define BOOL2PRINT(C, I) logger::info(" {:30s} : {:s}", #C, C ? "true" : "false");
 #define FLOAT2PRINT(C, I) logger::info(" {:30s} : {:.2f}", #C, C);
 
-enum class LIGHT_FLAGS : uint32_t
+enum class RELIGHT_FLAGS : uint32_t
 {
     kCandle = 1 << 0,
     kChandelier = 1 << 1,
@@ -53,27 +53,32 @@ enum class LIGHT_FLAGS : uint32_t
     kIncreasedMenuXYZScale = 1 << 7,
     kNoMerging = 1 << 8,
     kOutdoor = 1 << 9,
-    kPulse = 1 << 10
+    kPulse = 1 << 10,
+    kInverseSquare = 1 << 11,
+    kLinear = 1 << 12
 };
 
+// this is vanilla skyrim tesobjectligh flag (cs reused these unused mods) 
 enum class TES_LIGHT_FLAGS_EXT
 {
     kInverseSquare = 1 << 14,
     kLinear = 1 << 15
 };
 
-inline const std::unordered_map<LIGHT_FLAGS, std::string> LightFlagNames{
-    { LIGHT_FLAGS::kCandle, "Candle" },
-    { LIGHT_FLAGS::kChandelier, "Chandelier" },
-    { LIGHT_FLAGS::kFire, "Fire" },
-    { LIGHT_FLAGS::kGiantCampfire, "GiantCampfire" },
-    { LIGHT_FLAGS::kOther, "Other" },
-    { LIGHT_FLAGS::kSpotLight, "SpotLight" },
-    { LIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
-    { LIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
-    { LIGHT_FLAGS::kNoMerging, "NoMerging" },
-    { LIGHT_FLAGS::kOutdoor, "Outdoor" },
-    { LIGHT_FLAGS::kPulse, "Pulse" }
+inline const std::unordered_map<RELIGHT_FLAGS, std::string> LightFlagNames{
+    { RELIGHT_FLAGS::kCandle, "Candle" },
+    { RELIGHT_FLAGS::kChandelier, "Chandelier" },
+    { RELIGHT_FLAGS::kFire, "Fire" },
+    { RELIGHT_FLAGS::kGiantCampfire, "GiantCampfire" },
+    { RELIGHT_FLAGS::kOther, "Other" },
+    { RELIGHT_FLAGS::kSpotLight, "SpotLight" },
+    { RELIGHT_FLAGS::kIncreasedMergeDistance, "IncreasedMergeDistance" },
+    { RELIGHT_FLAGS::kIncreasedMenuXYZScale, "IncreasedMenuXYZScale" },
+    { RELIGHT_FLAGS::kNoMerging, "NoMerging" },
+    { RELIGHT_FLAGS::kOutdoor, "Outdoor" },
+    { RELIGHT_FLAGS::kPulse, "Pulse" },
+    { RELIGHT_FLAGS::kInverseSquare, "InverseSquare" },
+    { RELIGHT_FLAGS::kLinear, "Linear" }
 };
 
 inline constexpr std::array<std::pair<std::uint32_t, std::string_view>, 16> flagNames{ {
@@ -115,7 +120,7 @@ struct LightConfig {
     uint32_t configID = 0;       // used to lookup configs fast in flicker calcs ect
     uint16_t jsonIndex = 0;      // used to keep track of multi lights
 
-    inline void printFlags(uint32_t mask, bool isAPluginLight)
+     void printFlags(uint32_t mask, bool isAPluginLight)
     {
         if (!mask) {
             logger::info("  <none>");
@@ -169,7 +174,6 @@ struct LightConfig {
         return configID < other.configID;
     }
 };
-
 
 inline std::string ToUTF8(const fs::path& p) {
     auto u8 = p.u8string();

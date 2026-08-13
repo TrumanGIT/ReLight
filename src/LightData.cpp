@@ -25,7 +25,7 @@ std::unordered_map<RE::FormID, std::vector<LightConfig>> LightData::baseFormIDTo
 // at runtime save a copy of each tempaltes settings so we can restore to defaults later
 std::unordered_map<uint32_t, LightConfig> LightData::defaultConfigs;
 
-RE::TESForm* LightData::GetRefLightEmittanceSource(RE::TESObjectREFR* ref) {
+RE::TESForm* LightData::GetPluginLightEmittanceSource(RE::TESObjectREFR* ref) {
 
 	if (!ref)
 		return nullptr; 
@@ -41,7 +41,7 @@ RE::TESForm* LightData::GetRefLightEmittanceSource(RE::TESObjectREFR* ref) {
 	return form; 
 }
 
-void LightData::SetRefLightEmittanceSource(RE::TESObjectREFR* ref, RE::TESForm* form)
+void LightData::SetPluginLightEmittanceSource(RE::TESObjectREFR* ref, RE::TESForm* form)
 {
 	if (!ref)
 		return;
@@ -111,7 +111,7 @@ void LightData::setNiPointLightPos(RE::NiLight* niPointLight, const LightConfig&
 		niPointLight->local.translate.z = cfg.position[2];
 	}
 
-	bool isSpotlight = LightData::HasRelightFlag(cfg.flags, LIGHT_FLAGS::kSpotLight) ||
+	bool isSpotlight = LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kSpotLight) ||
 		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight)) ||
 		(cfg.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow));
 
@@ -141,10 +141,17 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 	if (auto* overlay = Overlay::Get(niPointLight)) {
 
 		constexpr std::uint32_t kInverseSquare = 1u << 10;
+
+		constexpr std::uint32_t kLinear = 1u << 11;
 		
 		//plugin lights get ISL support through their refs base object TESobjectLIGH flags
-		if (!cfg.isPluginLight) {
+		if (!cfg.isPluginLight && (globals::allRelightsAsISL || LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kInverseSquare))) {
 			overlay->flags |= kInverseSquare;
+		}
+
+		//plugin lights get Linear lighting support through their refs base objects flags
+		if (!cfg.isPluginLight && LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kLinear)) {
+			overlay->flags |= kLinear;
 		}
 			
 		overlay->size = cfg.size; // isl
@@ -219,7 +226,7 @@ RE::TESObjectREFR* LightData::GetRefFromLight(RE::NiLight* light) {
 		return 90.0f;
 	}
 
-	if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kSpotLight)) {
+	if (LightData::HasRelightFlag(cfg.flags,RELIGHT_FLAGS::kSpotLight)) {
 	 return RE::deg_to_rad(cfg.fov > 0.0f ? cfg.fov : 90.0f);
 	}
 
@@ -270,7 +277,7 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
 	return baseObject->As<RE::TESObjectLIGH>();
 }
 
-  bool LightData::HasRelightFlag(uint32_t flags, LIGHT_FLAGS flag)
+  bool LightData::HasRelightFlag(uint32_t flags, RELIGHT_FLAGS flag)
  {
 	 return (flags & static_cast<uint32_t>(flag)) != 0;
  }
@@ -278,26 +285,26 @@ RE::ShadowSceneNode::LIGHT_CREATE_PARAMS LightData::makeLightParams(const LightC
   bool LightData::ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags)
  {
 	 // same-type merges
-	 if (HasRelightFlag(refAflags, LIGHT_FLAGS::kCandle) &&
-		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kCandle)) {
+	 if (HasRelightFlag(refAflags, RELIGHT_FLAGS::kCandle) &&
+		 HasRelightFlag(otherRefFlags, RELIGHT_FLAGS::kCandle)) {
 		 return true;
 	 }
 
-	 if (HasRelightFlag(refAflags, LIGHT_FLAGS::kFire) &&
-		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) {
+	 if (HasRelightFlag(refAflags, RELIGHT_FLAGS::kFire) &&
+		 HasRelightFlag(otherRefFlags, RELIGHT_FLAGS::kFire)) {
 		 return true;
 	 }
 
 	 // giant campfires merge with fires
-	 if ((HasRelightFlag(refAflags, LIGHT_FLAGS::kGiantCampfire) &&
-		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kFire)) ||
-		 (HasRelightFlag(refAflags, LIGHT_FLAGS::kFire) &&
-			 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kGiantCampfire))) {
+	 if ((HasRelightFlag(refAflags, RELIGHT_FLAGS::kGiantCampfire) &&
+		 HasRelightFlag(otherRefFlags, RELIGHT_FLAGS::kFire)) ||
+		 (HasRelightFlag(refAflags, RELIGHT_FLAGS::kFire) &&
+			 HasRelightFlag(otherRefFlags, RELIGHT_FLAGS::kGiantCampfire))) {
 		 return true;
 	 }
 
-	 if (HasRelightFlag(refAflags, LIGHT_FLAGS::kOther) &&
-		 HasRelightFlag(otherRefFlags, LIGHT_FLAGS::kOther)) {
+	 if (HasRelightFlag(refAflags, RELIGHT_FLAGS::kOther) &&
+		 HasRelightFlag(otherRefFlags, RELIGHT_FLAGS::kOther)) {
 		 return true;
 	 }
 
@@ -395,6 +402,7 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 	// keep direct configID lookup in sync
 	configIDToJsonCfg[updatedCfg.configID] = updatedCfg;
 
+	// Update mesh path caches
 	for (auto meshKey : updatedCfg.meshPaths) {
 		if (meshKey.empty()) {
 			continue;
@@ -411,74 +419,145 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 		}
 	}
 
-	for (auto refKey : updatedCfg.refFormIDsAndModNames) {
-		if (refKey.empty()) {
-			continue;
-		}
-
-		toLower(refKey);
-
-		auto tildePos = refKey.find('~');
-		if (tildePos == std::string::npos) {
-			logger::warn("Invalid refID format '{}' while updating runtime config cache", refKey);
-			continue;
-		}
-
-		std::string formIDStr = trim(refKey.substr(0, tildePos));
-		std::string modName = trim(refKey.substr(tildePos + 1));
-
-		try {
-			if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
-				formIDStr = formIDStr.substr(2);
-			}
-
-			auto* dataHandler = RE::TESDataHandler::GetSingleton();
-			if (!dataHandler) {
-				logger::warn("TESDataHandler was null while updating ref config cache");
+		for (auto baseKey : updatedCfg.baseFormIDsAndModNames) {
+			if (baseKey.empty()) {
 				continue;
 			}
 
-			RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+			toLower(baseKey);
 
-			auto mod = dataHandler->LookupModByName(modName);
-			if (!mod) {
-				logger::warn("Invalid mod name '{}' while updating ref config cache", modName);
+			auto tildePos = baseKey.find('~');
+			if (tildePos == std::string::npos) {
+				logger::warn("Invalid baseID format '{}' while updating runtime config cache", baseKey);
 				continue;
 			}
 
-			RE::FormID runtimeID = 0;
+			std::string formIDStr = trim(baseKey.substr(0, tildePos));
+			std::string modName = trim(baseKey.substr(tildePos + 1));
 
-			if (mod->IsLight()) {
-				auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
-				if (!ref) {
-					logger::warn(
-						"Failed to resolve light plugin ref localID 0x{:X} from mod '{}' while updating ref config cache",
-						static_cast<std::uint32_t>(parsedID),
-						modName);
+			try {
+				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+					formIDStr = formIDStr.substr(2);
+				}
+
+				auto* dataHandler = RE::TESDataHandler::GetSingleton();
+				if (!dataHandler) {
+					logger::warn("TESDataHandler was null while updating base config cache");
 					continue;
 				}
 
-				runtimeID = ref->GetFormID();
+				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+
+				auto mod = dataHandler->LookupModByName(modName);
+				if (!mod) {
+					logger::warn("Invalid mod name '{}' while updating base config cache", modName);
+					continue;
+				}
+
+				RE::FormID runtimeID = 0;
+
+				if (mod->IsLight()) {
+					// For light plugins, we need to resolve the actual FormID
+					// Since this is a base ID, we look up the TESObjectLIGH by local ID
+					auto* baseObject = dataHandler->LookupForm<RE::TESObjectLIGH>(parsedID, modName);
+					if (!baseObject) {
+						logger::warn(
+							"Failed to resolve light plugin base localID 0x{:X} from mod '{}' while updating base config cache",
+							static_cast<std::uint32_t>(parsedID),
+							modName);
+						continue;
+					}
+					runtimeID = baseObject->GetFormID();
+				}
+				else {
+					runtimeID = parsedID;
+				}
+
+				if (LightData::HasRelightFlag(updatedCfg.flags, RELIGHT_FLAGS::kOutdoor)) {
+					auto& vec = baseFormIDToJsonCfgExteriors[runtimeID];
+					updated |= updateConfigMap(vec, updatedCfg);
+				}
+				else {
+					auto& vec = baseFormIDToJsonCfg[runtimeID];
+					updated |= updateConfigMap(vec, updatedCfg);
+				}
 			}
-			else {
-				runtimeID = parsedID;
+			catch (...) {
+				logger::warn(
+					"Failed to parse baseID '{}' while updating runtime config cache",
+					baseKey);
+			}
+		}
+	
+		// Update ref ID caches (original behavior)
+		for (auto refKey : updatedCfg.refFormIDsAndModNames) {
+			if (refKey.empty()) {
+				continue;
 			}
 
-			if (updatedCfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
-				auto& vec = refFormIDToJsonCfgExteriors[runtimeID];
-				updated |= updateConfigMap(vec, updatedCfg);
+			toLower(refKey);
+
+			auto tildePos = refKey.find('~');
+			if (tildePos == std::string::npos) {
+				logger::warn("Invalid refID format '{}' while updating runtime config cache", refKey);
+				continue;
 			}
-			else {
-				auto& vec = refFormIDToJsonCfg[runtimeID];
-				updated |= updateConfigMap(vec, updatedCfg);
+
+			std::string formIDStr = trim(refKey.substr(0, tildePos));
+			std::string modName = trim(refKey.substr(tildePos + 1));
+
+			try {
+				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
+					formIDStr = formIDStr.substr(2);
+				}
+
+				auto* dataHandler = RE::TESDataHandler::GetSingleton();
+				if (!dataHandler) {
+					logger::warn("TESDataHandler was null while updating ref config cache");
+					continue;
+				}
+
+				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+
+				auto mod = dataHandler->LookupModByName(modName);
+				if (!mod) {
+					logger::warn("Invalid mod name '{}' while updating ref config cache", modName);
+					continue;
+				}
+
+				RE::FormID runtimeID = 0;
+
+				if (mod->IsLight()) {
+					auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
+					if (!ref) {
+						logger::warn(
+							"Failed to resolve light plugin ref localID 0x{:X} from mod '{}' while updating ref config cache",
+							static_cast<std::uint32_t>(parsedID),
+							modName);
+						continue;
+					}
+					runtimeID = ref->GetFormID();
+				}
+				else {
+					runtimeID = parsedID;
+				}
+
+				if (LightData::HasRelightFlag(updatedCfg.flags, RELIGHT_FLAGS::kOutdoor)) {
+					auto& vec = refFormIDToJsonCfgExteriors[runtimeID];
+					updated |= updateConfigMap(vec, updatedCfg);
+				}
+				else {
+					auto& vec = refFormIDToJsonCfg[runtimeID];
+					updated |= updateConfigMap(vec, updatedCfg);
+				}
+			}
+			catch (...) {
+				logger::warn(
+					"Failed to parse refID '{}' while updating runtime config cache",
+					refKey);
 			}
 		}
-		catch (...) {
-			logger::warn(
-				"Failed to parse refID '{}' while updating runtime config cache",
-				refKey);
-		}
-	}
+	
 
 	return updated;
 }
@@ -532,7 +611,7 @@ void LightData::AddConfigToMaps(
 
 	if (isRefLight) {
 
-		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+		if (LightData::HasRelightFlag(cfg.flags,RELIGHT_FLAGS::kOutdoor)) {
 			LightData::refFormIDToJsonCfgExteriors[formID].push_back(cfg);
 		}
 		else {
@@ -545,7 +624,7 @@ void LightData::AddConfigToMaps(
 	}
 	else {
 
-		if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+		if (LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor)) {
 			LightData::baseFormIDToJsonCfgExteriors[formID].push_back(cfg);
 		}
 		else {

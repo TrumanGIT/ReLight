@@ -83,9 +83,9 @@ struct LightData {
 
 	static std::unordered_map<uint32_t, LightConfig> defaultConfigs;
 
-	static RE::TESForm* GetRefLightEmittanceSource(RE::TESObjectREFR* ref);
+	static RE::TESForm* GetPluginLightEmittanceSource(RE::TESObjectREFR* ref);
 
-	static void SetRefLightEmittanceSource(RE::TESObjectREFR* ref, RE::TESForm* form);
+	static void SetPluginLightEmittanceSource(RE::TESObjectREFR* ref, RE::TESForm* form);
 
 	static void ResetTriLightCache();
 
@@ -139,7 +139,7 @@ struct LightData {
 
 	static RE::TESObjectLIGH* GetTESObjectLightFromNiLight(RE::NiLight* niLight);
 
-	static bool HasRelightFlag(uint32_t flags, LIGHT_FLAGS flag);
+	static bool HasRelightFlag(uint32_t flags, RELIGHT_FLAGS flag);
 
 	static bool ShouldMergeByFlags(uint32_t refAflags, uint32_t otherRefFlags);
 

@@ -25,9 +25,11 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     // For torches/lanterns (CanBeCarried), use the light's own FormID and base ID lookup
     RE::FormID searchFormID = ref->GetFormID();
     bool isBaseID = false;
+    bool canBeCarried = light->CanBeCarried();
     std::string modName = "";
-
-    if (light->CanBeCarried()) {
+    
+    // equippable lights user data is the player itself so we must use the base light object owner file
+    if (canBeCarried) {
         // Torch/lantern: use the light template's data
         const RE::TESFile* baseOriginFile = light->GetDescriptionOwnerFile();
         modName = baseOriginFile ? baseOriginFile->fileName : "";
@@ -39,6 +41,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
             modName = "Skyrim.esm";
         }
     }
+    // use the ref as the base origin file if its not a equipable ligh
     else {
         const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
         modName = refOriginFile ? refOriginFile->fileName : "";
@@ -59,12 +62,12 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 
             if (cfg.emittanceRegion) {
                 if (auto* form = RE::TESForm::LookupByEditorID(cfg.externalEmittance)) {
-                    LightData::SetRefLightEmittanceSource(ref, form);
+                    LightData::SetPluginLightEmittanceSource(ref, form);
                 }
             }
 
             if (cfg.externalEmittance.empty()) {
-                LightData::SetRefLightEmittanceSource(ref, nullptr);
+                LightData::SetPluginLightEmittanceSource(ref, nullptr);
             }
 
             auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
@@ -74,6 +77,10 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
 
             LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
             niLight->name = "ol";
+
+            // mark 4 so can be excluded in light flicker prevention (IsLightAffectingSurface Hook)
+            if (canBeCarried) niLight->fadeAmount = 4; 
+
             return niLight;
         }
         return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
@@ -83,17 +90,13 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
     if (!niLight) return niLight;
 
-    // For torches/lanterns, create a config automatically, skip already 
-    if (light->CanBeCarried()) {
+    // For torches/lanterns, create a config in memory so can be edited in the light editor
+    if (canBeCarried) {
 
         LightConfig cfg;
         CreateConfigFromPluginLight(cfg, niLight, light, ref, edid, modName, true);
 
-        LightData::configIDToJsonCfg[cfg.configID] = cfg;
-        LightData::defaultConfigs[cfg.configID] = cfg;
         niLight->unk138 = cfg.configID;
-
-        logger::info("Created config for torch/lantern: {} (ID: {})", cfg.menuName, cfg.configID);
     }
 
     niLight->name = "ol";
@@ -106,7 +109,7 @@ void TESObjectLIGH_GenDynamic::Install() {
     std::array targets{
         std::make_pair(RELOCATION_ID(17206, 17603), 0x1D3),  // TESObjectLIGH::Clone3D
         std::make_pair(RELOCATION_ID(19252, 19678), 0xB8),   // TESObjectREFR::AddLight
-        std::make_pair(RELOCATION_ID(0, 15704), 0xAC),       // FUN_140217160 -> TESObjectLIGH::GenDynamic 
+        std::make_pair(RELOCATION_ID(15527, 15704), 0xAC),    // AE FUN_140217160  SE FUN_1401ca8d0
     };
 
     for (const auto& [address, offset] : targets) {
@@ -135,8 +138,7 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
         formID &= 0x00FFFFFF;
     }
 
-    // double use of this vector can also disable vanilla lights its also used to prevent refs from getting relights  
-                            
+    // double use of this vector can also disable vanilla lights its also used to prevent refs from getting relights                  
     if (globals::excludedRefFormIDs.contains(formID)) {
         logger::info("excluded ref runtime formID 0x{:08X} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()));
         return false;
@@ -234,7 +236,7 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
     // torches spells we marked in attachlight hooks so they can bypass here
-    if (light->unk060 == 4) return true;
+    if (light->light->fadeAmount == 4) return true;
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures || globals::unDesiredMenuOpen.load()) return true;
 

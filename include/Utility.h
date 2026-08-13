@@ -247,6 +247,7 @@ inline RE::NiAVObject* FindObjectByNameRecursive(RE::NiAVObject* root, std::stri
 	}
 }*/
 
+
 inline void hasInverseSquareLighting()
 {
 	const auto path =
@@ -256,6 +257,17 @@ inline void hasInverseSquareLighting()
 	globals::islInstalled = std::filesystem::exists(path);
 
 	logger::info("info isl found?: {}", globals::islInstalled);
+}
+
+inline void hasNativeMeshLightFlickerFix()
+{
+	const auto path =
+		std::filesystem::path("Data/SKSE/Plugins/NativeMeshLightFlickerFix.ini");
+
+
+	globals::isNativeLightFlickerFixInstalled = std::filesystem::exists(path);
+
+	logger::info("Native Light FLicker Mesh Fix Installed?: {}", globals::isNativeLightFlickerFixInstalled);
 }
 
 
@@ -300,15 +312,14 @@ inline void UnpackFD(float fd, uint16_t& gen, uint16_t& idx)
 	idx = (uint16_t)(packed & 0xFFFF);
 }
 
-inline std::string BuildConfigPath(const std::string& refIDStr)
+inline std::string BuildConfigPath(const std::string& fileName)
 {
-	if (refIDStr.empty()) {
+	if (fileName.empty()) {
 		return "";
 	}
 
-	std::string safeName = refIDStr;
+	std::string safeName = fileName;
 
-	// Replace characters that are annoying for file paths
 	std::replace(safeName.begin(), safeName.end(), '~', '_');
 	std::replace(safeName.begin(), safeName.end(), ':', '_');
 	std::replace(safeName.begin(), safeName.end(), '\\', '_');

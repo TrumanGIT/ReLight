@@ -58,13 +58,13 @@ void CreateConfigFromPluginLight(LightConfig& cfg, RE::NiLight* niLight, RE::TES
 	cfg.configID = globals::nextID++;
 	cfg.menuCategory = modName;
 	cfg.menuName = std::format("{} ({:08X})",edid, cfg.configID);
-	cfg.isPluginLight = true; 
-
-	cfg.configPath = BuildConfigPath(cfg.refFormIDsAndModNames[0]);
+	cfg.isPluginLight = true;
 
 	cfg.flags = static_cast<uint32_t>(light->data.flags.underlying());
 
 	auto formID = useBaseID ? light->GetFormID() : ref->GetFormID();
+
+	auto formIDandModName = forms::BuildFormIDAndModName(formID, modName);
 
 	// strip load order index (first 2 digits) if not a light plugin
 	if ((formID & 0xFF000000) != 0xFE) {
@@ -83,22 +83,26 @@ void CreateConfigFromPluginLight(LightConfig& cfg, RE::NiLight* niLight, RE::TES
 			cfg.depthBias = 5.0f;
 		}
 
-		auto extEmittance = LightData::GetRefLightEmittanceSource(ref);
+		auto extEmittance = LightData::GetPluginLightEmittanceSource(ref);
 
 		if (extEmittance) {
-			std::string edid = clib_util::editorID::get_editorID(extEmittance);
-			cfg.externalEmittance = edid;
+			std::string extEdid = clib_util::editorID::get_editorID(extEmittance);
+			cfg.externalEmittance = extEdid;
 		}
 
-		LightData::refFormIDToJsonCfg[formID].push_back(cfg);
-
-		cfg.refFormIDsAndModNames.push_back(forms::BuildFormIDAndModName(formID, modName));
+		if (!useBaseID){
+		cfg.refFormIDsAndModNames.push_back(formIDandModName);
+		cfg.configPath = BuildConfigPath(formIDandModName);
+		
+		LightData::AddConfigToMaps(cfg, true, formID);
+		}
 	}
 
 	if (useBaseID) {
-		cfg.baseFormIDsAndModNames.push_back(forms::BuildFormIDAndModName(formID, modName));
-
-		LightData::baseFormIDToJsonCfg[formID].push_back(cfg);
+		cfg.baseFormIDsAndModNames.push_back(formIDandModName);
+		cfg.configPath = BuildConfigPath(formIDandModName);
+	
+		LightData::AddConfigToMaps(cfg, false, formID); 
 	}
 
 
@@ -270,7 +274,10 @@ bool saveConfiguration(const LightConfig& config) {
 		FOREACH_BOOL(JSON_WRITE)
 
 			const bool isSpotLight =
-			(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+			config.isPluginLight
+			? (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight) ||
+				config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
+			: LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kSpotLight);
 
 		 float maxRadius = isSpotLight ? 5000.0f : 500.0f;
 
@@ -363,8 +370,11 @@ bool saveNewConfiguration(LightConfig& config)
 #define JSON_WRITE(C, I) newEntry[#C] = config.C;
 		FOREACH_BOOL(JSON_WRITE)
 
-		const bool isSpotLight =
-		(config.flags & static_cast<int>(LIGHT_FLAGS::kSpotLight)) != 0;
+			bool isSpotLight =
+			config.isPluginLight
+			? (config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotlight) ||
+				config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
+			: LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kSpotLight);
 
 		 float maxRadius = isSpotLight ? 5000.0f : 500.0f;
 
@@ -776,7 +786,7 @@ bool saveNewConfiguration(LightConfig& config)
 			  RE::FormID runtimeID = parsedID;
 
 			  if (isBaseID) {
-				  if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				  if (LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor)) {
 					  LightData::baseFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
 					  logger::info("adding base ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
 				  }
@@ -786,7 +796,7 @@ bool saveNewConfiguration(LightConfig& config)
 				  }
 			  }
 			  else {
-				  if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+				  if (LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor)) {
 					  LightData::refFormIDToJsonCfgExteriors[runtimeID].push_back(cfg);
 					  logger::info("adding ref ID outdoor config 0x{:08X}", static_cast<std::uint32_t>(runtimeID));
 				  }
@@ -806,7 +816,7 @@ bool saveNewConfiguration(LightConfig& config)
 	  LightData::configIDToJsonCfg[cfg.configID] = cfg;
 	  LightData::defaultConfigs[cfg.configID] = cfg;
 
-	  cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
+	  cfg.print(LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor));
   }
 
  uint32_t ParseRelightFlags(const nlohmann::json& j)
@@ -993,7 +1003,7 @@ void parseTemplates() {
 						continue;
 					}
 
-					if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+					if (LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor)) {
 						LightData::meshPathToJsonCfgExteriors[meshPath].push_back(cfg);
 					}
 					else {
@@ -1001,7 +1011,7 @@ void parseTemplates() {
 					}
 				}
 
-				cfg.print(cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor));
+				cfg.print(LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor));
 			}
 
 			//used to get the right index to save back too json file for multi light configs
@@ -1069,6 +1079,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 	}
 }
 
+ // for multi lights 
  bool AppendNewConfigEntryFromLight(
 	 const std::string& configPath,
 	 std::uint16_t jsonIndex,
@@ -1134,7 +1145,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 }
 
 		 if (!cfg.refFormIDsAndModNames.empty()) {
-			 cfg.flags |= static_cast<uint32_t>(LIGHT_FLAGS::kNoMerging);
+			 cfg.flags |= static_cast<uint32_t>(RELIGHT_FLAGS::kNoMerging);
 
 			 if (cfg.refFormIDsAndModNames.size() == 1) {
 				 newEntry["refID"] = cfg.refFormIDsAndModNames.front();
@@ -1209,7 +1220,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		 LightData::defaultConfigs[cfg.configID] = cfg;
 
 		 if (refLight) {
-			 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+			 if (LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor)) {
 				 LightData::refFormIDToJsonCfgExteriors[refFormID].push_back(cfg);
 			 }
 			 else {
@@ -1223,7 +1234,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 				 cfg.jsonIndex);
 		 }
 		 else {
-			 if (cfg.flags & static_cast<uint32_t>(LIGHT_FLAGS::kOutdoor)) {
+			 if (LightData::HasRelightFlag(cfg.flags, RELIGHT_FLAGS::kOutdoor)) {
 				 LightData::baseFormIDToJsonCfgExteriors[baseFormID].push_back(cfg);
 			 }
 			 else {

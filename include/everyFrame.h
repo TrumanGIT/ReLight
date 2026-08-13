@@ -1100,9 +1100,9 @@ inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
 	// spells like candle light ect, we mark them unk060 = 4; so that light flicker prevention can identify them without much work
 	if (globals::magicLightQueued.load()) {
 		if (niLight->parent && niLight->parent == globals::magicLightAttachNode) {
-			light->unk060 = 4;
+			light->light->fadeAmount = 4; 
 
-			logger::info("set magic light unk060 to 4 so it will skip the islightaffectingsurface hook");
+			logger::debug("set magic light fadeAmount to 4 so it will work with light flicker prevention mode");
 
 			globals::magicLightQueued.store(false);
 			globals::magicLightAttachNode = nullptr;
@@ -1136,7 +1136,7 @@ inline void UpdateRegionEmittance(RE::NiColor& a_color, RE::TESRegion* a_region)
 		auto* setting = RE::GameSettingCollection::GetSingleton()->GetSetting("fWeatherFlashDirectional");
 		float flashDirectional = setting ? setting->data.f : 1.0f;
 		sky->SetColor(a_color, &colorBlend, sky->flash * flashDirectional);
-		logger::info("Updated Region Emittance Color");
+		logger::debug("Updated Region Emittance Color");
 	}
 }
 
@@ -1158,9 +1158,6 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		auto name = std::string_view(light->light->name.c_str());
 		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')
 			continue;
-
-		//i label torch bslight unk60 as 4 (torch flicker is handled by vanilla game flicker hook) 
-		if (light->unk060 == 4) continue; 
 
 		// dont update lights far from player
 		auto diff = light->light->world.translate - playerPos;
@@ -1219,7 +1216,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		//dont increase gets to messy, only handle mini objects like mini fires in windhelm otherwise too bright
 		if (scale >= 1.0f) scale = 1.0f;
 
-		if (!LightData::HasRelightFlag(config.flags, LIGHT_FLAGS::kPulse)) {
+		if (!LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kPulse)) {
 
 			// ---- Flicker (matches vanilla kFlicker / kFlickerSlow) ----
 			auto constAttenOffset = std::fmod(pointLight->constAttenuation + getRandomFloat(1.1f, 13.1f) * flickerDelta, RE::NI_TWO_PI);
@@ -1398,7 +1395,7 @@ inline void handlePendingMerges() {
   
 		if (!isMutliLightConfig &&
 			allowLightMerge &&
-			!LightData::HasRelightFlag(cfgs[0].flags, LIGHT_FLAGS::kNoMerging)) {
+			!LightData::HasRelightFlag(cfgs[0].flags, RELIGHT_FLAGS::kNoMerging)) {
             auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
             if (!cloneLight) { reprocessQueue = std::move(nextQueue); continue; }
 
