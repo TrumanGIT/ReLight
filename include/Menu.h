@@ -401,7 +401,7 @@ namespace UI {
                     niLight->unk138 = cfg.configID;
                     configID = cfg.configID;
 
-                    logger::info("Created config for 'ob' (object light) light: {} (ID: {})", cfg.menuName, cfg.configID);
+                    logger::info("Created config for 'ol' (object light) light: {} (ID: {})", cfg.menuName, cfg.configID);
                 }
             }
             else {

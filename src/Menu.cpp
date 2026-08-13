@@ -51,9 +51,6 @@ namespace UI {
 
             ImGuiMCP::PopStyleColor();
 
-            ImGuiMCP::SameLine();
-            ImGuiMCP::Text("(This only works with relight overhauls that use relight flags)");
-
             ImGuiMCP::SameLine(); 
 
             bool saveINIClicked = ImGuiMCP::Button("Save INI");
@@ -74,6 +71,10 @@ namespace UI {
                 saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
             }
             renderDone(saveINIButton, iconX, iconY);
+
+            ImGuiMCP::SameLine();
+
+            ImGuiMCP::Text("(This only works with relight overhauls that use relight flags)");
 
             ImGuiMCP::ImVec2 avail{};
             ImGuiMCP::GetContentRegionAvail(&avail);
@@ -181,6 +182,7 @@ namespace UI {
             ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text, ImGuiMCP::ImVec4{ 1.0f, 0.85f, 0.4f, 1.0f });
 
             ImGuiMCP::Text("Light Merge");
+
             ImGuiMCP::PopStyleColor();
 
             ImGuiMCP::SameLine(); 
@@ -203,6 +205,10 @@ namespace UI {
                 saveINIButton.set(ok ? buttonState::Success : buttonState::Fail, 2.0f);
             }
             renderDone(saveINIButton, iconX, iconY);
+
+            ImGuiMCP::SameLine();
+
+            ImGuiMCP::Text("(This only works with relight lights that use relight flags)");
 
             ImGuiMCP::Spacing();
 
@@ -1479,6 +1485,8 @@ namespace UI {
             };
 
         static AttachLightStep step = AttachLightStep::SelectTarget;
+
+        //TODO:: put this in a struct or something
         static bool createNewTemplate = false;
         static bool multiLight = false;
         static bool refLight = false;
@@ -2312,7 +2320,7 @@ namespace UI {
             }
 
             if (showMenuNameBox) {
-                ImGuiMCP::SetCursorPosX(320.0f);
+                ImGuiMCP::SetCursorPosX(280.0f);
                 ImGuiMCP::Text("Set Menu Name: ");
                 ImGuiMCP::SameLine();
                 // Dummy added so both inputs for name and category are vertically aligned
@@ -2327,7 +2335,7 @@ namespace UI {
             }
 
             if (showMenuCategoryBox) {
-                ImGuiMCP::SetCursorPosX(320.0f);
+                ImGuiMCP::SetCursorPosX(280.0f);
                 ImGuiMCP::Text("Set Category Name (optional): ");
                 ImGuiMCP::SameLine();
                 ImGuiMCP::SetNextItemWidth(250.0f);
