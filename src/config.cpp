@@ -770,7 +770,6 @@ bool saveNewConfiguration(LightConfig& config)
 					  continue;
 				  }
 
-				  // Store the full runtime FormID, including the ESL load order.
 				  parsedID = form->GetFormID();
 
 				  logger::debug(

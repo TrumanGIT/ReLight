@@ -145,7 +145,7 @@ namespace forms {
 		 }
 
 		 if (modName.empty()) {
-			 logger::error("BuildFormIDAndModName: modName is empty");
+			 logger::error("BuildFormIDAndModName: modName is empty, 0x{:X}", formID);
 			 return "";
 		 }
 
