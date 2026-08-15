@@ -46,7 +46,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
 
   static void fillPendingMerges(RE::TESObjectREFR* a_this,
-      RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root);
+      RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root,
+      bool useMeshPath);
 
   static void finalizeMerge(PendingMerge& p, const std::vector<RE::ObjectRefHandle>& validMerges);
 

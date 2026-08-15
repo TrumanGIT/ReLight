@@ -376,7 +376,7 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 			return false;
 		}
 
-		LightManager::fillPendingMerges(a_this, cloneLight, cfgs[0], a_root);
+		LightManager::fillPendingMerges(a_this, cloneLight, cfgs[0], a_root, true);
 	}
 
 	// multi lights cant cleanly merge so just attach right now
@@ -612,110 +612,188 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 
 //we have to push this to be finalized later because ray casting (used to stop meriging through walls) isent ready until later
-void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
-	RE::NiPointLight* light, const LightConfig& cfg, RE::NiNode* refA_root) {
-
+void LightManager::fillPendingMerges(
+	RE::TESObjectREFR* refA,
+	RE::NiPointLight* light,
+	const LightConfig& cfg,
+	RE::NiNode* refA_root,
+	bool useMeshPath)
+{
 	if (!refA || !light) return;
 
 	// attach light to mesh
-	LightManager::attachLightUsingAttachPath(cfg, refA_root, light, refA->GetFormID());
+	LightManager::attachLightUsingAttachPath(
+		cfg,
+		refA_root,
+		light,
+		refA->GetFormID());
 
 	PendingMerge p;
 
-	p.winningConfig = cfg; 
+	p.winningConfig = cfg;
 
-	p.light = RE::NiPointer<RE::NiPointLight>(light); 
+	p.light = RE::NiPointer<RE::NiPointLight>(light);
 
 	p.refA = refA->GetHandle();
 
-	p.refARoot = refA_root; 
+	p.refARoot = refA_root;
 
 	int potentialMergeCount = 0;
 
-	//mabye com back and set this to correct mesh path instead
+	// mabye come back and set this to correct mesh path instead
 	p.refALightName = cfg.menuName;
 
 	bool increasedMergeDistance = false;
 
-	RE::TES::GetSingleton()->ForEachReferenceInRange(refA, globals::lightMergeSeekingDistance, [&](RE::TESObjectREFR* otherRef) {
-		if (!otherRef || otherRef == refA || otherRef->IsDisabled()) return RE::BSContainer::ForEachResult::kContinue;
-		if (potentialMergeCount >= globals::lightMergeMaxLights) return RE::BSContainer::ForEachResult::kStop;
+	RE::TES::GetSingleton()->ForEachReferenceInRange(
+		refA,
+		globals::lightMergeSeekingDistance,
+		[&](RE::TESObjectREFR* otherRef) {
 
-		const RE::FormID refBFormID = otherRef->GetFormID();
-		{
-			std::lock_guard lock(globals::mergedRefsMutex);
-			if (globals::mergedRefs.count(refBFormID) > 0) return RE::BSContainer::ForEachResult::kContinue;
-		}
-		{
-			std::lock_guard lock(globals::refsWithAttachedLightsMutex);
-			if (globals::refsWithAttachedLights.count(refBFormID) > 0) return RE::BSContainer::ForEachResult::kContinue;
-		}
+			if (!otherRef || otherRef == refA || otherRef->IsDisabled())
+				return RE::BSContainer::ForEachResult::kContinue;
 
-		auto base = otherRef->GetBaseObject();
-		auto model = base ? base->As<RE::TESModel>() : nullptr;
-		if (!model) return RE::BSContainer::ForEachResult::kContinue;
+			if (potentialMergeCount >= globals::lightMergeMaxLights)
+				return RE::BSContainer::ForEachResult::kStop;
 
-		std::string otherRefName = extractMeshName(model->GetModel());
+			const RE::FormID refBFormID = otherRef->GetFormID();
 
-		toLower(otherRefName); 
+			{
+				std::lock_guard lock(globals::mergedRefsMutex);
 
-		//priority grab bc we do partial searches which can bring up false positive matches
-		std::string otherRefNameMatch = std::string(findPriorityMatch(otherRefName));
+				if (globals::mergedRefs.count(refBFormID) > 0)
+					return RE::BSContainer::ForEachResult::kContinue;
+			}
 
-		if (!otherRefNameMatch.empty()) {
+			{
+				std::lock_guard lock(globals::refsWithAttachedLightsMutex);
 
-			if (forms::isExclude(otherRefName, otherRef)) return RE::BSContainer::ForEachResult::kContinue;
+				if (globals::refsWithAttachedLights.count(refBFormID) > 0)
+					return RE::BSContainer::ForEachResult::kContinue;
+			}
 
-			bool looseMatch = false;
+			const auto base = otherRef->GetBaseObject();
 
-			auto cell = otherRef->GetParentCell();
+			if (!base)
+				return RE::BSContainer::ForEachResult::kContinue;
+
+		const auto model = base->As<RE::TESModel>();
+
+			if (!model)
+				return RE::BSContainer::ForEachResult::kContinue;
+
+		const auto cell = otherRef->GetParentCell();
+
 			if (!cell) {
-				logger::warn("no cell cant determine if should use exterior or interior configs");
+				logger::warn(
+					"no cell cant determine if should use exterior or interior configs");
+
 				return RE::BSContainer::ForEachResult::kContinue;
 			}
 
-			bool isInterior = cell->IsInteriorCell();
-			auto cfgs = findConfigsForMeshPath(otherRefNameMatch, isInterior);
+		const bool isInterior = cell->IsInteriorCell();
 
-			if (cfgs.empty()) {
-				logger::warn("no cfgs found for refB {:08X} with meshPath {} during merge", refBFormID, otherRefName);
-				return RE::BSContainer::ForEachResult::kContinue;
-			}
+			LightConfig otherRefCfg;
 
-			LightConfig otherRefCfg = cfgs[0]; 
+			if (useMeshPath) {
 
-			uint32_t refAflags = cfg.flags;
+				std::string otherRefName =
+					extractMeshName(model->GetModel());
 
-			uint32_t otherRefFlags = otherRefCfg.flags;
+				toLower(otherRefName);
 
-				if (!increasedMergeDistance && (LightData::HasRelightFlag(refAflags, RELIGHT_FLAGS::kIncreasedMergeDistance) || LightData::HasRelightFlag(otherRefFlags, RELIGHT_FLAGS::kIncreasedMergeDistance))) {
-					increasedMergeDistance = true;
-					logger::debug("increased distance used");
+				// priority grab bc we do partial searches which can bring up false positive matches
+				std::string otherRefNameMatch =
+					std::string(findPriorityMatch(otherRefName));
+
+				if (otherRefNameMatch.empty())
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				if (forms::isExclude(otherRefName, otherRef))
+					return RE::BSContainer::ForEachResult::kContinue;
+
+				auto cfgs =
+					findConfigsForMeshPath(otherRefNameMatch, isInterior);
+
+				if (cfgs.empty()) {
+					logger::warn(
+						"no cfgs found for refB {:08X} with meshPath {} during merge",
+						refBFormID,
+						otherRefName);
+
+					return RE::BSContainer::ForEachResult::kContinue;
 				}
-			
 
-			looseMatch = LightData::ShouldMergeByFlags(refAflags, otherRefFlags);
+				otherRefCfg = cfgs[0];
 
-			//logger::debug("comparing refA {:08X} {} and refB {:08X} {}  for merge == {} distance={}",
-			//	refA->GetFormID(), refALightName, refBFormID, otherRefNameMatch, looseMatch, distance);
-			
+			}
+
+			//use base object 
+			else {
+
+				const auto baseFormID = base->GetFormID();
+
+				auto* baseCfgs =
+					LightData::findConfigsByFormID(
+						baseFormID,
+						isInterior,
+						true);
+
+				if (!baseCfgs || baseCfgs->empty()) {
+					return RE::BSContainer::ForEachResult::kContinue;
+				}
+
+				otherRefCfg = baseCfgs->front();
+			}
+
+		const	uint32_t refAflags = cfg.flags;
+
+		const	uint32_t otherRefFlags = otherRefCfg.flags;
+
+			if (!increasedMergeDistance &&
+				(LightData::HasRelightFlag(
+					refAflags,
+					RELIGHT_FLAGS::kIncreasedMergeDistance) ||
+					LightData::HasRelightFlag(
+						otherRefFlags,
+						RELIGHT_FLAGS::kIncreasedMergeDistance))) {
+
+				increasedMergeDistance = true;
+
+				logger::debug("increased distance used");
+			}
+
+			const	bool looseMatch =
+				LightData::ShouldMergeByFlags(
+					refAflags,
+					otherRefFlags);
+
 			if (looseMatch) {
 
-				//the final result of a merged light should  reflect a shadow light if 1 of the mergies was a shadow light
-				if (!cfg.shadowLight && cfgs[0].shadowLight) {
-					p.winningConfig = cfgs[0];
+				// the final result of a merged light should reflect
+				// a shadow light if 1 of the mergies was a shadow light
+				if (!cfg.shadowLight && otherRefCfg.shadowLight) {
+
+					p.winningConfig = otherRefCfg;
 				}
 
 				// If both are shadow lights, larger radius wins
-				else if (cfg.shadowLight && cfgs[0].shadowLight) {
-					if (cfgs[0].radius > cfg.radius) {
-						p.winningConfig = cfgs[0];
+				else if (cfg.shadowLight && otherRefCfg.shadowLight) {
+
+					if (otherRefCfg.radius > cfg.radius) {
+						p.winningConfig = otherRefCfg;
 					}
-						}
+				}
 
-				float zDistanceToUse = increasedMergeDistance ? globals::fMaxZDiffToMergeIncreased :  globals::fMaxZDiffToMerge;
+				float zDistanceToUse =
+					increasedMergeDistance
+					? globals::fMaxZDiffToMergeIncreased
+					: globals::fMaxZDiffToMerge;
 
-				auto distanceToUse = p.winningConfig.shadowLight ? globals::shadowLightMergeDistance : globals::lightMergeDistance;
+				auto distanceToUse =
+					p.winningConfig.shadowLight
+					? globals::shadowLightMergeDistance
+					: globals::lightMergeDistance;
 
 				auto posA = refA->GetPosition();
 				auto posB = otherRef->GetPosition();
@@ -724,76 +802,118 @@ void LightManager::fillPendingMerges(RE::TESObjectREFR* refA,
 				float dy = posA.y - posB.y;
 				float dz = posA.z - posB.z;
 
-				float distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+				float distance =
+					std::sqrt(
+						dx * dx +
+						dy * dy +
+						dz * dz);
 
 				// no increased merge distance flag among mergies
 				if (!increasedMergeDistance) {
 
 					if (distance > distanceToUse) {
-
 						return RE::BSContainer::ForEachResult::kContinue;
 					}
 				}
-				
-				float zDiff = std::abs(refA->GetPosition().z - otherRef->GetPosition().z);
+
+				float zDiff =
+					std::abs(
+						refA->GetPosition().z -
+						otherRef->GetPosition().z);
+
 				if (zDiff > zDistanceToUse) {
-					logger::debug("refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {} ",
-						refA->GetFormID(), refBFormID, zDiff, p.refALightName, otherRefName);
+
+					logger::debug(
+						"refA {:08X} and refB {:08X} z distance {} too great, skipping merge for light {} ",
+						refA->GetFormID(),
+						refBFormID,
+						zDiff,
+						p.refALightName,
+						useMeshPath ? "meshPath" : "baseID");
+
 					return RE::BSContainer::ForEachResult::kContinue;
 				}
 
-				p.candidateHandles.push_back(otherRef->GetHandle());
-				logger::debug("refA {:08X} and refB {:08X} with matched nodeName {} selected to merge. distance apart = {}",
-					refA->GetFormID(), refBFormID, p.refALightName, distance);
+				p.candidateHandles.push_back(
+					otherRef->GetHandle());
+
+				logger::debug(
+					"refA {:08X} and refB {:08X} selected to merge. distance apart = {}",
+					refA->GetFormID(),
+					refBFormID,
+					distance);
+
 				potentialMergeCount++;
 			}
-		}
-		return RE::BSContainer::ForEachResult::kContinue;
+
+			return RE::BSContainer::ForEachResult::kContinue;
 		});
 
 	// no merges so just attach now
 	if (p.candidateHandles.empty()) {
 
-		logger::debug("ref {:08X} has no merge candidates, attaching light", refA->GetFormID());
-		LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig, refA->GetScale());
+		logger::debug(
+			"ref {:08X} has no merge candidates, attaching light",
+			refA->GetFormID());
+
+		LightData::setNiPointLightDataFromCfg(
+			p.light.get(),
+			p.winningConfig,
+			refA->GetScale());
 
 		p.light->name = "RL" + p.refALightName;
-		LightManager::attachNiPointLightToShadowSceneNode(p.light.get(), p.winningConfig, refA);
 
-		if (globals::enableDebugLightBulbs) AttachDebugMarker(refA_root, p.light.get()); 
+		LightManager::attachNiPointLightToShadowSceneNode(
+			p.light.get(),
+			p.winningConfig,
+			refA);
 
-		// light flicker prevention blocks newly spawned torch and candle lights from activators.
-		// this should help
+		if (globals::enableDebugLightBulbs)
+			AttachDebugMarker(
+				refA_root,
+				p.light.get());
+
+		// light flicker prevention blocks newly spawned torch and candle
+		// lights from activators. this should help
 		LightData::InvalidateTriLightCacheForActivator(refA);
 
 		return;
 	}
 
-
 	for (const RE::ObjectRefHandle handle : p.candidateHandles) {
-		auto ref = handle.get();
+
+		const auto ref = handle.get();
+
 		if (ref) {
-			std::lock_guard lock(globals::mergedRefsMutex);
-			globals::mergedRefs.insert(ref.get()->GetFormID());
+
+			std::lock_guard lock(
+				globals::mergedRefsMutex);
+
+			globals::mergedRefs.insert(
+				ref.get()->GetFormID());
 		}
 	}
 
-	// register for finilazation in update hook otherwise we cant ray cast to stop lights from merging through walls its too early in loading stage
-	p.registeredAt = std::chrono::steady_clock::now();
+	// register for finalization in update hook otherwise we cant ray cast
+	// to stop lights from merging through walls its too early in loading stage
+	p.registeredAt =
+		std::chrono::steady_clock::now();
 
 	{
-		std::lock_guard lock(LightManager::pendingMergesMutex);
+		std::lock_guard lock(
+			LightManager::pendingMergesMutex);
+
 		LightManager::pendingMerges.push_back(p);
 	}
 }
 
- void LightManager::finalizeMerge(PendingMerge& p, const std::vector<RE::ObjectRefHandle>& validMerges) {
+void LightManager::finalizeMerge(PendingMerge& p, const std::vector<RE::ObjectRefHandle>& validMerges) {
 
-	 auto light = p.light.get(); 
+	const auto light = p.light.get(); 
 
 	 if (!light) return; 
 
-	 auto refA = p.refA.get();
+	const auto refA = p.refA.get();
 	 if (!refA) return;
 
 	 LightData::setNiPointLightDataFromCfg(p.light.get(), p.winningConfig, refA->GetScale());

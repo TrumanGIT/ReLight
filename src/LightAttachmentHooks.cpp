@@ -62,6 +62,8 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	// this looks for refs
 	if (auto* refCfgs = LightData::findConfigsByFormID(refFormID, isInterior, false)) {
 
+		if (!refCfgs) return niAVObject;
+
 		bool alreadyAttachedDebugMarker = false;
 
 		for (const auto& cfg : *refCfgs) {
@@ -93,7 +95,41 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	// this looks for base
 	if (auto* baseCfgs = LightData::findConfigsByFormID(baseFormID, isInterior, true)) {
 
+		if (!baseCfgs || baseCfgs->empty()) return niAVObject;
+
+		if (globals::removeFakeGlowOrbs) {
+			glowOrbRemover(a_root);
+		}
+
+		globals::baseFormsWithAttachedLights.emplace(baseFormID);
+
 		bool alreadyAttachedDebugMarker = false;
+
+		const auto allowLightMerge = baseCfgs->front().shadowLight ? globals::enableShadowLightMerging : globals::enableLightMerging;
+
+		const auto isMultiLight = baseCfgs->size() > 1;
+
+		logger::info(
+			"BASE MERGE CHECK {:08X}: configs={}, shadow={}, allowMerge={}, noMerging={}",
+			baseFormID,
+			baseCfgs->size(),
+			baseCfgs->front().shadowLight,
+			allowLightMerge,
+			LightData::HasRelightFlag(
+				baseCfgs->front().flags,
+				RELIGHT_FLAGS::kNoMerging));
+
+		//configs with more then 1 light in the json object should not merge
+		if (!isMultiLight && allowLightMerge && !LightData::HasRelightFlag(baseCfgs->front().flags, RELIGHT_FLAGS::kNoMerging)) {
+			auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
+			if (!cloneLight) {
+				logger::warn("Failed to clone NiPointLight for base object {:08X} )", baseFormID);
+				return niAVObject;
+			}
+
+			LightManager::fillPendingMerges(a_this, cloneLight, baseCfgs->front(), a_root, false);
+			return niAVObject;
+		}
 
 		for (const auto& cfg : *baseCfgs) {
 
@@ -109,13 +145,11 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 				logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
 			}
 
-			globals::baseFormsWithAttachedLights.emplace(baseFormID);
+	
 
 		}
 
-		if (globals::removeFakeGlowOrbs) {
-			glowOrbRemover(a_root);
-		}
+	
 
 		return niAVObject;
 	}
