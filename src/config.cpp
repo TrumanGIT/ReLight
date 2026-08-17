@@ -752,7 +752,7 @@ bool saveNewConfiguration(LightConfig& config)
 			  }
 
 			  // remove load order index of non light plugins incase users load order changes
-			  if (!file->IsLight()) {
+			  if (!isLightPlugin) {
 				  parsedID &= 0x00FFFFFF;
 			  }
 			  // light plugins we need to store the full runtime ID so we dont get accidental matches with using just 3 digit forms as the key
