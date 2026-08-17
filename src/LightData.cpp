@@ -416,6 +416,8 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 		}
 	}
 
+
+
 		for (auto baseKey : updatedCfg.baseFormIDsAndModNames) {
 			if (baseKey.empty()) {
 				continue;
@@ -445,15 +447,23 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 
 				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
 
+				const bool isLightPlugin = parsedID <= 0xFFF;
+
+				if (!isLightPlugin) {
+					parsedID &= 0x00FFFFFF;
+				}
+
 				auto mod = dataHandler->LookupModByName(modName);
 				if (!mod) {
 					logger::warn("Invalid mod name '{}' while updating base config cache", modName);
 					continue;
 				}
 
+		
+
 				RE::FormID runtimeID = 0;
 
-				if (mod->IsLight()) {
+				if (isLightPlugin) {
 					// For light plugins, we need to resolve the actual FormID
 					// Since this is a base ID, we look up the TESObjectLIGH by local ID
 					auto* baseObject = dataHandler->LookupForm<RE::TESObjectLIGH>(parsedID, modName);
@@ -503,6 +513,7 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 			std::string formIDStr = trim(refKey.substr(0, tildePos));
 			std::string modName = trim(refKey.substr(tildePos + 1));
 
+
 			try {
 				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
 					formIDStr = formIDStr.substr(2);
@@ -522,9 +533,15 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 					continue;
 				}
 
+				const bool isLightPlugin = parsedID <= 0xFFF;
+
+				if (!isLightPlugin) {
+					parsedID &= 0x00FFFFFF;
+				}
+
 				RE::FormID runtimeID = 0;
 
-				if (mod->IsLight()) {
+				if (isLightPlugin) {
 					auto* ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
 					if (!ref) {
 						logger::warn(

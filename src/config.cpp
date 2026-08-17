@@ -341,13 +341,18 @@ bool saveConfiguration(const LightConfig& config) {
 		}
 
 		outFile << data.dump(4);
+
 		logger::info("Successfully saved light data to template at {} (index {})", config.configPath, config.jsonIndex);
+
+
 		return true;
 	}
 	catch (const std::exception& e) {
 		logger::error("Failed to write config {}: {}", config.configPath, e.what());
 		return false;
 	}
+
+
 }
 
 bool saveNewConfiguration(LightConfig& config)
@@ -755,6 +760,7 @@ bool saveNewConfiguration(LightConfig& config)
 			  if (!isLightPlugin) {
 				  parsedID &= 0x00FFFFFF;
 			  }
+
 			  // light plugins we need to store the full runtime ID so we dont get accidental matches with using just 3 digit forms as the key
 			  // example light plugin form is parsed as 0x019 and thats all we use there is high chance for unintended match
 			  else {

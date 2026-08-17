@@ -354,6 +354,9 @@ namespace UI {
         ImGuiMCP::Checkbox("Remove Fake Glow Orbs", &globals::removeFakeGlowOrbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Remove fake glow orbs used by Bethesda");
 
+        ImGuiMCP::Checkbox("All Relights As ISL", &globals::allRelightsAsISL);
+        if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Make all Relights have Inverse Squared Lighting regardless of ISL flag fake glow orbs used by Bethesda, Requires Cell Rrset");
+
         ImGuiMCP::Checkbox("Enable Debugging Light Bulbs", &globals::enableDebugLightBulbs);
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Show Creation Kit Style Light Bulbs Where Lights Were Placed");
 
@@ -589,6 +592,7 @@ namespace UI {
                         else {
                             // Existing plugin config — save normally
                             saveConfiguration(cfg);
+                            logger::info("Saving file for {} at path {} ", baseConfig.menuName, cfg.configPath);
                             ok = true;
                         }
                     }
