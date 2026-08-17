@@ -327,9 +327,6 @@ std::vector<LightConfig>* LightData::findConfigsByFormID(
 	if (!isLight) {
 		formID &= 0x00FFFFFF;
 	}
-	else {
-		formID &= 0xFFF;
-	}
 
 	auto& interiorMap = isBaseID
 		? LightData::baseFormIDToJsonCfg
