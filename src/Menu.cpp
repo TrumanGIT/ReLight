@@ -763,7 +763,7 @@ namespace UI {
                         config.isPluginLight &&
                         (config.flags & static_cast<std::uint32_t>(TES_LIGHT_FLAGS_EXT::kInverseSquare));
 
-                    float radiusToUse = isSpotLight ? 5000.0f : 500.0f;
+                    float radiusToUse = isSpotLight ? 5000.0f : 1000.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
                     bool isTorch = config.isPluginLight && config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kCanCarry);
                     bool isShadowLight = config.shadowLight;
@@ -1072,7 +1072,7 @@ namespace UI {
                                 "Movement",
                                 &config.flickerAmplitude,
                                 0.0f,
-                                50,
+                                5,
                                 "%.2f"))
                             {
                                 if (config.isPluginLight) {

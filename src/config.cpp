@@ -279,7 +279,7 @@ bool saveConfiguration(const LightConfig& config) {
 				config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
 			: LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kSpotLight);
 
-		 float maxRadius = isSpotLight ? 5000.0f : 500.0f;
+		 float maxRadius = isSpotLight ? 5000.0f : 1000.0f;
 
 		if (config.isPluginLight) maxRadius = config.radius; 
 
@@ -381,7 +381,7 @@ bool saveNewConfiguration(LightConfig& config)
 				config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kSpotShadow))
 			: LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kSpotLight);
 
-		 float maxRadius = isSpotLight ? 5000.0f : 500.0f;
+		 float maxRadius = isSpotLight ? 5000.0f : 1000.0f;
 
 		if (config.isPluginLight) maxRadius = config.radius;
 
