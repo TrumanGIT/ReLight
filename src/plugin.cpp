@@ -77,7 +77,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    BSLightingShaderProperty_IsLightAffectingSurface::Install();
    InventoryMenu::Install(); 
    CraftingMenu::Install();
-   ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
+ //  ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
    TreeActivateHook::Install(); 
    Activate::Install(); 
    NiLightFlickerHook::Install();  

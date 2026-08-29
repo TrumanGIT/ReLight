@@ -152,12 +152,11 @@ namespace forms {
 		 auto rawIndex = (formID & 0xFF000000) >> 24;
 		 bool isLight = rawIndex == 0xFE;
 
-
 		 if (isLight) {
 			 // Light plugin: use the local FormID (lower 12 bits)
 			 formID &= 0x00000FFF;
-			 logger::info("Built light plugin ref string: 0x{:X}~{}", formID, modName);
-			 return std::format("0x{:X}~{}", formID, modName);
+			 logger::info("Built light plugin ref string: 0x{:03X}~{}", formID, modName);
+			 return std::format("0x{:03X}~{}", formID, modName);
 		 }
 		 else {
 			 // Normal plugin: strip the load order index
@@ -165,7 +164,7 @@ namespace forms {
 		 }
 
 		 logger::info("Built non-light plugin ref string: 0x{:X}~{}", formID, modName);
-		 return std::format("0x{:X}~{}", formID, modName);
+		 return std::format("0x{:05X}~{}", formID, modName);
 	 }
 
 

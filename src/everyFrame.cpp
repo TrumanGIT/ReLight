@@ -146,7 +146,7 @@ void NiLightFlickerHook::Install()
 
 	REL::Relocation<std::uintptr_t> target(
 		RELOCATION_ID(17211, 17613),
-		REL::VariantOffset{ 0xA, 0xA, 0 });
+		REL::VariantOffset{ 0xA, 0xA, 0xA });
 
 	func = target.write_branch<5>(thunk);
 
@@ -159,7 +159,7 @@ void NiLightFlickerHook::Install()
 
 	REL::Relocation<std::uintptr_t> playerRefLight(
 		RELOCATION_ID(39491, 40570),
-		REL::VariantOffset{ 0x1C7, 0x1C7, 0 });
+		REL::VariantOffset{ 0x1C7, 0x1C7, 0x1C7 });
 
 	playerRefLight.write_call<5>(thunk);
 

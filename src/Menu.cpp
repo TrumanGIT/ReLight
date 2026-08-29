@@ -722,6 +722,12 @@ namespace UI {
         // ---------------------------------------------------------------------
         if (active.valid()) {
             RE::NiPointer<RE::BSLight> selectedLight = active.get();
+
+            if (!selectedLight || !selectedLight->light) {
+                logger::warn("Selected light or BSLight is null, skipping light editor");
+                return;
+            }
+
             auto& lightData = selectedLight->light->GetLightRuntimeData();
             auto it = LightData::configIDToJsonCfg.find(lightData.unk138);
 
@@ -765,7 +771,7 @@ namespace UI {
 
                     float radiusToUse = isSpotLight ? 5000.0f : 1000.0f;
                     float brightnessToUse = isSpotLight ? 50.0f : 10.0f;
-                    bool isTorch = config.isPluginLight && config.flags & static_cast<std::uint32_t>(RE::TES_LIGHT_FLAGS::kCanCarry);
+                    bool isTorchOrMagicLight = selectedLight->light->fadeAmount == 4;
                     bool isShadowLight = config.shadowLight;
 
                     bool showISLSliders = globals::islInstalled &&
@@ -1353,7 +1359,7 @@ namespace UI {
 
                             ImGuiMCP::SameLine();
 
-                            ImGuiMCP::BeginDisabled(isTorch);
+                            ImGuiMCP::BeginDisabled(isTorchOrMagicLight);
 
                             if (ImGuiMCP::Button("Refresh Lights")) {
 

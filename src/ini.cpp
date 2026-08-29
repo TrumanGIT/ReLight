@@ -1,5 +1,6 @@
 #include "ini.hpp"
 #include "utility.h"
+#include "forms.hpp"
 
 namespace ini {
 
@@ -109,37 +110,64 @@ namespace ini {
 			std::string formIDStr = trim(line.substr(0, tildePos));
 			std::string modName = trim(line.substr(tildePos + 1));
 
+			toLower(modName);
+
 			try {
 				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
 					formIDStr = formIDStr.substr(2);
 				}
 
-				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+				std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
 
-				auto dataHandler = RE::TESDataHandler::GetSingleton();
-				auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
+				const bool isLightPlugin = formIDStr.length() == 3;
 
-				if (mod && mod->IsLight()) {
-					auto ref = dataHandler->LookupForm<RE::TESObjectREFR>(parsedID, modName);
-					if (!ref) {
-						logger::warn(
-							"Failed to resolve light plugin ref localID 0x{:X} from mod {}",
-							static_cast<std::uint32_t>(parsedID), modName);
-						continue;
-					}
-					globals::excludedRefFormIDs.insert(ref->GetFormID());
+				auto* dataHandler = RE::TESDataHandler::GetSingleton();
+				if (!dataHandler) {
+					logger::warn(
+						"TESDataHandler was null while parsing excluded ref '{}'",
+						line);
+					continue;
+				}
+
+				const RE::TESFile* file =
+					forms::ResolveTESFileWithFallback(
+						dataHandler,
+						modName,
+						isLightPlugin,
+						false);
+
+				if (!file) {
+					logger::warn(
+						"Invalid mod name '{}' in excluded ref '{}'",
+						modName,
+						line);
+					continue;
+				}
+
+				if (isLightPlugin) {
+					const auto localID = parsedID & 0xFFF;
+
+					parsedID =
+						(static_cast<RE::FormID>(file->compileIndex) << 24) |
+						(static_cast<RE::FormID>(file->smallFileCompileIndex) << 12) |
+						localID;
+
 					logger::info(
-						"Added excluded light plugin ref runtime formID: 0x{:08X} from {} (local: 0x{:X})",
-						static_cast<std::uint32_t>(ref->GetFormID()), modName,
+						"Added excluded light ref localID 0x{:03X} from '{}' -> runtime FormID 0x{:08X}",
+						static_cast<std::uint32_t>(localID),
+						modName,
 						static_cast<std::uint32_t>(parsedID));
 				}
 				else {
 					parsedID &= 0x00FFFFFF;
-					globals::excludedRefFormIDs.insert(parsedID);
+
 					logger::info(
-						"Added excluded non-light runtime ref formID: 0x{:08X} from {}",
-						static_cast<std::uint32_t>(parsedID), modName);
+						"Added excluded non-light ref runtime FormID 0x{:08X} from '{}'",
+						static_cast<std::uint32_t>(parsedID),
+						modName);
 				}
+
+				globals::excludedRefFormIDs.insert(parsedID);
 			}
 			catch (...) {
 				logger::warn("Failed to parse excluded ref entry: {}", line);
@@ -147,6 +175,8 @@ namespace ini {
 
 			continue;
 		}
+
+
 		case baseid:
 		{
 			auto tildePos = line.find('~');
@@ -158,37 +188,64 @@ namespace ini {
 			std::string formIDStr = trim(line.substr(0, tildePos));
 			std::string modName = trim(line.substr(tildePos + 1));
 
+			toLower(modName);
+
 			try {
 				if (formIDStr.starts_with("0x") || formIDStr.starts_with("0X")) {
 					formIDStr = formIDStr.substr(2);
 				}
 
-				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
+				std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
 
-				auto dataHandler = RE::TESDataHandler::GetSingleton();
-				auto mod = dataHandler ? dataHandler->LookupModByName(modName) : nullptr;
+				const bool isLightPlugin = formIDStr.length() <= 3;
 
-				if (mod && mod->IsLight()) {
-					auto baseObj = dataHandler->LookupForm<RE::TESBoundObject>(parsedID, modName);
-					if (!baseObj) {
-						logger::warn(
-							"Failed to resolve light plugin base localID 0x{:X} from mod {}",
-							static_cast<std::uint32_t>(parsedID), modName);
-						continue;
-					}
-					globals::excludedBaseFormIDs.insert(baseObj->GetFormID());
+				auto* dataHandler = RE::TESDataHandler::GetSingleton();
+				if (!dataHandler) {
+					logger::warn(
+						"TESDataHandler was null while parsing excluded base '{}'",
+						line);
+					continue;
+				}
+
+				const RE::TESFile* file =
+					forms::ResolveTESFileWithFallback(
+						dataHandler,
+						modName,
+						isLightPlugin,
+						false);
+
+				if (!file) {
+					logger::warn(
+						"Invalid mod name '{}' in excluded base '{}'",
+						modName,
+						line);
+					continue;
+				}
+
+				if (isLightPlugin) {
+					const auto localID = parsedID & 0xFFF;
+
+					parsedID =
+						(static_cast<RE::FormID>(file->compileIndex) << 24) |
+						(static_cast<RE::FormID>(file->smallFileCompileIndex) << 12) |
+						localID;
+
 					logger::info(
-						"Added excluded light plugin base runtime formID: 0x{:08X} from {} (local: 0x{:X})",
-						static_cast<std::uint32_t>(baseObj->GetFormID()), modName,
+						"Added excluded light base localID 0x{:03X} from '{}' -> runtime FormID 0x{:08X}",
+						static_cast<std::uint32_t>(localID),
+						modName,
 						static_cast<std::uint32_t>(parsedID));
 				}
 				else {
 					parsedID &= 0x00FFFFFF;
-					globals::excludedBaseFormIDs.insert(parsedID);
+
 					logger::info(
-						"Added excluded non-light base formID: 0x{:08X} from {}",
-						static_cast<std::uint32_t>(parsedID), modName);
+						"Added excluded non-light base runtime FormID 0x{:08X} from '{}'",
+						static_cast<std::uint32_t>(parsedID),
+						modName);
 				}
+
+				globals::excludedBaseFormIDs.insert(parsedID);
 			}
 			catch (...) {
 				logger::warn("Failed to parse excluded base entry: {}", line);

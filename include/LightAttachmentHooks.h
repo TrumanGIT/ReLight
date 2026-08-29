@@ -47,35 +47,8 @@ namespace ReferenceEffect
 
             if (result) {
                 if constexpr (std::is_same_v<T, RE::ModelReferenceEffect>) {
-                    //logger::info("ModelReferenceEffect::Init fired a_this={}", static_cast<void*>(a_this));
+                   
 
-                    // must delay or no artobject3d
-                    SKSE::GetTaskInterface()->AddTask([a_this]() {
-                        if (!a_this) {
-                            logger::debug("Deferred ModelReferenceEffect task: a_this was null");
-                            return;
-                        }
-
-                        RE::NiAVObject* node = a_this->artObject3D.get();
-                        if (!node) {
-                            logger::debug("Deferred ModelReferenceEffect task: artObject3D still null");
-                            return;
-                        }
-
-                        globals::magicLightAttachNode = FindObjectByNameRecursive(node, "AttachLight");
-                        if (!globals::magicLightAttachNode) {
-                            logger::debug("Deferred task: AttachLight not found in ModelReferenceEffect tree");
-                            return;
-                        }
-
-                        // must delay quite a while so we deal with this in the everyframe.h player update hook
-                        globals::magicLightQueued.store(true); 
-
-                        logger::debug(
-                            "Deferred task: AttachLight found name={} ptr={}",
-                            globals::magicLightAttachNode->name.c_str(),
-                            static_cast<void*>(globals::magicLightAttachNode));
-                    });
                 }
             }
 

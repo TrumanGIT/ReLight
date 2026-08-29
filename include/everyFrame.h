@@ -1086,30 +1086,6 @@ inline float getRandomFloat(const float& min, const float& max)
 	return dist(rng);
 }
 
-inline void HandleQueuedLights(const RE::NiPointer<RE::BSLight>& light)
-{
-	if (!light || !light->light) {
-		return;
-	}
-
-	auto* niLight = light->light.get();
-	if (!niLight) {
-		return;
-	}
-
-	// spells like candle light ect, we mark them unk060 = 4; so that light flicker prevention can identify them without much work
-	if (globals::magicLightQueued.load()) {
-		if (niLight->parent && niLight->parent == globals::magicLightAttachNode) {
-			light->light->fadeAmount = 4; 
-
-			logger::debug("set magic light fadeAmount to 4 so it will work with light flicker prevention mode");
-
-			globals::magicLightQueued.store(false);
-			globals::magicLightAttachNode = nullptr;
-		}
-	}
-}
-
 //power of three light placer
 inline void UpdateRegionEmittance(RE::NiColor& a_color, RE::TESRegion* a_region)
 {
@@ -1152,8 +1128,6 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 	for (auto& light : lights) {
 		if (!light || !light->light)
 			continue;
-
-		HandleQueuedLights(light);
 
 		auto name = std::string_view(light->light->name.c_str());
 		if (name.size() < 2 || name[0] != 'R' || name[1] != 'L')

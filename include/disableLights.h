@@ -9,7 +9,12 @@ struct TESObjectLIGH_GenDynamic {
     static RE::NiPointLight* thunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
         bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
 
+    static RE::NiPointLight* magicLightThunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
+        bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
+
     static inline REL::Relocation<decltype(thunk)> func;
+
+    static inline REL::Relocation<decltype(magicLightThunk)> magicLightFunc;
 
     static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName);
     static void Install();

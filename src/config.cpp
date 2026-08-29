@@ -737,7 +737,7 @@ bool saveNewConfiguration(LightConfig& config)
 
 			  std::uint32_t parsedID = std::stoul(formIDStr, nullptr, 16);
 
-			  const bool isLightPlugin = parsedID <= 0xFFF;
+			  const bool isLightPlugin = formIDStr.length() <= 3;
 
 			  if (isLightPlugin)
 			  logger::debug("light plugin found when parsing ids"); 
@@ -764,27 +764,19 @@ bool saveNewConfiguration(LightConfig& config)
 			  // light plugins we need to store the full runtime ID so we dont get accidental matches with using just 3 digit forms as the key
 			  // example light plugin form is parsed as 0x019 and thats all we use there is high chance for unintended match
 			  else {
-				  // Resolve the actual form so we can store its full runtime FormID.
-				  auto* form = dataHandler->LookupForm(parsedID, modName);
+				  const auto localID = parsedID & 0xFFF;
 
-				  if (!form) {
-					  logger::warn(
-						  "Could not resolve light plugin form 0x{:03X} from '{}'",
-						  parsedID,
-						  modName
-					  );
-					  continue;
-				  }
-
-				  parsedID = form->GetFormID();
+				  parsedID =
+					  (static_cast<RE::FormID>(file->compileIndex) << 24) |
+					  (static_cast<RE::FormID>(file->smallFileCompileIndex) << 12) |
+					  localID;
 
 				  logger::debug(
 					  "Resolved light plugin form 0x{:03X} from '{}' -> runtime FormID 0x{:08X}",
-					  parsedID & 0xFFF,
+					  static_cast<std::uint32_t>(localID),
 					  modName,
-					  parsedID
+					  static_cast<std::uint32_t>(parsedID)
 				  );
-			  
 			  }
 
 			  // parsedID is local FormID key

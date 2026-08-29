@@ -447,7 +447,7 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 
 				RE::FormID parsedID = std::stoul(formIDStr, nullptr, 16);
 
-				const bool isLightPlugin = parsedID <= 0xFFF;
+				const bool isLightPlugin = formIDStr.length() <= 3;
 
 				if (!isLightPlugin) {
 					parsedID &= 0x00FFFFFF;
@@ -533,7 +533,7 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 					continue;
 				}
 
-				const bool isLightPlugin = parsedID <= 0xFFF;
+				const bool isLightPlugin = formIDStr.length() <= 3;
 
 				if (!isLightPlugin) {
 					parsedID &= 0x00FFFFFF;
