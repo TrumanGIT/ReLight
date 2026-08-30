@@ -49,7 +49,7 @@ namespace UI {
 
             logger::info("skse menu closed");
 
-            relightLights.clear();
+          //  relightLights.clear();
             pluginLights.clear();
 
             auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();

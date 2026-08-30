@@ -219,9 +219,10 @@ void TESObjectLIGH_GenDynamic::Install()
          RELOCATION_ID(33603, 34381),
          REL::VariantOffset{ 0xAC, 0xE2, 0xE2 }),
 
+         //SSE Crash
      std::make_pair(
          RELOCATION_ID(33391, 34151),
-         REL::VariantOffset{ 0xB8, 0xCD, 0xB8 }),
+         REL::VariantOffset{ 0x86, 0xCD, 0x86 }),
     };
 
     for (const auto& [address, offset] : magicTargets) {
