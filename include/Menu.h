@@ -42,11 +42,13 @@ namespace UI {
     };
 
     void Register();
+    void OnMenuEvent(SKSEMenuFramework::Model::EventType eventType);
     void __stdcall RenderSettings();
     void __stdcall RenderLightEditor();
     void __stdcall  RenderLightFlickerPreventionMenu();
     void __stdcall  RenderLightMergeMenu();
     void __stdcall RenderAttachRemove();
+
     inline MENU_WINDOW reLightMenuWindow;
 
     inline void debugLogAllLights() {

@@ -80,8 +80,7 @@ namespace UI {
 
         if (t.getState() == buttonState::Idle) return;
 
-        ImGuiMCP::ImVec2 oldPos;
-        ImGuiMCP::GetCursorPos(&oldPos);
+        ImGuiMCP::ImVec2 oldPos = ImGuiMCP::GetCursorPos();
         ImGuiMCP::SetCursorPos({ x, y });
 
         FontAwesome::PushSolid();

@@ -49,10 +49,6 @@ namespace globals
 
     inline std::atomic_bool secondAfterCellFullyLoaded = false;
 
-    inline bool skseMenuOpened = false;
-
-    inline bool debugLinesNeedClear = false;
-
     inline std::chrono::steady_clock::time_point cellFullyLoadedTimerStart;
 
     // any surface (trishape world bounds) larger will not be affected by light flicker prevention

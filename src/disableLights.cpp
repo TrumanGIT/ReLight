@@ -120,8 +120,6 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
 
     std::string edid = clib_util::editorID::get_editorID(light);
 
-    return magicLightFunc(light, ref, node, forceDynamic, useLightRadius, false);
-
    // For torches/lanterns (CanBeCarried), use the light's own FormID and base ID lookup
     RE::FormID formID = light->GetFormID();
 
@@ -144,11 +142,12 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
 
     if (configExists) {
 
+        // there will never be more then 1 for this. 
         for (auto& cfg : *configs) {
             auto backupLightData = light->data;
             LightData::SetTESObjectLightDataFromConfig(light, cfg);
 
-            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, false);
             light->data = backupLightData;
 
             if (!niLight) return niLight;
@@ -165,7 +164,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
     }
 
     // No config exists - create the light normally
-    auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, false);
     if (!niLight) return niLight;
 
     LightConfig cfg;
@@ -202,6 +201,19 @@ void TESObjectLIGH_GenDynamic::Install()
                 TESObjectLIGH_GenDynamic::thunk);
     }
 
+    if (REL::Module::IsAE()) {
+        logger::info("IsAE(): {}", REL::Module::IsAE());
+        REL::Relocation<std::uintptr_t> target{
+            RELOCATION_ID(33403, 34185),
+            REL::VariantOffset{ 0x407, 0x407, 0x407 }
+        };
+
+        TESObjectLIGH_GenDynamic::magicLightFunc =
+            trampoline.write_call<5>(
+                target.address(),
+                TESObjectLIGH_GenDynamic::magicLightThunk);
+    }
+
     std::array magicTargets{
      std::make_pair(
          RELOCATION_ID(33603, 34381),
@@ -221,17 +233,7 @@ void TESObjectLIGH_GenDynamic::Install()
                 TESObjectLIGH_GenDynamic::magicLightThunk);
     }
 
-    if (REL::Module::IsAE()) {
-        REL::Relocation<std::uintptr_t> target{
-            RELOCATION_ID(33403, 34185),
-            REL::VariantOffset{ 0x407, 0x407, 0x407 }
-        };
 
-        TESObjectLIGH_GenDynamic::magicLightFunc =
-            trampoline.write_call<5>(
-                target.address(),
-                TESObjectLIGH_GenDynamic::magicLightThunk);
-    }
     // std::make_pair(RELOCATION_ID(33603, 34379), 0xAC), //1405BAB10
 //  std::make_pair(RELOCATION_ID(0, 34381), 0xE2),// 1405BACD0
     //   std::make_pair(RELOCATION_ID(0, 34172), 0x86),

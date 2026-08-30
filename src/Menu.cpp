@@ -38,6 +38,35 @@ namespace UI {
         SKSEMenuFramework::AddSectionItem("Light Merge", RenderLightMergeMenu);
 
         SKSEMenuFramework::AddSectionItem("Light Flicker Prevention", RenderLightFlickerPreventionMenu);
+
+        SKSEMenuFramework::AddEvent(OnMenuEvent, 0);
+
+    }
+
+    void UI::OnMenuEvent(SKSEMenuFramework::Model::EventType eventType)
+    {
+        if (eventType == SKSEMenuFramework::Model::EventType::kCloseMenu) {
+
+            logger::info("skse menu closed");
+
+            relightLights.clear();
+            pluginLights.clear();
+
+            auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
+            if (api) {
+                {
+                    std::unique_lock lock(api->mutex_);
+
+                    for (auto* line : api->LinesToDraw) {
+                        delete line;
+                    }
+
+                    api->LinesToDraw.clear();
+                } // mutex is unlocked HERE
+
+                api->Update(); // now safe from the double-lock
+            }
+        }
     }
 
     void __stdcall RenderLightFlickerPreventionMenu() {
@@ -55,12 +84,9 @@ namespace UI {
 
             bool saveINIClicked = ImGuiMCP::Button("Save INI");
 
-            ImGuiMCP::ImVec2 rectMax;
-            ImGuiMCP::GetItemRectMax(&rectMax);
-            ImGuiMCP::ImVec2 rectMin;
-            ImGuiMCP::GetItemRectMin(&rectMin);
-            ImGuiMCP::ImVec2 winPos;
-            ImGuiMCP::GetWindowPos(&winPos);
+            ImGuiMCP::ImVec2 rectMax = ImGuiMCP::GetItemRectMax();
+            ImGuiMCP::ImVec2 rectMin = ImGuiMCP::GetItemRectMin();
+            ImGuiMCP::ImVec2 winPos = ImGuiMCP::GetWindowPos();
 
             float iconX = (rectMax.x - winPos.x) + 10.0f;
             float iconY = (rectMin.y - winPos.y) + 4.0f;
@@ -76,8 +102,7 @@ namespace UI {
 
             ImGuiMCP::Text("(This only works with relight overhauls that use relight flags)");
 
-            ImGuiMCP::ImVec2 avail{};
-            ImGuiMCP::GetContentRegionAvail(&avail);
+            ImGuiMCP::ImVec2 avail = ImGuiMCP::GetContentRegionAvail();
 
             ImGuiMCP::Columns(2, "Bound", false);
             ImGuiMCP::SetColumnWidth(0, avail.x * 0.5f);
@@ -189,12 +214,9 @@ namespace UI {
 
             bool saveINIClicked = ImGuiMCP::Button("Save INI");
 
-            ImGuiMCP::ImVec2 rectMax;
-            ImGuiMCP::GetItemRectMax(&rectMax);
-            ImGuiMCP::ImVec2 rectMin;
-            ImGuiMCP::GetItemRectMin(&rectMin);
-            ImGuiMCP::ImVec2 winPos;
-            ImGuiMCP::GetWindowPos(&winPos);
+            ImGuiMCP::ImVec2 rectMax = ImGuiMCP::GetItemRectMax();
+            ImGuiMCP::ImVec2 rectMin = ImGuiMCP::GetItemRectMin();
+            ImGuiMCP::ImVec2 winPos = ImGuiMCP::GetWindowPos();
 
             float iconX = (rectMax.x - winPos.x) + 10.0f;
             float iconY = (rectMin.y - winPos.y) + 4.0f;
@@ -213,8 +235,7 @@ namespace UI {
             ImGuiMCP::Spacing();
 
 
-            ImGuiMCP::ImVec2 avail{};
-            ImGuiMCP::GetContentRegionAvail(&avail);
+            ImGuiMCP::ImVec2 avail = ImGuiMCP::GetContentRegionAvail();
 
             ImGuiMCP::Columns(2, "Bound", false);
             ImGuiMCP::SetColumnWidth(0, avail.x * 0.5f);
@@ -319,12 +340,9 @@ namespace UI {
         if (ImGuiMCP::IsItemHovered())
             ImGuiMCP::SetTooltip("Write current settings to ReLight.ini");
 
-        ImGuiMCP::ImVec2 rectMax;
-        ImGuiMCP::GetItemRectMax(&rectMax);
-        ImGuiMCP::ImVec2 rectMin;
-        ImGuiMCP::GetItemRectMin(&rectMin);
-        ImGuiMCP::ImVec2 winPos;
-        ImGuiMCP::GetWindowPos(&winPos);
+        ImGuiMCP::ImVec2 rectMax = ImGuiMCP::GetItemRectMax();
+        ImGuiMCP::ImVec2 rectMin = ImGuiMCP::GetItemRectMin();
+        ImGuiMCP::ImVec2 winPos = ImGuiMCP::GetWindowPos();
 
         float iconX = (rectMax.x - winPos.x) + 10.0f;
         float iconY = (rectMin.y - winPos.y) + 4.0f;
@@ -523,12 +541,9 @@ namespace UI {
         bool deleteClicked = ImGuiMCP::Button(trashIcon.c_str());
         if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Delete the Json file from Relight/Configs. You will need to restart the game for changes to take effect");
 
-        ImGuiMCP::ImVec2 rectMax;
-        ImGuiMCP::GetItemRectMax(&rectMax);
-        ImGuiMCP::ImVec2 rectMin;
-        ImGuiMCP::GetItemRectMin(&rectMin);
-        ImGuiMCP::ImVec2 winPos;
-        ImGuiMCP::GetWindowPos(&winPos);
+        ImGuiMCP::ImVec2 rectMax = ImGuiMCP::GetItemRectMax();
+        ImGuiMCP::ImVec2 rectMin = ImGuiMCP::GetItemRectMin();
+        ImGuiMCP::ImVec2 winPos = ImGuiMCP::GetWindowPos();
 
         float iconX = (rectMax.x - winPos.x) + 10.0f;
         float iconY = (rectMin.y - winPos.y) + 4.0f;
@@ -784,9 +799,6 @@ namespace UI {
                     {
                         if (globals::enableDebugLines && !isSpotLight) {
 
-                            globals::skseMenuOpened = true;
-                            globals::debugLinesNeedClear = true;
-
                             auto player = RE::PlayerCharacter::GetSingleton();
                             auto* ssNode = player
                                 ? RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0]
@@ -824,8 +836,7 @@ namespace UI {
 
                             // --- Name row ---
                             std::string flagsLabel = std::string("Flags ") + flagIcon;
-                            ImGuiMCP::ImVec2 flagsTextSize{};
-                            ImGuiMCP::CalcTextSize(&flagsTextSize, flagsLabel.c_str(), nullptr, false, -1.0f);
+                            ImGuiMCP::ImVec2 flagsTextSize = ImGuiMCP::CalcTextSize(flagsLabel.c_str(), nullptr, false, -1.0f);
 
                             float flagsButtonWidth = flagsTextSize.x + style->FramePadding.x * 2.0f;
 
@@ -834,8 +845,7 @@ namespace UI {
                             ImGuiMCP::Dummy(ImGuiMCP::ImVec2(35.0f, 0.0f));
                             ImGuiMCP::SameLine();
 
-                            ImGuiMCP::ImVec2 avail{};
-                            ImGuiMCP::GetContentRegionAvail(&avail);
+                            ImGuiMCP::ImVec2 avail = ImGuiMCP::GetContentRegionAvail();
 
                             float nameInputWidth = avail.x - flagsButtonWidth - kButtonSpacing;
                             if (nameInputWidth < 50.0f) {
@@ -868,8 +878,7 @@ namespace UI {
                             newTemplateCategory[sizeof(newTemplateCategory) - 1] = '\0';
 
                             // --- Category row ---
-                            ImGuiMCP::ImVec2 emittanceTextSize{};
-                            ImGuiMCP::CalcTextSize(&emittanceTextSize, "External Emittance", nullptr, false, -1.0f);
+                            ImGuiMCP::ImVec2 emittanceTextSize = ImGuiMCP::CalcTextSize("External Emittance", nullptr, false, -1.0f);
                             float emittanceButtonWidth = emittanceTextSize.x + style->FramePadding.x * 2.0f;
 
                             ImGuiMCP::Text("Category:");
@@ -877,8 +886,7 @@ namespace UI {
                             ImGuiMCP::Dummy(ImGuiMCP::ImVec2(10.0f, 0.0f));
                             ImGuiMCP::SameLine();
 
-                            ImGuiMCP::ImVec2 categoryAvail{};
-                            ImGuiMCP::GetContentRegionAvail(&categoryAvail);
+                            ImGuiMCP::ImVec2 categoryAvail = ImGuiMCP::GetContentRegionAvail();
                             float categoryInputWidth = categoryAvail.x - emittanceButtonWidth - style->ItemSpacing.x;
                             if (categoryInputWidth < 50.0f) categoryInputWidth = 50.0f;
 
@@ -1395,8 +1403,7 @@ namespace UI {
 
                             ImGuiMCP::Separator();
 
-                            ImGuiMCP::ImVec2 avail{};
-                            ImGuiMCP::GetContentRegionAvail(&avail);
+                            ImGuiMCP::ImVec2 avail = ImGuiMCP::GetContentRegionAvail();
                             float halfWidth = avail.x * 0.3f;
 
                             ImGuiMCP::Columns(2, "NonRuntimeColumns", false);
@@ -1489,7 +1496,7 @@ namespace UI {
         auto centerNextItem = [&](float estimatedWidth) {
             float startX = ImGuiMCP::GetCursorPosX();
 
-            ImGuiMCP::ImVec2 avail{}; ImGuiMCP::GetContentRegionAvail(&avail);
+            ImGuiMCP::ImVec2 avail = ImGuiMCP::GetContentRegionAvail();
 
             ImGuiMCP::SetCursorPosX(startX + (avail.x - estimatedWidth) * 0.5f);
             };
