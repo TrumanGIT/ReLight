@@ -62,9 +62,9 @@ namespace UI {
                     }
 
                     api->LinesToDraw.clear();
-                } // mutex is unlocked HERE
+                } 
 
-                api->Update(); // now safe from the double-lock
+                api->Update(); 
             }
         }
     }
