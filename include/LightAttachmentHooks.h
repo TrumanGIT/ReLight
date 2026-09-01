@@ -17,6 +17,23 @@ struct Load3D {
 };
 
 
+//PO3's hook used to disable and or edit vanilla / modded esp,esm,esl plugin lights
+struct TESObjectLIGH_GenDynamic {
+    static RE::NiPointLight* thunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
+        bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
+
+    static RE::NiPointLight* magicLightThunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
+        bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
+
+    static inline REL::Relocation<decltype(thunk)> func;
+
+    static inline REL::Relocation<decltype(magicLightThunk)> magicLightFunc;
+
+    static void Install();
+
+    static void MagicLightThunkInstall();
+};
+
 // used for scripted fires like castle volkihar that only turn on when activated
 struct Activate {
 

@@ -1,8 +1,8 @@
 #include "LightAttachmentHooks.h"
 #include "forms.hpp"
+#include "disableLights.h"
 
-// ATTACH LIGHTS DURING LOAD3D() HOOK, ANY EARLIER AND LIGHTS SPAWN AT CELL ORIGIN BC WORLD POSITION DATA ISENT LOADED?
-
+// ATTACH LIGHTS TO MESHES DURING LOAD3D() HOOK
 RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 {
 
@@ -183,6 +183,246 @@ void Load3D::Install()
 		.write_vfunc(idx, thunk);
 	logger::info("Hooked TESObjectREFR::Load3D");
 }
+
+//PO3's hook used to disable and or edit vanilla / modded esp,esm,esl plugin lights
+RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
+    RE::TESObjectLIGH* light,
+    RE::TESObjectREFR* ref,
+    RE::NiNode* node,
+    bool forceDynamic,
+    bool useLightRadius,
+    bool affectRequesterOnly)
+{
+    if (!ref || !light)
+        return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+
+    std::string edid = clib_util::editorID::get_editorID(light);
+
+    // For torches/lanterns (CanBeCarried), use the light's own FormID and base ID lookup
+    RE::FormID searchFormID = ref->GetFormID();
+    bool isBaseID = false;
+    bool canBeCarried = light->CanBeCarried();
+    std::string modName = "";
+
+    // equippable lights user data is the player itself so we must use the base light object owner file
+    if (canBeCarried) {
+        // Torch/lantern: use the light template's data
+        const RE::TESFile* baseOriginFile = light->GetDescriptionOwnerFile();
+        modName = baseOriginFile ? baseOriginFile->fileName : "";
+        searchFormID = light->GetFormID();
+        isBaseID = true;
+
+        if (modName.empty()) {
+            logger::warn("Torch: baseOriginFile is null, using 'Skyrim.esm' as fallback");
+            modName = "Skyrim.esm";
+        }
+    }
+    // use the ref as the base origin file if its not a equipable ligh
+    else {
+        const RE::TESFile* refOriginFile = ref->GetDescriptionOwnerFile();
+        modName = refOriginFile ? refOriginFile->fileName : "";
+    }
+
+    // Find config using the appropriate FormID and isBaseID flag
+    auto configs = LightData::findConfigsByFormID(searchFormID, true, isBaseID);
+    bool configExists = configs != nullptr && !configs->empty();
+
+    if (!configExists && shouldDisableLight(light, ref, edid, modName))
+        return nullptr;
+
+    if (configExists) {
+
+        for (auto& cfg : *configs) {
+            auto backupLightData = light->data;
+            LightData::SetTESObjectLightDataFromConfig(light, cfg);
+
+            if (cfg.emittanceRegion) {
+                if (auto* form = RE::TESForm::LookupByEditorID(cfg.externalEmittance)) {
+                    LightData::SetPluginLightEmittanceSource(ref, form);
+                }
+            }
+
+            if (cfg.externalEmittance.empty()) {
+                LightData::SetPluginLightEmittanceSource(ref, nullptr);
+            }
+
+            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+            light->data = backupLightData;
+
+            if (!niLight) return niLight;
+
+            LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
+            niLight->name = "ol";
+
+            // mark 4 so can be excluded in light flicker prevention (IsLightAffectingSurface Hook)
+            if (canBeCarried) niLight->fadeAmount = 4;
+
+            return niLight;
+        }
+        return func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    }
+
+    // No config exists - create the light normally
+    auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    if (!niLight) return niLight;
+
+    // For torches/lanterns, create a config in memory so can be edited in the light editor
+    if (canBeCarried) {
+
+        LightConfig cfg;
+        CreateConfigFromPluginLight(cfg, niLight, light, ref, edid, modName, true);
+
+        niLight->unk138 = cfg.configID;
+        niLight->fadeAmount = 4;
+
+    }
+
+    niLight->name = "ol";
+    niLight->fade *= globals::vanillaBrightnessModifier;
+
+    return niLight;
+}
+
+void TESObjectLIGH_GenDynamic::Install()
+{
+    auto& trampoline = SKSE::GetTrampoline();
+
+    std::array targets{
+        std::make_pair(RELOCATION_ID(17206, 17603), 0x1D3),  // TESObjectLIGH::Clone3D 14026E950
+        std::make_pair(RELOCATION_ID(19252, 19678), 0xB8),   // TESObjectREFR::AddLight  1402E12F0
+        std::make_pair(RELOCATION_ID(15527, 15704), 0xAC),   // AE FUN_140217160 / SE FUN_1401ca8d0
+    };
+
+    for (const auto& [address, offset] : targets) {
+        REL::Relocation<std::uintptr_t> target{ address, offset };
+
+        TESObjectLIGH_GenDynamic::func =
+            trampoline.write_call<5>(
+                target.address(),
+                TESObjectLIGH_GenDynamic::thunk);
+    }
+
+    logger::info("Installed TESObjectLIGH::GenDynamic patches");
+}
+
+RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
+    RE::TESObjectLIGH* light,
+    RE::TESObjectREFR* ref,
+    RE::NiNode* node,
+    bool forceDynamic,
+    bool useLightRadius,
+    bool affectRequesterOnly)
+{
+    if (!ref || !light)
+        return magicLightFunc(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+
+    std::string edid = clib_util::editorID::get_editorID(light);
+
+    // For torches/lanterns (CanBeCarried), use the light's own FormID and base ID lookup
+    RE::FormID formID = light->GetFormID();
+
+    // equippable lights user data is the player itself so we must use the base light object owner file
+        // Torch/lantern: use the light template's data
+    const RE::TESFile* baseOriginFile = light->GetDescriptionOwnerFile();
+    std::string  modName = baseOriginFile ? baseOriginFile->fileName : "";
+
+    if (modName.empty()) {
+        logger::warn("baseOriginFile is null");
+        modName = "Skyrim.esm";
+    }
+
+    // Find config using the appropriate FormID and isBaseID flag
+    auto configs = LightData::findConfigsByFormID(formID, true, true);
+    bool configExists = configs != nullptr && !configs->empty();
+
+    if (!configExists && shouldDisableLight(light, ref, edid, modName))
+        return nullptr;
+
+    if (configExists) {
+
+        // there will never be more then 1 for this. 
+        for (auto& cfg : *configs) {
+            auto backupLightData = light->data;
+            LightData::SetTESObjectLightDataFromConfig(light, cfg);
+
+            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, false);
+            light->data = backupLightData;
+
+            if (!niLight) return niLight;
+
+            LightData::setNiPointLightDataFromCfg(niLight, cfg, 1.0);
+            niLight->name = "ol";
+
+            // mark 4 so can be excluded in light flicker prevention (IsLightAffectingSurface Hook)
+            niLight->fadeAmount = 4;
+
+            return niLight;
+        }
+        return magicLightFunc(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
+    }
+
+    // No config exists - create the light normally
+    auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, false);
+    if (!niLight) return niLight;
+
+    LightConfig cfg;
+    CreateConfigFromPluginLight(cfg, niLight, light, ref, edid, modName, true);
+
+    niLight->unk138 = cfg.configID;
+
+    niLight->name = "ol";
+    niLight->fade *= globals::vanillaBrightnessModifier;
+
+    niLight->fadeAmount = 4;
+
+    return niLight;
+}
+
+void TESObjectLIGH_GenDynamic::MagicLightThunkInstall()
+{
+    auto& trampoline = SKSE::GetTrampoline();
+
+    if (REL::Module::IsAE()) {
+        logger::info("IsAE(): {}", REL::Module::IsAE());
+        REL::Relocation<std::uintptr_t> target{
+            RELOCATION_ID(33403, 34185),
+            REL::VariantOffset{ 0x407, 0x407, 0x407 }
+        };
+
+        TESObjectLIGH_GenDynamic::magicLightFunc =
+            trampoline.write_call<5>(
+                target.address(),
+                TESObjectLIGH_GenDynamic::magicLightThunk);
+    }
+
+    std::array magicTargets{
+     std::make_pair(
+         RELOCATION_ID(33603, 34381),
+         REL::VariantOffset{ 0xAC, 0xE2, 0xE2 }),
+
+     std::make_pair(
+         RELOCATION_ID(33391, 34151),
+         REL::VariantOffset{ 0x86, 0xCD, 0x86 }),
+    };
+
+    for (const auto& [address, offset] : magicTargets) {
+        REL::Relocation<std::uintptr_t> target{ address, offset };
+
+        TESObjectLIGH_GenDynamic::magicLightFunc =
+            trampoline.write_call<5>(
+                target.address(),
+                TESObjectLIGH_GenDynamic::magicLightThunk);
+    }
+
+    // std::make_pair(RELOCATION_ID(33603, 34379), 0xAC), //1405BAB10
+//  std::make_pair(RELOCATION_ID(0, 34381), 0xE2),// 1405BACD0
+    //   std::make_pair(RELOCATION_ID(0, 34172), 0x86),
+    //std::make_pair(RELOCATION_ID(0, 44222), 0x36D), // last caller called when casting flame spell 
+    // std::make_pair(RELOCATION_ID(0, 44146), 0x5C), // FUN_1407e7500
+    //1407d3920 hit effect related 
+    logger::info("Installed TESObjectLIGH::GenDynamic patches");
+}
+
 
 bool Activate::thunk(
 	RE::TESObjectACTI* a_this,

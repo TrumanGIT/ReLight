@@ -4,25 +4,6 @@
 #include <unordered_set>
 #include "LightData.h"
 
-//PO3's hook used to disable all lights tot start with a clean base
-struct TESObjectLIGH_GenDynamic {
-    static RE::NiPointLight* thunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
-        bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
-
-    static RE::NiPointLight* magicLightThunk(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, RE::NiNode* node,
-        bool forceDynamic, bool useLightRadius, bool affectRequesterOnly);
-
-    static inline REL::Relocation<decltype(thunk)> func;
-
-    static inline REL::Relocation<decltype(magicLightThunk)> magicLightFunc;
-
-    static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName);
-
-    static void Install();
-
-    static void MagicLightThunkInstall();
-};
-
 // meh321s hook from intellightent
 struct BSLightingShaderProperty_IsLightAffectingSurface
 {
@@ -47,3 +28,5 @@ private:
 
 	static inline REL::Relocation<decltype(Activate)> func;
 };
+
+ bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName);
