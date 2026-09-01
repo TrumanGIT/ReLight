@@ -20,12 +20,6 @@ namespace forms {
 				//logger::debug("comparing vanilla light {} to {}", lowerEdid, keyword);
 
 			if (lowerEdid.contains(keyword)) {
-
-				// special exception
-				if (edid.contains("solitudeinnsunlightshadow")) {
-					return false;
-				}
-
 				logger::info("Matched editorID '{}' with keyword '{}'", lowerEdid, keyword);
 				return true;
 			}

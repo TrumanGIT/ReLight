@@ -186,7 +186,6 @@ void TESObjectLIGH_GenDynamic::Install()
     auto& trampoline = SKSE::GetTrampoline();
 
     std::array targets{
-         
         std::make_pair(RELOCATION_ID(17206, 17603), 0x1D3),  // TESObjectLIGH::Clone3D 14026E950
         std::make_pair(RELOCATION_ID(19252, 19678), 0xB8),   // TESObjectREFR::AddLight  1402E12F0
         std::make_pair(RELOCATION_ID(15527, 15704), 0xAC),   // AE FUN_140217160 / SE FUN_1401ca8d0
@@ -200,6 +199,13 @@ void TESObjectLIGH_GenDynamic::Install()
                 target.address(),
                 TESObjectLIGH_GenDynamic::thunk);
     }
+
+    logger::info("Installed TESObjectLIGH::GenDynamic patches");
+}
+
+void TESObjectLIGH_GenDynamic::MagicLightThunkInstall()
+{
+    auto& trampoline = SKSE::GetTrampoline();
 
     if (REL::Module::IsAE()) {
         logger::info("IsAE(): {}", REL::Module::IsAE());
@@ -219,7 +225,6 @@ void TESObjectLIGH_GenDynamic::Install()
          RELOCATION_ID(33603, 34381),
          REL::VariantOffset{ 0xAC, 0xE2, 0xE2 }),
 
-         //SSE Crash
      std::make_pair(
          RELOCATION_ID(33391, 34151),
          REL::VariantOffset{ 0x86, 0xCD, 0x86 }),
@@ -234,14 +239,12 @@ void TESObjectLIGH_GenDynamic::Install()
                 TESObjectLIGH_GenDynamic::magicLightThunk);
     }
 
-
     // std::make_pair(RELOCATION_ID(33603, 34379), 0xAC), //1405BAB10
 //  std::make_pair(RELOCATION_ID(0, 34381), 0xE2),// 1405BACD0
     //   std::make_pair(RELOCATION_ID(0, 34172), 0x86),
     //std::make_pair(RELOCATION_ID(0, 44222), 0x36D), // last caller called when casting flame spell 
     // std::make_pair(RELOCATION_ID(0, 44146), 0x5C), // FUN_1407e7500
     //1407d3920 hit effect related 
-
     logger::info("Installed TESObjectLIGH::GenDynamic patches");
 }
 
@@ -277,7 +280,6 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 
     for (const auto& whitelistedMod : globals::whitelist) {
         if (modNameLower.find(whitelistedMod) != std::string::npos) {
-
             logger::info("whitelisted ref 0x{:08X} from mod {} with edid {} relight will not disable this light", static_cast<std::uint32_t>(ref->GetFormID()), whitelistedMod, edid);
             return false;
         }
@@ -287,7 +289,6 @@ bool TESObjectLIGH_GenDynamic::shouldDisableLight(RE::TESObjectLIGH* light, RE::
 }
 
 //used to disable lights from flora once they are picked.
-
 bool TreeActivateHook::Activate(
     RE::TESObjectTREE* a_this,
     RE::TESObjectREFR* a_targetRef,

@@ -1,4 +1,5 @@
 #include "LightAttachmentHooks.h"
+#include "forms.hpp"
 
 // ATTACH LIGHTS DURING LOAD3D() HOOK, ANY EARLIER AND LIGHTS SPAWN AT CELL ORIGIN BC WORLD POSITION DATA ISENT LOADED?
 
@@ -95,7 +96,7 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	// this looks for base
 	if (auto* baseCfgs = LightData::findConfigsByFormID(baseFormID, isInterior, true)) {
 
-		if (!baseCfgs || baseCfgs->empty()) return niAVObject;
+		if (!baseCfgs || baseCfgs->empty() || forms::isExcludedRef(a_this)) return niAVObject;
 
 		if (globals::removeFakeGlowOrbs) {
 			glowOrbRemover(a_root);
@@ -148,8 +149,6 @@ RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoadin
 	
 
 		}
-
-	
 
 		return niAVObject;
 	}

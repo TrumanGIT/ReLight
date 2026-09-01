@@ -72,12 +72,12 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    hasNativeMeshLightFlickerFix(); 
    SKSE::AllocTrampoline(1 << 8);
    TESObjectLIGH_GenDynamic::Install();
+   TESObjectLIGH_GenDynamic::MagicLightThunkInstall(); 
    Load3D::Install();
    PlayerCharacter_Update::Install();
    BSLightingShaderProperty_IsLightAffectingSurface::Install();
    InventoryMenu::Install(); 
    CraftingMenu::Install();
- //  ReferenceEffect::Init<RE::ModelReferenceEffect>::Install();
    TreeActivateHook::Install(); 
    Activate::Install(); 
    NiLightFlickerHook::Install();  

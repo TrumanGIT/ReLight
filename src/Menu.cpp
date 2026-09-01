@@ -17,12 +17,10 @@ namespace UI {
     static buttonTicker saveINIButton{};
     static buttonTicker defaultButton{};
     static buttonTicker deleteButton{};
+
     static vector<RE::NiPointer<RE::BSLight>> relightLights = {};
     //vanilla, elfx, lux ect
     static vector<RE::NiPointer<RE::BSLight>> pluginLights = {};
-    static bool lightsLoaded = false;
-    static bool enableLightEditor = false;
-    static bool lightAlreadyInList = false;
 
     void Register() {
         if (!SKSEMenuFramework::IsInstalled()) return;
@@ -50,6 +48,8 @@ namespace UI {
             logger::info("skse menu closed");
 
           //  relightLights.clear();
+
+            // dont want to keep vanilla lights in ni pointer otherwise after editing spell lights / addon lights they persist as long as vectror is alive. 
             pluginLights.clear();
 
             auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();

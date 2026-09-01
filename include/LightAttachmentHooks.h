@@ -34,39 +34,3 @@ struct Activate {
 
     static void Install();
 };
-
-// for spells like candlelight
-namespace ReferenceEffect
-{
-    template <class T>
-    struct Init
-    {
-        static bool thunk(T* a_this)
-        {
-            auto result = func(a_this);
-
-            if (result) {
-                if constexpr (std::is_same_v<T, RE::ModelReferenceEffect>) {
-                   
-
-                }
-            }
-
-            return result;
-        }
-
-        static inline REL::Relocation<decltype(thunk)> func;
-        static constexpr std::size_t idx{ 0x36 };
-
-        static void Install()
-        {
-            func = REL::Relocation<std::uintptr_t>(T::VTABLE[0])
-                .write_vfunc(idx, thunk);
-
-            logger::info("Hooked {}::Init", typeid(T).name());
-        }
-    };
-
- 
-}
-

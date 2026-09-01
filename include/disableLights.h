@@ -17,7 +17,10 @@ struct TESObjectLIGH_GenDynamic {
     static inline REL::Relocation<decltype(magicLightThunk)> magicLightFunc;
 
     static bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName);
+
     static void Install();
+
+    static void MagicLightThunkInstall();
 };
 
 // meh321s hook from intellightent
