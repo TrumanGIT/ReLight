@@ -48,24 +48,25 @@ namespace UI {
             logger::info("skse menu closed");
 
           //  relightLights.clear();
-
             // dont want to keep vanilla lights in ni pointer otherwise after editing spell lights / addon lights they persist as long as vectror is alive. 
-            pluginLights.clear();
+            SKSE::GetTaskInterface()->AddTask([]() {
+                pluginLights.clear();
 
-            auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
-            if (api) {
-                {
-                    std::unique_lock lock(api->mutex_);
+                auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
+                if (api) {
+                    {
+                        std::unique_lock lock(api->mutex_);
 
-                    for (auto* line : api->LinesToDraw) {
-                        delete line;
+                        for (auto* line : api->LinesToDraw) {
+                            delete line;
+                        }
+
+                        api->LinesToDraw.clear();
                     }
 
-                    api->LinesToDraw.clear();
-                } 
-
-                api->Update(); 
-            }
+                    api->Update();
+                }
+            });
         }
     }
 
@@ -1643,7 +1644,7 @@ namespace UI {
             ImGuiMCP::Dummy({ 0.0f, 20.0f });
             centerNextItem(400.0f);
 
-            if (RenderYellowButton("Add another Light")) {
+            if (RenderYellowButton("Add another light")) {
 
                 multiLight = true;
 
@@ -1751,7 +1752,7 @@ namespace UI {
 
             ImGuiMCP::SameLine();
 
-            if (RenderRedButton("Add To Light Exclusion List")) {
+            if (RenderRedButton("Add to exclusion list")) {
 
                 std::string refIDandModName = forms::BuildFormIDAndModName(formID, modName);
 
@@ -1909,7 +1910,7 @@ namespace UI {
             }
             ImGuiMCP::SameLine();
 
-            if (RenderRedButton("Add To Light Exclusion List")) {
+            if (RenderRedButton("Add to exclusion list")) {
 
                 std::string refIDandModName = forms::BuildFormIDAndModName(formID, modName);
 

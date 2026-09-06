@@ -403,6 +403,14 @@ void TESObjectLIGH_GenDynamic::MagicLightThunkInstall()
      std::make_pair(
          RELOCATION_ID(33391, 34151),
          REL::VariantOffset{ 0x86, 0xCD, 0x86 }),
+
+         //14074ddc0 called for flame spell 
+       std::make_pair(RELOCATION_ID(42965, 44222), REL::VariantOffset{ 0x58, 0x36D, 0x58 }),
+
+           //  std::make_pair(RELOCATION_ID(33603, 34379), 0xAC), //1405BAB10
+  //std::make_pair(RELOCATION_ID(0, 34381), 0xE2),// 1405BACD0
+    //   std::make_pair(RELOCATION_ID(0, 34172), 0x86),
+    // std::make_pair(RELOCATION_ID(0, 44146), 0x5C), // FUN_1407e7500
     };
 
     for (const auto& [address, offset] : magicTargets) {
@@ -414,12 +422,6 @@ void TESObjectLIGH_GenDynamic::MagicLightThunkInstall()
                 TESObjectLIGH_GenDynamic::magicLightThunk);
     }
 
-    // std::make_pair(RELOCATION_ID(33603, 34379), 0xAC), //1405BAB10
-//  std::make_pair(RELOCATION_ID(0, 34381), 0xE2),// 1405BACD0
-    //   std::make_pair(RELOCATION_ID(0, 34172), 0x86),
-    //std::make_pair(RELOCATION_ID(0, 44222), 0x36D), // last caller called when casting flame spell 
-    // std::make_pair(RELOCATION_ID(0, 44146), 0x5C), // FUN_1407e7500
-    //1407d3920 hit effect related 
     logger::info("Installed TESObjectLIGH::GenDynamic patches");
 }
 
