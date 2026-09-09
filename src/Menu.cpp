@@ -40,33 +40,16 @@ namespace UI {
         SKSEMenuFramework::AddEvent(OnMenuEvent, 0);
 
     }
-
     void UI::OnMenuEvent(SKSEMenuFramework::Model::EventType eventType)
     {
         if (eventType == SKSEMenuFramework::Model::EventType::kCloseMenu) {
-
             logger::info("skse menu closed");
 
-          //  relightLights.clear();
-            // dont want to keep vanilla lights in ni pointer otherwise after editing spell lights / addon lights they persist as long as vectror is alive. 
-            SKSE::GetTaskInterface()->AddTask([]() {
-                pluginLights.clear();
+            // dont hold vanilla lights in ni pointer
+            pluginLights.clear();
 
-                auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
-                if (api) {
-                    {
-                        std::unique_lock lock(api->mutex_);
-
-                        for (auto* line : api->LinesToDraw) {
-                            delete line;
-                        }
-
-                        api->LinesToDraw.clear();
-                    }
-
-                    api->Update();
-                }
-            });
+            //reset lines in playerupdate hook or they dont clear (race condition?) 
+            globals::skseMenuClosed.store(true);
         }
     }
 

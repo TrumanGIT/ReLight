@@ -17,6 +17,8 @@ namespace globals
 
     inline float brightnessModifier = 1.0f; 
 
+    inline std::atomic_bool skseMenuClosed{ false };
+
     //Attach Misc Lights
     inline std::atomic_bool unDesiredMenuOpen = false;
 

@@ -59,6 +59,23 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 	updateLights(ssRt.activeShadowLights, delta, true, playerPos, updateExternalEmittance);
 
 	updateExternalEmittance = false; 
+
+	if (globals::skseMenuClosed.exchange(false)) {
+		auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
+		if (api) {
+			{
+				std::unique_lock lock(api->mutex_);
+
+				for (auto* line : api->LinesToDraw) {
+					delete line;
+				}
+
+				api->LinesToDraw.clear();
+			}
+
+			api->Update();
+		}
+	}
 }
 
 void PlayerCharacter_Update::Install()

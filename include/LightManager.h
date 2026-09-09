@@ -58,8 +58,6 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
   // used for computing closest 7 lights to a tri shape for light flicker prevention
   static void ComputeClosestLights(RE::BSLight* outLights[7], RE::BSLightingShaderProperty* p); 
 
-
-
   //used for updating position 
   static void UpdateLightParent(RE::NiLight* light); 
 
