@@ -39,6 +39,8 @@ namespace UI {
 
         SKSEMenuFramework::AddEvent(OnMenuEvent, 0);
 
+        logger::info("registered Relights skse menu");
+
     }
     void UI::OnMenuEvent(SKSEMenuFramework::Model::EventType eventType)
     {
@@ -2203,6 +2205,11 @@ namespace UI {
 
             if (RenderYellowButton("All like this")) {
                 refLight = false;
+
+                RE::TESFile* baseOriginFile = baseObject->GetDescriptionOwnerFile();
+
+                if (baseOriginFile)
+                    modName = baseOriginFile->fileName;
 
                 std::string baseIDandModName = forms::BuildFormIDAndModName(baseFormID, modName);
 

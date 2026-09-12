@@ -1107,7 +1107,7 @@ namespace UI {
 
   inline void RenderTESLightFlags(std::uint32_t& flags)
   {
-      static bool showFlagWindow = false;
+       bool showFlagWindow = false;
 
       if (ImGuiMCP::Button((std::string("Flags ") + flagIcon).c_str())) {
           showFlagWindow = !showFlagWindow;

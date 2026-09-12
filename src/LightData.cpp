@@ -392,6 +392,7 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 	cfg.print(false);
 }
 
+// TODO this shouldent look for specific types of forms especially not tesobjectlight form when this could be not for plugin lights
 bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 {
 	bool updated = false;
@@ -415,8 +416,6 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 			updated |= updateConfigMap(it->second, updatedCfg);
 		}
 	}
-
-
 
 		for (auto baseKey : updatedCfg.baseFormIDsAndModNames) {
 			if (baseKey.empty()) {
@@ -459,14 +458,12 @@ bool LightData::updateRuntimeConfigCaches(const LightConfig& updatedCfg)
 					continue;
 				}
 
-		
-
 				RE::FormID runtimeID = 0;
 
 				if (isLightPlugin) {
 					// For light plugins, we need to resolve the actual FormID
 					// Since this is a base ID, we look up the TESObjectLIGH by local ID
-					auto* baseObject = dataHandler->LookupForm<RE::TESObjectLIGH>(parsedID, modName);
+					auto* baseObject = dataHandler->LookupForm(parsedID, modName);
 					if (!baseObject) {
 						logger::warn(
 							"Failed to resolve light plugin base localID 0x{:X} from mod '{}' while updating base config cache",
