@@ -103,6 +103,11 @@ namespace UI {
 
         ImGuiMCP::SetCursorPos(oldPos);
     }
-
+    
+    
+    inline buttonTicker saveButton{};
+    inline buttonTicker saveINIButton{};
+    inline buttonTicker defaultButton{};
+    inline buttonTicker deleteButton{};
 
 };

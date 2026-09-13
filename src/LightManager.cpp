@@ -1,8 +1,8 @@
 #include "LightManager.h"
 #include "Utility.h"
-#include "config.hpp"
+#include "config.h"
 #include "LightAttachmentHooks.h"
-#include "forms.hpp"
+#include "forms.h"
 
 #include <ClibUtil/EditorID.hpp>
 #include <chrono>

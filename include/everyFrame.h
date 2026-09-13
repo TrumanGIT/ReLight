@@ -7,7 +7,7 @@
 #include "LightManager.h"
 #include "utility.h"
 #include "global.h"
-#include "raycast.hpp"
+#include "raycast.h"
 #include <CLibUtilsQTR/DrawDebug.hpp>
 
 
@@ -1084,36 +1084,6 @@ inline float getRandomFloat(const float& min, const float& max)
 	static std::mt19937 rng{ std::random_device{}() };
 	std::uniform_real_distribution<float> dist(min, max);
 	return dist(rng);
-}
-
-//power of three light placer
-inline void UpdateRegionEmittance(RE::NiColor& a_color, RE::TESRegion* a_region)
-{
-	auto weather = a_region->currentWeather;
-	if (!weather) {
-		weather = a_region->SelectWeather();
-		if (weather) {
-			a_region->SetCurrentWeather(weather);
-		}
-	}
-	if (!weather) {
-		if (auto defaultWeather = RE::TESForm::LookupByID<RE::TESWeather>(0x15E)) {
-			weather = defaultWeather;
-		}
-	}
-	if (weather) {
-		RE::Sky::COLOR_BLEND      colorBlend{};
-		RE::TESWeather::ColorTime time1{};
-		RE::TESWeather::ColorTime time2{};
-
-		auto sky = RE::Sky::GetSingleton();
-		sky->FillColorBlend(colorBlend, weather, 1.0f, time1, time2);
-		sky->FillColorBlendColors(colorBlend, weather, nullptr, RE::TESWeather::ColorType::kEffectLighting, time1, time2);
-		auto* setting = RE::GameSettingCollection::GetSingleton()->GetSetting("fWeatherFlashDirectional");
-		float flashDirectional = setting ? setting->data.f : 1.0f;
-		sky->SetColor(a_color, &colorBlend, sky->flash * flashDirectional);
-		logger::debug("Updated Region Emittance Color");
-	}
 }
 
 // generic type argument probly not needed both shadow light list and non shadow light list same array type proboblly

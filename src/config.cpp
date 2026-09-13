@@ -1,10 +1,10 @@
 ﻿
-#include "config.hpp"
+#include "config.h"
 #include "global.h"
 #include "LightManager.h"
 #include "utility.h"
 #include <algorithm>
-#include "forms.hpp"
+#include "forms.h"
 
 using json = nlohmann::json;
 

@@ -1,4 +1,4 @@
-#include "raycast.hpp"
+#include "raycast.h"
 
 
 namespace raycast {

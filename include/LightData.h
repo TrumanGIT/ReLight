@@ -10,7 +10,7 @@
 
 #include "logger.hpp"
 #include "global.h"
-#include "config.hpp"
+#include "config.h"
 
 
 class NiPointLight

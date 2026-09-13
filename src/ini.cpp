@@ -1,6 +1,6 @@
-#include "ini.hpp"
+#include "ini.h"
 #include "utility.h"
-#include "forms.hpp"
+#include "forms.h"
 
 namespace ini {
 

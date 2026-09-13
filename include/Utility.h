@@ -356,6 +356,21 @@ inline LightConfig FindRefIDConfigForAttachAnother(RE::TESObjectREFR* selected)
 	return cfg;
 }
 
+// ui function
+inline bool compareLightNames(const char* a, const char* b) {
+	if (!a) a = "";
+	if (!b) b = "";
+	for (;; ++a, ++b) {
+		unsigned char ca = (unsigned char)std::tolower((unsigned char)*a);
+		unsigned char cb = (unsigned char)std::tolower((unsigned char)*b);
+		if (ca < cb) return true;
+		if (ca > cb) return false;
+		if (ca == 0) return false;
+	}
+}
+
+
+
 // must update ref root transforms after changing position of a ni node
 inline void UpdateRefRootTransforms(RE::TESObjectREFR* selected)
 {
@@ -375,3 +390,32 @@ inline void UpdateRefRootTransforms(RE::TESObjectREFR* selected)
 	a_root->UpdateTransformAndBounds(updateData);
 }
 
+//power of three light placer
+inline void UpdateRegionEmittance(RE::NiColor& a_color, RE::TESRegion* a_region)
+{
+	auto weather = a_region->currentWeather;
+	if (!weather) {
+		weather = a_region->SelectWeather();
+		if (weather) {
+			a_region->SetCurrentWeather(weather);
+		}
+	}
+	if (!weather) {
+		if (auto defaultWeather = RE::TESForm::LookupByID<RE::TESWeather>(0x15E)) {
+			weather = defaultWeather;
+		}
+	}
+	if (weather) {
+		RE::Sky::COLOR_BLEND      colorBlend{};
+		RE::TESWeather::ColorTime time1{};
+		RE::TESWeather::ColorTime time2{};
+
+		auto sky = RE::Sky::GetSingleton();
+		sky->FillColorBlend(colorBlend, weather, 1.0f, time1, time2);
+		sky->FillColorBlendColors(colorBlend, weather, nullptr, RE::TESWeather::ColorType::kEffectLighting, time1, time2);
+		auto* setting = RE::GameSettingCollection::GetSingleton()->GetSetting("fWeatherFlashDirectional");
+		float flashDirectional = setting ? setting->data.f : 1.0f;
+		sky->SetColor(a_color, &colorBlend, sky->flash * flashDirectional);
+		logger::debug("Updated Region Emittance Color");
+	}
+}

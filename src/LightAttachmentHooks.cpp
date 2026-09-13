@@ -1,5 +1,5 @@
 #include "LightAttachmentHooks.h"
-#include "forms.hpp"
+#include "forms.h"
 #include "disableLights.h"
 
 // ATTACH LIGHTS TO MESHES DURING LOAD3D() HOOK

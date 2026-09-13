@@ -1,7 +1,7 @@
 ﻿
 #include "plugin.hpp"
 #include "logger.hpp"
-#include "config.hpp"
+#include "config.h"
 #include "Utility.h"
 #include "menu.h"
 #include "global.h"
@@ -11,7 +11,7 @@
 #include "disableLights.h"
 #include "LightAttachmentHooks.h"
 #include "vanillaMenus.h"
-#include "ini.hpp"
+#include "ini.h"
 
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {

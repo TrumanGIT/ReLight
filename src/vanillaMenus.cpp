@@ -1,5 +1,6 @@
 #include "vanillaMenus.h"
 #include "global.h"
+#include "logger.hpp"
 
 
 RE::UI_MESSAGE_RESULTS InventoryMenu::thunk(RE::UIMessage& a_message)

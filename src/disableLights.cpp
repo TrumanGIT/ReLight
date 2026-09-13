@@ -2,8 +2,8 @@
 #include "disableLights.h"
 #include "Utility.h"
 #include "LightManager.h"
-#include "forms.hpp"
-#include "config.hpp"
+#include "forms.h"
+#include "config.h"
 
 
 bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName)

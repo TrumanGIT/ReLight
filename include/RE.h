@@ -1,7 +1,6 @@
 #pragma once
 
 #include "logger.hpp"
-#include "global.h"
 
 
 struct BSLight_AddFadeNode
