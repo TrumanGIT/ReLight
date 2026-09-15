@@ -312,50 +312,6 @@ inline void UnpackFD(float fd, uint16_t& gen, uint16_t& idx)
 	idx = (uint16_t)(packed & 0xFFFF);
 }
 
-inline std::string BuildConfigPath(const std::string& fileName)
-{
-	if (fileName.empty()) {
-		return "";
-	}
-
-	std::string safeName = fileName;
-
-	std::replace(safeName.begin(), safeName.end(), '~', '_');
-	std::replace(safeName.begin(), safeName.end(), ':', '_');
-	std::replace(safeName.begin(), safeName.end(), '\\', '_');
-	std::replace(safeName.begin(), safeName.end(), '/', '_');
-
-	return "Data/SKSE/Plugins/ReLight/Configs/" + safeName + ".json";
-}
-
-// used in attach light menu when selecting "attach another light" option
-inline LightConfig FindRefIDConfigForAttachAnother(RE::TESObjectREFR* selected)
-{
-
-	LightConfig cfg = {};
-
-	if (!selected) {
-		return cfg;
-	}
-
-	RE::FormID formID = selected->GetFormID();
-
-	if (auto it = LightData::refFormIDToJsonCfg.find(formID);
-		it != LightData::refFormIDToJsonCfg.end() && !it->second.empty()) {
-		logger::info("FindSourceConfigForAttachAnother: found ref config for {:08X}", formID);
-		return it->second[0];
-	}
-
-	if (auto it = LightData::refFormIDToJsonCfgExteriors.find(formID);
-		it != LightData::refFormIDToJsonCfgExteriors.end() && !it->second.empty()) {
-		logger::info("FindSourceConfigForAttachAnother: found exterior ref config for {:08X}", formID);
-		return it->second[0];
-	}
-
-	logger::warn("FindSourceConfigForAttachAnother: no config found for {:08X}", formID);
-	return cfg;
-}
-
 // ui function
 inline bool compareLightNames(const char* a, const char* b) {
 	if (!a) a = "";
@@ -368,8 +324,6 @@ inline bool compareLightNames(const char* a, const char* b) {
 		if (ca == 0) return false;
 	}
 }
-
-
 
 // must update ref root transforms after changing position of a ni node
 inline void UpdateRefRootTransforms(RE::TESObjectREFR* selected)

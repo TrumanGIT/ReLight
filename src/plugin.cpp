@@ -73,7 +73,8 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    SKSE::AllocTrampoline(1 << 8);
    TESObjectLIGH_GenDynamic::Install();
    TESObjectLIGH_GenDynamic::MagicLightThunkInstall(); 
-   Load3D::Install();
+   ObjectReference::InstallLoad3DHooks(); 
+   TESObjectREFRLoad3D::Install(); 
    PlayerCharacter_Update::Install();
    BSLightingShaderProperty_IsLightAffectingSurface::Install();
    InventoryMenu::Install(); 

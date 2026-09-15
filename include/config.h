@@ -243,6 +243,22 @@ inline bool updateConfigMap (std::vector<LightConfig>& vec, const LightConfig& u
     return false;
 }
 
+inline std::string BuildConfigPath(const std::string& fileName)
+{
+    if (fileName.empty()) {
+        return "";
+    }
+
+    std::string safeName = fileName;
+
+    std::replace(safeName.begin(), safeName.end(), '~', '_');
+    std::replace(safeName.begin(), safeName.end(), ':', '_');
+    std::replace(safeName.begin(), safeName.end(), '\\', '_');
+    std::replace(safeName.begin(), safeName.end(), '/', '_');
+
+    return "Data/SKSE/Plugins/ReLight/Configs/" + safeName + ".json";
+}
+
 //used for in game menu
 bool AddMeshPathToAllJsonEntries(const std::string& filePath, const std::string& meshPath); 
 
@@ -290,4 +306,4 @@ void CreateConfigFromPluginLight(LightConfig& cfg, RE::NiLight* niLight, RE::TES
 
 void parseTemplates();
 
-std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior);
+std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior, bool partialSearch = true);

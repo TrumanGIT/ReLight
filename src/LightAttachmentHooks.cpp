@@ -2,186 +2,292 @@
 #include "forms.h"
 #include "disableLights.h"
 
-// ATTACH LIGHTS TO MESHES DURING LOAD3D() HOOK
-RE::NiAVObject* Load3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
+//attach light to spells explosions effects and the likes, no light merging and exact mesh paths required
+namespace ObjectReference
 {
+    template <class T>
+    RE::NiAVObject* Load3D<T>::thunk(T* a_this, bool a_backgroundLoading)
+    {
+        auto niAVObject = func(a_this, a_backgroundLoading);
+        if (!niAVObject || !a_this) {
+            return niAVObject;
+        }
 
-	//logger::info("load3D called");
-	auto niAVObject = func(a_this, a_backgroundLoading);
-	if (!niAVObject || !a_this) {
-		//logger::warn("no ni node casted from niav object from load3d hook");
-		return niAVObject;
-	}
+        RE::FormID refFormID = a_this->GetFormID();
 
-	RE::FormID refFormID = a_this->GetFormID();
+        bool dontAttachedDebugMarker = true;
 
-	// ref already has a light placed, introduced to skip over refs that got a merged light
-	{
-		std::lock_guard lock(globals::refsWithAttachedLightsMutex);
-		if (globals::refsWithAttachedLights.count(refFormID) > 0)
-			return niAVObject;
-	}
-	{
-		std::lock_guard lock(globals::mergedRefsMutex);
-		if (globals::mergedRefs.count(refFormID) > 0)
-			return niAVObject;
-	}
+        auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
+        if (!a_root) {
+            return niAVObject;
+        }
 
-	// calling asNode crashed on some dyndolod references for a user so netimmersive cast instead
-	auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
-	if (!a_root) {
-		return niAVObject;
-	}
+        auto cell = a_this->GetParentCell();
+        if (!cell) {
+            logger::warn("no cell cant determine if should use exterior or interior configs");
+            return niAVObject;
+        }
 
-	auto cell = a_this->GetParentCell();
+        bool isInterior = cell->IsInteriorCell();
 
-	if (!cell) {
-		logger::warn("no cell cant determine if should use exterior or interior configs");
-		return niAVObject;
-	}
+        const auto baseObject = a_this->GetBaseObject();
+        if (!baseObject) return niAVObject;
 
-	bool isInterior = cell->IsInteriorCell();
+        const auto baseFormID = baseObject->GetFormID();
 
-	// skip harvested plants
-	if (a_this->formFlags & (1 << 13)) {
-		logger::debug("skip attaching light to harvested plant");
-		return niAVObject;
-	}
+        if (auto* baseCfgs = LightData::findConfigsByFormID(baseFormID, isInterior, true)) {
+            if (baseCfgs->empty() || forms::isExcludedRef(a_this)) return niAVObject;
 
-	const auto baseObject = a_this->GetBaseObject();
-	if (!baseObject) return niAVObject;
+            for (const auto& cfg : *baseCfgs) {
+                auto* light = LightManager::AttachLight(
+                    cfg, a_root, a_this, cfg.menuName, refFormID, dontAttachedDebugMarker);
 
-	const auto baseFormID = baseObject->GetFormID();
+                if (!light) {
+                    logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
+                }
+            }
 
-	//skips fires with base ids below with animations off 
-	// 1. Sky Haven chain activated fires
-	// 2. Castle Volkihar fires that turn on
-	if (!LightManager::IsAnimationsOn(a_this, baseFormID)) {
-		return niAVObject;
-	}
+            return niAVObject;
+        }
 
-	// this looks for refs
-	if (auto* refCfgs = LightData::findConfigsByFormID(refFormID, isInterior, false)) {
+        const auto bm = baseObject->As<RE::TESModel>();
+        if (!bm) return niAVObject;
 
-		if (!refCfgs) return niAVObject;
+        auto currentModel = std::string(bm->GetModel());
+        auto meshName = extractMeshName(currentModel);
+        toLower(meshName);
 
-		bool alreadyAttachedDebugMarker = false;
+        auto cfgs = findConfigsForMeshPath(meshName, isInterior, false);
+   
+       if (cfgs.empty()) return niAVObject;
 
-		for (const auto& cfg : *refCfgs) {
+       else {
 
-			if (cfg.isPluginLight) return niAVObject;
+           for (auto& cfg : cfgs) {
+               auto* light = LightManager::AttachLight(
+                   cfg,
+                   a_root,
+                   a_this,
+                   meshName,
+                   refFormID,
+                   dontAttachedDebugMarker);
 
-			auto* light = LightManager::AttachLight(
-				cfg,
-				a_root,
-				a_this,
-				cfg.menuName,
-				refFormID,
-				alreadyAttachedDebugMarker);
+               if (!light) {
+                   logger::warn("AttachLight failed for ref {:08X} with mesh '{}'", refFormID, meshName);
+                   continue;
+               }
+           }
 
-			if (!light) {
-				logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
-			}
+       }
 
-			globals::baseFormsWithAttachedLights.emplace(baseFormID);
-		}
+        return niAVObject;
+    }
 
-		if (globals::removeFakeGlowOrbs) {
-				glowOrbRemover(a_root);
-		}
-		
-		return niAVObject;
-	}
+    template <class T>
+    void ObjectReference::Load3D<T>::Install()
+    {
+        func = REL::Relocation<std::uintptr_t>(T::VTABLE[0])
+            .write_vfunc(idx, thunk);
 
-	// this looks for base
-	if (auto* baseCfgs = LightData::findConfigsByFormID(baseFormID, isInterior, true)) {
+        logger::info("Hooked {}::Load3D", typeid(T).name());
+    }
 
-		if (!baseCfgs || baseCfgs->empty() || forms::isExcludedRef(a_this)) return niAVObject;
+    template struct Load3D<RE::BarrierProjectile>;
+    template struct Load3D<RE::BeamProjectile>;
+    template struct Load3D<RE::ConeProjectile>;
+    template struct Load3D<RE::MissileProjectile>;
+    template struct Load3D<RE::Hazard>;
+    template struct Load3D<RE::Explosion>;
 
-		if (globals::removeFakeGlowOrbs) {
-			glowOrbRemover(a_root);
-		}
-
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-
-		bool alreadyAttachedDebugMarker = false;
-
-		const auto allowLightMerge = baseCfgs->front().shadowLight ? globals::enableShadowLightMerging : globals::enableLightMerging;
-
-		const auto isMultiLight = baseCfgs->size() > 1;
-
-		logger::info(
-			"BASE MERGE CHECK {:08X}: configs={}, shadow={}, allowMerge={}, noMerging={}",
-			baseFormID,
-			baseCfgs->size(),
-			baseCfgs->front().shadowLight,
-			allowLightMerge,
-			LightData::HasRelightFlag(
-				baseCfgs->front().flags,
-				RELIGHT_FLAGS::kNoMerging));
-
-		//configs with more then 1 light in the json object should not merge
-		if (!isMultiLight && allowLightMerge && !LightData::HasRelightFlag(baseCfgs->front().flags, RELIGHT_FLAGS::kNoMerging)) {
-			auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
-			if (!cloneLight) {
-				logger::warn("Failed to clone NiPointLight for base object {:08X} )", baseFormID);
-				return niAVObject;
-			}
-
-			LightManager::fillPendingMerges(a_this, cloneLight, baseCfgs->front(), a_root, false);
-			return niAVObject;
-		}
-
-		for (const auto& cfg : *baseCfgs) {
-
-			auto* light = LightManager::AttachLight(
-				cfg,
-				a_root,
-				a_this,
-				cfg.menuName,
-				refFormID,
-				alreadyAttachedDebugMarker);
-
-			if (!light) {
-				logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
-			}
-
-	
-
-		}
-
-		return niAVObject;
-	}
-	
-	const auto bm = baseObject->As<RE::TESModel>();
-	if (!bm) return niAVObject;
-
-	auto currentModel = std::string(bm->GetModel());
-
-	//turn mesh name from //statics//whiterun//objects//fires.nif -> fires
-	auto meshName = extractMeshName(currentModel);
-
-	//mutable
-	toLower(meshName);
-
-	if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
-		globals::baseFormsWithAttachedLights.emplace(baseFormID);
-
-			if (globals::removeFakeGlowOrbs) {
-				glowOrbRemover(a_root);
-			}
-		
-		return niAVObject;
-	}
-
-	return niAVObject;
+    void InstallLoad3DHooks()
+    {
+        Load3D<RE::BarrierProjectile>::Install();
+        Load3D<RE::BeamProjectile>::Install();
+        Load3D<RE::ConeProjectile>::Install();
+        Load3D<RE::MissileProjectile>::Install();
+        Load3D<RE::Hazard>::Install();
+        Load3D<RE::Explosion>::Install();
+    }
 }
 
-void Load3D::Install()
+//attach light to static objects, allows light merging and partial mesh path search
+RE::NiAVObject* TESObjectREFRLoad3D::thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading)
 {
-	func = REL::Relocation<std::uintptr_t>(RE::TESObjectREFR::VTABLE[0])
-		.write_vfunc(idx, thunk);
-	logger::info("Hooked TESObjectREFR::Load3D");
+
+    //logger::info("load3D called");
+    auto niAVObject = func(a_this, a_backgroundLoading);
+    if (!niAVObject || !a_this) {
+        //logger::warn("no ni node casted from niav object from load3d hook");
+        return niAVObject;
+    }
+
+    RE::FormID refFormID = a_this->GetFormID();
+
+    // ref already has a light placed, introduced to skip over refs that got a merged light
+    {
+        std::lock_guard lock(globals::refsWithAttachedLightsMutex);
+        if (globals::refsWithAttachedLights.count(refFormID) > 0)
+            return niAVObject;
+    }
+    {
+        std::lock_guard lock(globals::mergedRefsMutex);
+        if (globals::mergedRefs.count(refFormID) > 0)
+            return niAVObject;
+    }
+
+    // calling asNode crashed on some dyndolod references for a user so netimmersive cast instead
+    auto a_root = netimmerse_cast<RE::NiNode*>(niAVObject);
+    if (!a_root) {
+        return niAVObject;
+    }
+
+    auto cell = a_this->GetParentCell();
+
+    if (!cell) {
+        logger::warn("no cell cant determine if should use exterior or interior configs");
+        return niAVObject;
+    }
+
+    bool isInterior = cell->IsInteriorCell();
+
+    // skip harvested plants
+    if (a_this->formFlags & (1 << 13)) {
+        logger::debug("skip attaching light to harvested plant");
+        return niAVObject;
+    }
+
+    const auto baseObject = a_this->GetBaseObject();
+    if (!baseObject) return niAVObject;
+
+    const auto baseFormID = baseObject->GetFormID();
+
+    //skips fires with base ids below with animations off 
+    // 1. Sky Haven chain activated fires
+    // 2. Castle Volkihar fires that turn on
+    if (!LightManager::IsAnimationsOn(a_this, baseFormID)) {
+        return niAVObject;
+    }
+
+    // this looks for refs
+    if (auto* refCfgs = LightData::findConfigsByFormID(refFormID, isInterior, false)) {
+
+        if (!refCfgs) return niAVObject;
+
+        bool alreadyAttachedDebugMarker = false;
+
+        for (const auto& cfg : *refCfgs) {
+
+            if (cfg.isPluginLight) return niAVObject;
+
+            auto* light = LightManager::AttachLight(
+                cfg,
+                a_root,
+                a_this,
+                cfg.menuName,
+                refFormID,
+                alreadyAttachedDebugMarker);
+
+            if (!light) {
+                logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
+            }
+
+            globals::baseFormsWithAttachedLights.emplace(baseFormID);
+        }
+
+        if (globals::removeFakeGlowOrbs) {
+            glowOrbRemover(a_root);
+        }
+
+        return niAVObject;
+    }
+
+    // this looks for base
+    if (auto* baseCfgs = LightData::findConfigsByFormID(baseFormID, isInterior, true)) {
+
+        if (!baseCfgs || baseCfgs->empty() || forms::isExcludedRef(a_this)) return niAVObject;
+
+        if (globals::removeFakeGlowOrbs) {
+            glowOrbRemover(a_root);
+        }
+
+        globals::baseFormsWithAttachedLights.emplace(baseFormID);
+
+        bool alreadyAttachedDebugMarker = false;
+
+        const auto allowLightMerge = baseCfgs->front().shadowLight ? globals::enableShadowLightMerging : globals::enableLightMerging;
+
+        const auto isMultiLight = baseCfgs->size() > 1;
+
+        logger::info(
+            "BASE MERGE CHECK {:08X}: configs={}, shadow={}, allowMerge={}, noMerging={}",
+            baseFormID,
+            baseCfgs->size(),
+            baseCfgs->front().shadowLight,
+            allowLightMerge,
+            LightData::HasRelightFlag(
+                baseCfgs->front().flags,
+                RELIGHT_FLAGS::kNoMerging));
+
+        //configs with more then 1 light in the json object should not merge
+        if (!isMultiLight && allowLightMerge && !LightData::HasRelightFlag(baseCfgs->front().flags, RELIGHT_FLAGS::kNoMerging)) {
+            auto cloneLight = LightManager::cloneNiPointLight(LightData::masterNiPointLight.light.get());
+            if (!cloneLight) {
+                logger::warn("Failed to clone NiPointLight for base object {:08X} )", baseFormID);
+                return niAVObject;
+            }
+
+            LightManager::fillPendingMerges(a_this, cloneLight, baseCfgs->front(), a_root, false);
+            return niAVObject;
+        }
+
+        for (const auto& cfg : *baseCfgs) {
+
+            auto* light = LightManager::AttachLight(
+                cfg,
+                a_root,
+                a_this,
+                cfg.menuName,
+                refFormID,
+                alreadyAttachedDebugMarker);
+
+            if (!light) {
+                logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
+            }
+
+        }
+
+        return niAVObject;
+    }
+
+    const auto bm = baseObject->As<RE::TESModel>();
+    if (!bm) return niAVObject;
+
+    auto currentModel = std::string(bm->GetModel());
+
+    //turn mesh name from //statics//whiterun//objects//fires.nif -> fires
+    auto meshName = extractMeshName(currentModel);
+
+    //mutable
+    toLower(meshName);
+
+    if (LightManager::processByFilePath(a_this, meshName, a_root, isInterior)) {
+        globals::baseFormsWithAttachedLights.emplace(baseFormID);
+
+        if (globals::removeFakeGlowOrbs) {
+            glowOrbRemover(a_root);
+        }
+
+        return niAVObject;
+    }
+
+    return niAVObject;
+}
+
+void TESObjectREFRLoad3D::Install()
+{
+    func = REL::Relocation<std::uintptr_t>(RE::TESObjectREFR::VTABLE[0])
+        .write_vfunc(idx, thunk);
+    logger::info("Hooked TESObjectREFR::Load3D");
 }
 
 //PO3's hook used to disable and or edit vanilla / modded esp,esm,esl plugin lights
@@ -345,7 +451,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
             auto backupLightData = light->data;
             LightData::SetTESObjectLightDataFromConfig(light, cfg);
 
-            auto* niLight = func(light, ref, node, forceDynamic, useLightRadius, false);
+            auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, false);
             light->data = backupLightData;
 
             if (!niLight) return niLight;

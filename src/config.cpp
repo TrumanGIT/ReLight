@@ -1017,7 +1017,10 @@ void parseTemplates() {
 	}
 }
 
-std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior)
+std::vector<LightConfig>& findConfigsForMeshPath(
+	std::string& meshPath,
+	bool interior,
+	bool partialSearch)
 {
 	static std::vector<LightConfig> empty;
 
@@ -1026,16 +1029,34 @@ std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool int
 		return empty;
 	}
 
+	auto findConfig = [&](auto& configs) -> std::vector<LightConfig>*{
+		if (partialSearch) {
+			auto it = configs.find(meshPath);
+			if (it != configs.end()) {
+				return &it->second;
+			}
+		}
+		else {
+			for (auto& [key, value] : configs) {
+				if (key.find(meshPath) != std::string::npos) {
+					return &value;
+				}
+			}
+		}
+
+		return nullptr;
+		};
+
+	// Exterior configs get priority, with the normal config as fallback.
 	if (!interior) {
-		auto it = LightData::meshPathToJsonCfgExteriors.find(meshPath);
-		if (it != LightData::meshPathToJsonCfgExteriors.end()) {
-			return it->second;
+		if (auto* result = findConfig(LightData::meshPathToJsonCfgExteriors)) {
+			return *result;
 		}
 	}
 
-	auto fallbackIt = LightData::meshPathToJsonCfg.find(meshPath);
-	if (fallbackIt != LightData::meshPathToJsonCfg.end()) {
-		return fallbackIt->second;
+	// Normal config / fallback.
+	if (auto* result = findConfig(LightData::meshPathToJsonCfg)) {
+		return *result;
 	}
 
 	logger::warn("found meshPath '{}' but no config exists", meshPath);

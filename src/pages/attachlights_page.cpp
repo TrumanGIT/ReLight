@@ -4,6 +4,7 @@
 #include "../LightManager.h"
 #include "../forms.h"
 #include "../ini.h"
+#include "../lightData.h"
 
 enum class AttachLightStep
 {
@@ -173,15 +174,18 @@ void __stdcall RenderAttachRemove()
 
             multiLight = true;
 
-            auto multiLightCfg = FindRefIDConfigForAttachAnother(selected);
+            auto multiLightCfgs = LightData::findConfigsByFormID(formID, globals::currentCellIsInterior, false);
 
-            if (!multiLightCfg.configPath.empty()) {
+            if (multiLightCfgs && !multiLightCfgs->empty()) {
+
                 logger::info("Add another light: found existing ref ID config {:08X}", selected->GetFormID());
 
-                entryCount = CountJsonEntriesInFile(multiLightCfg.configPath);
-                jsonFilePath = multiLightCfg.configPath;
-                menuCategory = multiLightCfg.menuCategory;
-                menuName = StripTrailingIdentifier(multiLightCfg.menuName);
+                auto existingCfg = multiLightCfgs->front();
+
+                entryCount = CountJsonEntriesInFile(existingCfg.configPath);
+                jsonFilePath = existingCfg.configPath;
+                menuCategory = existingCfg.menuCategory;
+                menuName = StripTrailingIdentifier(existingCfg.menuName);
 
                 auto root = selected->Get3D();
 
@@ -191,7 +195,7 @@ void __stdcall RenderAttachRemove()
 
                 if (!rootAsNode) break;
 
-                newCfg = multiLightCfg;
+                newCfg = existingCfg;
                 newCfg.configID = globals::nextID++;
                 newCfg.menuCategory = menuCategory;
                 newCfg.menuName = std::format("{} [{}]", menuName, entryCount);

@@ -4,8 +4,26 @@
 #include "Utility.h"
 #include "global.h"
 
-//when we attach ni poiny lights to static objects
-struct Load3D {
+//attach light to spells explosions effects and the likes, no light merging and exact mesh paths required
+namespace ObjectReference
+{
+    template <class T>
+    struct Load3D
+    {
+        static RE::NiAVObject* thunk(T* a_this, bool a_backgroundLoading);
+
+        static inline REL::Relocation<decltype(thunk)> func;
+
+        static constexpr std::size_t idx{ 0x6A };
+
+        static void Install();
+    };
+
+     void InstallLoad3DHooks();
+}
+
+//attach light to static objects, allows light merging and partial mesh path search
+struct TESObjectREFRLoad3D {
 
     static RE::NiAVObject* thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading);
 
