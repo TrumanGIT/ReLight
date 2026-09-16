@@ -969,10 +969,6 @@ inline void RenderTESLightFlags(std::uint32_t& flags)
 {
     static bool showFlagWindow = false;
 
-    if (globals::skseMenuClosed.load()) {
-        return;
-    }
-
     if (ImGuiMCP::Button((std::string("Flags ") + flagIcon).c_str())) {
         showFlagWindow = !showFlagWindow;
     }

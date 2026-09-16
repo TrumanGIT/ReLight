@@ -6,11 +6,13 @@
 #include "config.h"
 
 
-bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName)
+bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName, bool disableDynamicForms)
 {
-	if (!ref || !light || ref->IsDynamicForm() || light->CanBeCarried()) {
+	if (!ref || !light || light->CanBeCarried()) {
 		return false;
 	}
+
+    if (!disableDynamicForms && ref->IsDynamicForm()) return false; 
 
     if (forms::ContainsEditorID(edid, globals::disableByEditorID)) return true;
 

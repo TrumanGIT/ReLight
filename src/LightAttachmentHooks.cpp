@@ -98,6 +98,10 @@ namespace ObjectReference
     template struct Load3D<RE::MissileProjectile>;
     template struct Load3D<RE::Hazard>;
     template struct Load3D<RE::Explosion>;
+    template struct Load3D<RE::ArrowProjectile>;
+    template struct Load3D<RE::Explosion>;
+    template struct Load3D<RE::ArrowProjectile>;
+    template struct Load3D<RE::GrenadeProjectile>;
 
     void InstallLoad3DHooks()
     {
@@ -107,6 +111,8 @@ namespace ObjectReference
         Load3D<RE::MissileProjectile>::Install();
         Load3D<RE::Hazard>::Install();
         Load3D<RE::Explosion>::Install();
+        Load3D<RE::ArrowProjectile>::Install();
+        Load3D<RE::GrenadeProjectile>::Install();
     }
 }
 
@@ -333,7 +339,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::thunk(
     auto configs = LightData::findConfigsByFormID(searchFormID, true, isBaseID);
     bool configExists = configs != nullptr && !configs->empty();
 
-    if (!configExists && shouldDisableLight(light, ref, edid, modName))
+    if (!configExists && shouldDisableLight(light, ref, edid, modName, false))
         return nullptr;
 
     if (configExists) {
@@ -441,7 +447,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
     auto configs = LightData::findConfigsByFormID(formID, true, true);
     bool configExists = configs != nullptr && !configs->empty();
 
-    if (!configExists && shouldDisableLight(light, ref, edid, modName))
+    if (!configExists && shouldDisableLight(light, ref, edid, modName, true))
         return nullptr;
 
     if (configExists) {

@@ -1030,7 +1030,7 @@ std::vector<LightConfig>& findConfigsForMeshPath(
 	}
 
 	auto findConfig = [&](auto& configs) -> std::vector<LightConfig>*{
-		if (partialSearch) {
+		if (!partialSearch) {
 			auto it = configs.find(meshPath);
 			if (it != configs.end()) {
 				return &it->second;

@@ -29,4 +29,4 @@ private:
 	static inline REL::Relocation<decltype(Activate)> func;
 };
 
- bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName);
+ bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::string& edid, std::string& modName, bool disableDynamicForms = false);
