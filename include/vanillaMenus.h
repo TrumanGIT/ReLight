@@ -1,6 +1,5 @@
 #pragma once
 
-// inherit from class so we can use "this" in return
 struct InventoryMenu : RE::InventoryMenu
 {
     RE::UI_MESSAGE_RESULTS thunk(RE::UIMessage& a_message);
@@ -13,7 +12,6 @@ struct InventoryMenu : RE::InventoryMenu
     static void Install();
 };
 
-// inherit from class so we can use "this" in return
 struct CraftingMenu : RE::CraftingMenu
 {
     RE::UI_MESSAGE_RESULTS thunk(RE::UIMessage& a_message);
