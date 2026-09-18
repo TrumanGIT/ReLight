@@ -451,7 +451,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
             auto backupLightData = light->data;
             LightData::SetTESObjectLightDataFromConfig(light, cfg);
 
-            auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, false);
+            auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
             light->data = backupLightData;
 
             if (!niLight) return niLight;
@@ -468,7 +468,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
     }
 
     // No config exists - create the light normally
-    auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, false);
+    auto* niLight = magicLightFunc(light, ref, node, forceDynamic, useLightRadius, affectRequesterOnly);
     if (!niLight) return niLight;
 
     LightConfig cfg;
