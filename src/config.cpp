@@ -187,6 +187,24 @@ bool loadConfiguration(LightConfig& config, const json& data) {
 			}
 		}
 
+
+		if (data.contains("fadeController") && data["fadeController"].contains("keys")) {
+			const auto& fc = data["fadeController"];
+			const auto s = fc.value("interpolation", std::string("Linear"));
+			config.fadeController.interpolation = s == "Step" ? INTERPOLATION::kStep
+				: s == "Cubic" ? INTERPOLATION::kCubic
+				: INTERPOLATION::kLinear;
+			for (const auto& k : fc["keys"]) {
+				FloatKeyframe key;
+				key.time = k.value("time", 0.0f);
+				key.value = k.value("value", 1.0f);
+				key.forward = k.value("forward", 0.0f);
+				key.backward = k.value("backward", 0.0f);
+				config.fadeController.keys.push_back(key);
+			}
+			std::ranges::sort(config.fadeController.keys, {}, &FloatKeyframe::time);
+		}
+
 		return true;
 	}
 	catch (const json::exception& e) {
@@ -983,6 +1001,7 @@ void parseTemplates() {
 				cfg.configID = globals::nextID++;
 				cfg.jsonIndex = jsonIndex;
 				cfg.meshPaths = meshFilePaths;
+
 
 				for (auto& meshPath : cfg.meshPaths) {
 					toLower(meshPath);

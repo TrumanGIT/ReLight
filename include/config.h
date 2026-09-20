@@ -7,6 +7,7 @@
 #include <array>
 #include "logger.hpp"
 #include "nlohmann/json.hpp"
+#include "controller.h"
 
 namespace fs = std::filesystem;
 
@@ -20,6 +21,7 @@ B(affectLand, true) \
 B(affectWater, true) \
 B(neverFades, true) \
 B(isPluginLight, false) \
+B(randomAnimStart, true) \
 
 #define FOREACH_FLOAT(F) \
 F(brightness, 2.0f) \
@@ -115,11 +117,12 @@ struct LightConfig {
     //std::array<int, COL_SIZE> startingDiffuseColor{};     // NiPointLightRunflickerTime->data.color for main color
     std::array<float, POS_SIZE> position{0, 0, 30};       // RE::NiPointLight->local.translate.x, y z
     std::array<float, POS_SIZE> rotation{ 0, 0, 0 };       // RE::NiPointLight->local.rotation used for spotlights
+    FloatKeyframeSequence fadeController{};
     uint32_t flags{ 0 };
     std::vector<int> attachPath; // used to attach the ni light to a certain node of a mesh
     uint32_t configID = 0;       // used to lookup configs fast in flicker calcs ect
     uint16_t jsonIndex = 0;      // used to keep track of multi lights
-
+ 
      void printFlags(uint32_t mask, bool isAPluginLight)
     {
         if (!mask) {

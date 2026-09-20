@@ -16,9 +16,9 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 	// if cell is loaded lets wait 1 second before continuing. 
 	if (globals::cellFullyLoaded.load() && !globals::secondAfterCellFullyLoaded.load()) {
 		if (OneSecondPassed(globals::cellFullyLoadedTimerStart)) {
-			globals::secondAfterCellFullyLoaded.store(true); 
+			globals::secondAfterCellFullyLoaded.store(true);
 		}
-		return; 
+		return;
 	}
 
 	if (globals::secondAfterCellFullyLoaded.load()) {
@@ -29,9 +29,6 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 		// clear so ref can be reprocessed again. for mods like dynamic candles
 		std::lock_guard lock2(globals::mergedRefsMutex);
 		globals::mergedRefs.clear();
-
-		// idk if need to make this false again but anyway why not
-		//globals::cellFullyLoaded.store(false);
 	}
 
 	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
@@ -42,23 +39,26 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 
 	auto& ssRt = ssNode->GetRuntimeData();
 
-	const auto playerPos = player->GetPosition(); 
+	const auto playerPos = player->GetPosition();
+
+	FadeState::NextFrame(); 
 
 	static float externalEmittanceTimer = 0.0f;
-	static bool updateExternalEmittance = false; 
+	static bool updateExternalEmittance = false;
 	externalEmittanceTimer += delta;
 
 	if (externalEmittanceTimer >= 1.0f) {
 		externalEmittanceTimer = 0.0f;
 
-		updateExternalEmittance = true; 
+		updateExternalEmittance = true;
+		FadeState::Prune(); 
 	}
 
 	updateLights(ssRt.activeLights, delta, false, playerPos, updateExternalEmittance);
 
 	updateLights(ssRt.activeShadowLights, delta, true, playerPos, updateExternalEmittance);
 
-	updateExternalEmittance = false; 
+	updateExternalEmittance = false;
 
 	if (globals::skseMenuClosed.exchange(false)) {
 		auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();

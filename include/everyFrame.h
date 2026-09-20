@@ -1079,13 +1079,6 @@ struct NiLightFlickerHook {
 	static inline REL::Relocation<decltype(thunk)> func;
 };
 
-inline float getRandomFloat(const float& min, const float& max)
-{
-	static std::mt19937 rng{ std::random_device{}() };
-	std::uniform_real_distribution<float> dist(min, max);
-	return dist(rng);
-}
-
 // generic type argument probly not needed both shadow light list and non shadow light list same array type proboblly
 template <class T>
 static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3 playerPos, bool updateExternalEmittance)
@@ -1118,11 +1111,12 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		const auto& config = it->second;
 
 		// lights from a esp already covered by vanilla's flicker update
-		if (config.isPluginLight) continue; 
+		if (config.isPluginLight) continue;
 
 		// this is to remove lights from the scene otherwise they stay after mesh unloads
 		auto a_root = light->light->parent;
 		if (!a_root) {
+			FadeState::Remove(light->light.get());  
 			toRemove.push_back(light->light);
 			continue;
 		}
@@ -1139,18 +1133,13 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 			rt.diffuse.blue = (config.diffuseColor[2] / 255.0f) * emittance.blue;
 		}
 
-		if (config.flickersPerSecond <= 0.0f)
-			continue; // static light, no flicker/pulse
+		// a light with a fade controller but no flicker still needs updating
+		const bool hasFlicker = config.flickersPerSecond > 0.0f;
+		const bool hasFadeController = !config.fadeController.empty();
 
-		auto* pointLight = netimmerse_cast<RE::NiPointLight*>(light->light.get());
-		if (!pointLight)
-			continue;
+		if (!hasFlicker && !hasFadeController)
+			continue; // static light, no flicker/pulse/fade animation
 
-		auto& pos = light->light->local.translate;
-
-		RE::NiPoint3 basePos = light->light->worldBound.center; 
-
-		float flickerDelta = delta * config.flickersPerSecond;
 
 		const auto* ref = light->light->GetUserData();
 
@@ -1160,12 +1149,35 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		//dont increase gets to messy, only handle mini objects like mini fires in windhelm otherwise too bright
 		if (scale >= 1.0f) scale = 1.0f;
 
+		float fadeMult = 1.0f;
+		if (hasFadeController) {
+			fadeMult = FadeState::GetValue(light->light.get(), config.fadeController, delta, config.randomAnimStart);
+		}
+		const float baseFade = config.startingFade * fadeMult * globals::brightnessModifier * scale;
+
+		if (!hasFlicker) {
+			rt.fade = baseFade;
+			continue;
+		}
+
+		auto* pointLight = netimmerse_cast<RE::NiPointLight*>(light->light.get());
+		if (!pointLight) {
+			if (hasFadeController) rt.fade = baseFade;
+			continue;
+		}
+
+		auto& pos = light->light->local.translate;
+
+		RE::NiPoint3 basePos = light->light->worldBound.center;
+
+		float flickerDelta = delta * config.flickersPerSecond;
+
 		if (!LightData::HasRelightFlag(config.flags, RELIGHT_FLAGS::kPulse)) {
 
 			// ---- Flicker (matches vanilla kFlicker / kFlickerSlow) ----
-			auto constAttenOffset = std::fmod(pointLight->constAttenuation + getRandomFloat(1.1f, 13.1f) * flickerDelta, RE::NI_TWO_PI);
-			auto linearAttenOffset = std::fmod(pointLight->linearAttenuation + getRandomFloat(1.2f, 13.2f) * flickerDelta, RE::NI_TWO_PI);
-			auto quadraticAttenOffset = std::fmod(pointLight->quadraticAttenuation + getRandomFloat(1.3f, 19.3f) * flickerDelta, RE::NI_TWO_PI);
+			auto constAttenOffset = std::fmod(pointLight->constAttenuation + Random::getRandomFloat(1.1f, 13.1f) * flickerDelta, RE::NI_TWO_PI);
+			auto linearAttenOffset = std::fmod(pointLight->linearAttenuation + Random::getRandomFloat(1.2f, 13.2f) * flickerDelta, RE::NI_TWO_PI);
+			auto quadraticAttenOffset = std::fmod(pointLight->quadraticAttenuation + Random::getRandomFloat(1.3f, 19.3f) * flickerDelta, RE::NI_TWO_PI);
 
 			pointLight->constAttenuation = constAttenOffset;
 			pointLight->linearAttenuation = linearAttenOffset;
@@ -1190,12 +1202,11 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 				NiSinQImpl(quadraticAttenOffset * 3.0f * (512.0f / RE::NI_TWO_PI) + 73.3386f) * 0.2f,
 				-1.0f, 1.0f);
 
-			const float baseFade = config.startingFade * globals::brightnessModifier * scale;
 			rt.fade = ((halfIntensityAmplitude * flickerIntensityVal) + (1.0f - halfIntensityAmplitude)) * baseFade;
 		}
 		else {
 
-			flickerDelta *= 5; 
+			flickerDelta *= 5;
 
 			// ---- Pulse (matches vanilla kPulse / kPulse) ----
 			auto constAttenuation = std::fmod(pointLight->constAttenuation + flickerDelta, RE::NI_TWO_PI);
@@ -1205,7 +1216,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 			const auto constAttenSine = NiSinQ(constAttenuation);
 
 			const float halfIntensityAmplitude = config.flickerIntensity * 0.5f;
-			const float baseFade = config.startingFade * globals::brightnessModifier * scale;
+
 
 			rt.fade = ((constAttenCosine * halfIntensityAmplitude) + (1.0f - halfIntensityAmplitude)) * baseFade;
 
