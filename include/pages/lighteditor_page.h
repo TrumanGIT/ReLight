@@ -7,10 +7,11 @@
 #include "..//LightManager.h"
 #include "../Utility.h"
 
+// note static in a header means each .cpp gets its own seperate vector 
 
-static vector<RE::NiPointer<RE::BSLight>> relightLights = {};
+inline vector<RE::NiPointer<RE::BSLight>> relightLights = {};
 //vanilla, elfx, lux ect
-static vector<RE::NiPointer<RE::BSLight>> pluginLights = {};
+inline vector<RE::NiPointer<RE::BSLight>> pluginLights = {};
 
 void __stdcall RenderLightEditor();
 

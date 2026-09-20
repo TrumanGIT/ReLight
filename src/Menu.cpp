@@ -35,10 +35,6 @@ namespace UI {
     {
         if (eventType == SKSEMenuFramework::Model::EventType::kCloseMenu) {
             logger::info("skse menu closed");
-
-            // dont hold vanilla lights in ni pointer
-            pluginLights.clear();
-
             //reset lines in playerupdate hook or they dont clear (race condition?) 
             globals::skseMenuClosed.store(true);
         }

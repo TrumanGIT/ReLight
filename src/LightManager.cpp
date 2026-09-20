@@ -351,9 +351,11 @@ bool LightManager::processByFilePath(RE::TESObjectREFR* a_this,  std::string mes
 		 return false;
 	 } 
 
+	 logger::debug(" meshNameMatch = {}", meshNameMatch); 
+
 	 if (!skipExcludes && forms::isExclude(meshName, a_this)) return true;
 
-	auto cfgs = findConfigsForMeshPath(meshNameMatch, isInterior);
+	const auto& cfgs = findConfigsForMeshPath(meshNameMatch, isInterior);
 
 	if (cfgs.empty()) {
 		logger::warn("cfgs is empty for ref {:08X}, with name {} ", refFormID, meshName);

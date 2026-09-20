@@ -1,4 +1,5 @@
 #include "everyFrame.h"
+#include "pages/lighteditor_page.h"
 
 
 //this is used for flicker it runs every frame and works with SKSE Menu framework menu opem
@@ -61,6 +62,11 @@ void PlayerCharacter_Update::thunk(RE::PlayerCharacter* player, float delta) {
 	updateExternalEmittance = false;
 
 	if (globals::skseMenuClosed.exchange(false)) {
+
+		// dont hold vanilla lights in ni pointer
+		pluginLights.clear();
+
+
 		auto* api = DebugAPI_IMPL::DebugAPI::GetSingleton();
 		if (api) {
 			{

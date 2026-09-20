@@ -309,4 +309,4 @@ void CreateConfigFromPluginLight(LightConfig& cfg, RE::NiLight* niLight, RE::TES
 
 void parseTemplates();
 
-std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior, bool partialSearch = true);
+std::vector<LightConfig>& findConfigsForMeshPath(std::string& meshPath, bool interior);

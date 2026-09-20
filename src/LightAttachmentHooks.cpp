@@ -57,7 +57,9 @@ namespace ObjectReference
         auto meshName = extractMeshName(currentModel);
         toLower(meshName);
 
-        auto cfgs = findConfigsForMeshPath(meshName, isInterior, false);
+        logger::debug(" misc load 3d meshName loaded {}", meshName);
+
+      const auto& cfgs = findConfigsForMeshPath(meshName, isInterior);
    
        if (cfgs.empty()) return niAVObject;
 
@@ -402,7 +404,7 @@ void TESObjectLIGH_GenDynamic::Install()
     std::array targets{
         std::make_pair(RELOCATION_ID(17206, 17603), 0x1D3),  // TESObjectLIGH::Clone3D 14026E950
         std::make_pair(RELOCATION_ID(19252, 19678), 0xB8),   // TESObjectREFR::AddLight  1402E12F0
-        std::make_pair(RELOCATION_ID(15527, 15704), 0xAC),   // AE FUN_140217160 / SE FUN_1401ca8d0
+        std::make_pair(RELOCATION_ID(15527, 15704), 0xAC),   // AE FUN_140217160 / SE FUN_1401ca8d0 // add on nodes (torches ect)
     };
 
     for (const auto& [address, offset] : targets) {
@@ -447,7 +449,7 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
     auto configs = LightData::findConfigsByFormID(formID, true, true);
     bool configExists = configs != nullptr && !configs->empty();
 
-    if (!configExists && shouldDisableLight(light, ref, edid, modName, true))
+    if (!configExists && shouldDisableLight(light, ref, edid, modName, false))
         return nullptr;
 
     if (configExists) {
@@ -560,6 +562,7 @@ bool Activate::thunk(
 
 	return result;
 }
+
 void Activate::Install()
 {
 	func = REL::Relocation<std::uintptr_t>(RE::TESObjectACTI::VTABLE[0])

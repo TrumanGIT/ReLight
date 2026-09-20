@@ -970,6 +970,11 @@ void __stdcall RenderAttachRemove()
 
                 if (!refLight) {
 
+                    RE::TESFile* baseOriginFile = baseObject->GetDescriptionOwnerFile();
+
+                    if (baseOriginFile)
+                        modName = baseOriginFile->fileName;
+
                     std::string baseIDandModName = forms::BuildFormIDAndModName(baseFormID, modName);
 
                     if (AddFormIDToAllJsonEntries(filePath, baseIDandModName, true)) {

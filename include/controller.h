@@ -104,7 +104,13 @@ public:
 
 	T GetValue(const float a_delta)
 	{
-		currentTime = std::fmod(currentTime + a_delta, duration);
+		currentTime += a_delta;
+
+		if (currentTime >= duration) {
+			currentTime = duration;
+			return sequence->keys.back().value;
+		}
+
 		return sequence->GetValue(currentTime, lastIndex);
 	}
 
