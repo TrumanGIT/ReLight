@@ -37,6 +37,10 @@ void LightManager::HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetR
 
 		constexpr RE::FormID targetBaseID = 0x0201838F;
 
+		auto* base = a_targetRef->GetBaseObject();
+		if (!base || base->GetFormID() != targetBaseID)
+			return ;
+
 		auto* player = RE::PlayerCharacter::GetSingleton();
 		if (!player)
 			return;
@@ -46,10 +50,6 @@ void LightManager::HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetR
 			return;
 
 		bool isInterior = cell->IsInteriorCell();
-
-		auto* base = a_targetRef->GetBaseObject();
-		if (!base || base->GetFormID() != targetBaseID)
-			return ;
 
 		auto* niObj = a_targetRef->Get3D();
 		if (!niObj)

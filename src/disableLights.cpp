@@ -12,7 +12,7 @@ bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::s
 		return false;
 	}
 
-    if (!disableDynamicForms && ref->IsDynamicForm()) return false; 
+    if (disableDynamicForms && ref->IsDynamicForm()) return true; 
 
     if (forms::ContainsEditorID(edid, globals::disableByEditorID)) return true;
 

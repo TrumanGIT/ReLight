@@ -384,6 +384,10 @@ bool saveNewConfiguration(LightConfig& config)
 			newEntry["refID"] = config.refFormIDsAndModNames;
 		}
 
+		if (!config.baseFormIDsAndModNames.empty()) {
+			newEntry["baseID"] = config.baseFormIDsAndModNames;
+		}
+
 		newEntry["menuCategory"] = config.menuCategory;
 		newEntry["menuName"] = config.menuName;
 		newEntry["externalEmittance"] = config.externalEmittance;

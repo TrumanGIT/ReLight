@@ -1146,6 +1146,13 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		//object reference scale 
 		float scale = ref ? ref->GetScale() : 1.0f;
 
+		//ore vein was mined 
+		if (ref && ref->IsDestroyed()) {
+			FadeState::Remove(light->light.get());
+			toRemove.push_back(light->light);
+			continue; 
+		}
+
 		//dont increase gets to messy, only handle mini objects like mini fires in windhelm otherwise too bright
 		if (scale >= 1.0f) scale = 1.0f;
 

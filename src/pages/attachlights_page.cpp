@@ -578,19 +578,28 @@ void __stdcall RenderAttachRemove()
             auto tryAddBase = [&](RE::FormID key, const std::vector<LightConfig>& cfgVec, bool isExterior) {
                 if (cfgVec.empty()) return;
                 const auto& cfg = cfgVec[0];
-                std::string name = cfg.menuName.empty() ? std::format("0x{:08X}", key) : cfg.menuName;
-                std::string nameLower = toLowerImmut(name);
-                if (seenMenuNames.insert(nameLower).second) {
+
+                // A hex ID isn't a usable template name, so don't list nameless base configs
+                if (cfg.menuName.empty()) {
+                    logger::debug("Template picker: skipping nameless base config {:08X} ({})", key, cfg.configPath);
+                    return;
+                }
+
+                if (seenMenuNames.insert(toLowerImmut(cfg.menuName)).second) {
                     configDisplay.push_back({ key, cfg, isExterior });
                 }
                 };
 
             auto tryAddMesh = [&](const std::string& key, const std::vector<LightConfig>& cfgVec, bool isExterior) {
                 if (cfgVec.empty()) return;
-                const auto& cfg = cfgVec[0];
-                std::string name = cfg.menuName.empty() ? key : cfg.menuName;
-                std::string nameLower = toLowerImmut(name);
-                if (seenMenuNames.insert(nameLower).second) {
+
+                // Copy so the fallback name is what actually gets displayed and sorted
+                LightConfig cfg = cfgVec[0];
+                if (cfg.menuName.empty()) {
+                    cfg.menuName = key;   // the mesh path is a readable name
+                }
+
+                if (seenMenuNames.insert(toLowerImmut(cfg.menuName)).second) {
                     configDisplay.push_back({ key, cfg, isExterior });
                 }
                 };

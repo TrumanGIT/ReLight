@@ -164,6 +164,13 @@ RE::NiAVObject* TESObjectREFRLoad3D::thunk(RE::TESObjectREFR* a_this, bool a_bac
         return niAVObject;
     }
 
+    // ore veins ect 
+    if (a_this->IsDestroyed()) {
+        logger::debug("skip attaching light to harvested plant");
+        return niAVObject;
+    
+    }
+
     const auto baseObject = a_this->GetBaseObject();
     if (!baseObject) return niAVObject;
 
@@ -539,28 +546,26 @@ void TESObjectLIGH_GenDynamic::MagicLightThunkInstall()
     logger::info("Installed TESObjectLIGH::GenDynamic patches");
 }
 
-
 bool Activate::thunk(
-	RE::TESObjectACTI* a_this,
-	RE::TESObjectREFR* a_targetRef,
-	RE::TESObjectREFR* a_activatorRef,
-	std::uint8_t a_arg3,
-	RE::TESBoundObject* a_object,
-	std::int32_t a_targetCount)
+    RE::TESObjectACTI* a_this,
+    RE::TESObjectREFR* a_targetRef,
+    RE::TESObjectREFR* a_activatorRef,
+    std::uint8_t a_arg3,
+    RE::TESBoundObject* a_object,
+    std::int32_t a_targetCount)
 {
+    bool result = func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount);
 
-	bool result = func(a_this, a_targetRef, a_activatorRef, a_arg3, a_object, a_targetCount);
+    if (!a_targetRef || !a_this) {
+        return result;
+    }
 
-	if (!a_targetRef ||! a_this) {
-	//	logger::info("a_targetRef is nullptr");
-		return result;
-	}
+    logger::debug("activate called");
 
-	LightManager::HandleSkyHavenTempleScriptedFires(a_targetRef); 
+    LightManager::HandleSkyHavenTempleScriptedFires(a_targetRef);
+    LightManager::HandleDLC1VCDungeonScriptedFires(a_targetRef);
 
-	LightManager::HandleDLC1VCDungeonScriptedFires(a_targetRef); 
-
-	return result;
+    return result;
 }
 
 void Activate::Install()
