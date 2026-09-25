@@ -5,6 +5,7 @@
 #include "utility.h"
 #include <algorithm>
 #include "forms.h"
+#include "folders.h"
 
 using json = nlohmann::json;
 
@@ -721,6 +722,7 @@ bool saveNewConfiguration(LightConfig& config)
 	  loadConfiguration(cfg, json);
 
 	  cfg.configPath = p;
+	  cfg.folder = Folders::IndexOf(p);
 	  cfg.configID = globals::nextID++;
 	  cfg.jsonIndex = jsonIndex;
 
@@ -1002,6 +1004,7 @@ void parseTemplates() {
 				loadConfiguration(cfg, json);
 
 				cfg.configPath = p;
+				cfg.folder = Folders::IndexOf(p);
 				cfg.configID = globals::nextID++;
 				cfg.jsonIndex = jsonIndex;
 				cfg.meshPaths = meshFilePaths;

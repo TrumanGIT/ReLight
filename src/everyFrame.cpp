@@ -115,7 +115,7 @@ void NiLightFlickerHook::thunk(RE::TESObjectLIGH* a_lightTemplate, RE::REFR_LIGH
 	float backupFlickerRate = a_lightTemplate->data.flickerPeriodRecip;
 	float backupIntensity = a_lightTemplate->data.flickerIntensityAmplitude;
 
-	a_lightTemplate->fade = config.startingFade * globals::vanillaBrightnessModifier;
+	a_lightTemplate->fade = config.startingFade * globals::vanillaBrightnessModifier * Folders::Get(config.folder).brightness;
 	a_lightTemplate->data.flickerMovementAmplitude = config.flickerAmplitude;
 	a_lightTemplate->data.flickerPeriodRecip = config.flickersPerSecond;
 	a_lightTemplate->data.flickerIntensityAmplitude = config.flickerIntensity;
