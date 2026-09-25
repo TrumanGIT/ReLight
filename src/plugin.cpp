@@ -10,6 +10,7 @@
 #include "everyFrame.h"
 #include "disableLights.h"
 #include "LightAttachmentHooks.h"
+#include "folders.h"
 #include "vanillaMenus.h"
 #include "ini.h"
 
@@ -45,7 +46,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         //cs installed dont need flicker prevention
         if (globals::islInstalled || globals::isNativeLightFlickerFixInstalled) globals::enableLightFlickerPreventionMeasures = false;
 
-        //parse json files
+        //parse json files (each config learns its folder's brightness and reach as it loads)
+        Folders::Load();
         parseTemplates();
 
         // create master point light. must clone it or crash idk why

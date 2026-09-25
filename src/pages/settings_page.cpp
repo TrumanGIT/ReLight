@@ -2,6 +2,7 @@
 #include "../global.h"
 #include "../ticker.h"
 #include "../ini.h"
+#include "../folders.h"
 
 using namespace UI;
 
@@ -106,12 +107,14 @@ void __stdcall RenderSettings() {
                         lightRt.fade =
                             cfg.brightness *
                             ref->GetScale() *
-                            globals::brightnessModifier;
+                            globals::brightnessModifier *
+                            Folders::Get(cfg.folder).brightness;
                     }
                     else {
                         lightRt.fade =
                             cfg.brightness *
-                            globals::brightnessModifier;
+                            globals::brightnessModifier *
+                            Folders::Get(cfg.folder).brightness;
                     }
                 }
                 };
@@ -136,6 +139,8 @@ void __stdcall RenderSettings() {
         ImGuiMCP::Text("This only works on cell reset");
         ImGuiMCP::EndTooltip();
     }
+
+    Folders::RenderMenu();
 
     if (ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3)) {
         spdlog::level::level_enum lvl;

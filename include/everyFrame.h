@@ -8,6 +8,7 @@
 #include "utility.h"
 #include "global.h"
 #include "raycast.h"
+#include "folders.h"
 #include <CLibUtilsQTR/DrawDebug.hpp>
 
 
@@ -1160,7 +1161,7 @@ static void updateLights(T& lights, float delta, bool shadowLights, RE::NiPoint3
 		if (hasFadeController) {
 			fadeMult = FadeState::GetValue(light->light.get(), config.fadeController, delta, config.randomAnimStart);
 		}
-		const float baseFade = config.startingFade * fadeMult * globals::brightnessModifier * scale;
+		const float baseFade = config.startingFade * fadeMult * globals::brightnessModifier * scale * Folders::Get(config.folder).brightness;
 
 		if (!hasFlicker) {
 			rt.fade = baseFade;

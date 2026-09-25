@@ -1,6 +1,7 @@
 
 #include "LightData.h"
 #include  "Utility.h"
+#include "folders.h"
 
 // all relight lights are cloned from this light which itself is a clone of a fresh nipoint light
 NiPointLight LightData::masterNiPointLight;
@@ -67,7 +68,8 @@ RE::NiPoint3 LightData::getNiPointLightRadius(const LightConfig& cfg, const floa
 	z = z >= 50.0f ? 1.414f : z;
 	z = std::clamp(z, 0.01f, 50.0f);
 
-	return RE::NiPoint3(cfg.radius * scale, cfg.radius * scale, z * scale);
+	const float reach = Folders::Get(cfg.folder).reach;
+	return RE::NiPoint3(cfg.radius * scale * reach, cfg.radius * scale * reach, z * scale);
 }
 
 void LightData::setNiPointLightAmbientAndDiffuse(RE::NiLight* niPointLight, const LightConfig& cfg) {
@@ -155,7 +157,8 @@ void LightData::setOverlayData(RE::NiLight* niPointLight, const LightConfig& cfg
 		}
 			
 		overlay->size = cfg.size; // isl
-		overlay->cutoffOverride = cfg.cutoffOverride; // isl  
+		const float reach = Folders::Get(cfg.folder).reach;
+		overlay->cutoffOverride = cfg.cutoffOverride / (reach * reach); // isl: reach^2 = K * fade / cutoff - size^2
 		logger::debug(" size set to: {} ", overlay->size);
 		logger::debug("cutoffOverride  set to {}", overlay->cutoffOverride);
 		logger::debug("Flags: 0x{:08X}",overlay->flags);
@@ -179,7 +182,7 @@ void LightData::setNiPointLightDataFromCfg(RE::NiLight* niPointLight, const Ligh
 
 	auto mult = cfg.isPluginLight ? globals::vanillaBrightnessModifier : globals::brightnessModifier; 
 
-	data.fade = cfg.brightness * scale * mult; 
+	data.fade = cfg.brightness * scale * mult * Folders::Get(cfg.folder).brightness;
 
 	data.radius = getNiPointLightRadius(cfg, scale);
 
@@ -379,14 +382,17 @@ void LightData::updateConfigFromLight(LightConfig& cfg, const LightConfig& baseC
 	auto& rt = niLight->GetLightRuntimeData();
 	cfg = baseConfig; 
 
-	cfg.radius = rt.radius.x;
+	// the live light carries its folder's reach; the config keeps the value without it
+	const float reach = Folders::Get(baseConfig.folder).reach;
+
+	cfg.radius = rt.radius.x / reach;
 	cfg.brightness = cfg.startingFade;
 
 	if (globals::islInstalled) {
 
 		if (auto* overlay = Overlay::Get(niLight)) {
 			cfg.size = overlay->size;
-			cfg.cutoffOverride = overlay->cutoffOverride;
+			cfg.cutoffOverride = overlay->cutoffOverride * reach * reach;
 		}
 	}
 	cfg.print(false);

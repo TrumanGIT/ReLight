@@ -122,6 +122,7 @@ struct LightConfig {
     std::vector<int> attachPath; // used to attach the ni light to a certain node of a mesh
     uint32_t configID = 0;       // used to lookup configs fast in flicker calcs ect
     uint16_t jsonIndex = 0;      // used to keep track of multi lights
+    uint16_t folder = 0;         // Folders::IndexOf(configPath) - its folder's brightness and reach sliders
  
      void printFlags(uint32_t mask, bool isAPluginLight)
     {

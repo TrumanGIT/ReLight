@@ -6,6 +6,7 @@
 #include "../LightData.h"
 #include "..//LightManager.h"
 #include "../Utility.h"
+#include "../folders.h"
 
 // note static in a header means each .cpp gets its own seperate vector 
 
@@ -202,7 +203,8 @@ inline void restoreLightToDefaults(RE::NiPointer<RE::NiLight> light) {
 
                 if (globals::islInstalled) {
                     if (auto* isl = Overlay::Get(currentLight->light.get())) {
-                        isl->cutoffOverride = backupCfg.cutoffOverride;
+                        const float reach = Folders::Get(backupCfg.folder).reach;
+                        isl->cutoffOverride = backupCfg.cutoffOverride / (reach * reach);
                         isl->size = backupCfg.size;
                     }
                 }
