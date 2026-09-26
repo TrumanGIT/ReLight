@@ -22,6 +22,48 @@ namespace ObjectReference
      void InstallLoad3DHooks();
 }
 
+// hook ShaderReferenceEffect::Init vfunc to attach lights to reference effects
+namespace ReferenceEffect
+{
+inline TESBoundObject* GetReferenceEffectBase(const TESObjectREFRPtr& a_ref, const ReferenceEffect* a_referenceEffect)
+	{
+		if (const auto weapController = skyrim_cast<WeaponEnchantmentController*>(a_referenceEffect->controller)) {
+			return weapController->lastWeapon;
+		}
+
+		if (auto modelEffect = a_referenceEffect->As<ModelReferenceEffect>()) {
+			return modelEffect->artObject;
+		}
+		if (auto shaderReferenceEffect = a_referenceEffect->As<ShaderReferenceEffect>(); shaderReferenceEffect && shaderReferenceEffect->wornObject) {
+			return shaderReferenceEffect->wornObject;
+		}
+
+		return a_ref->GetBaseObject();
+	}
+
+    NiAVObject* GetReferenceAttachRoot(ReferenceEffect* a_referenceEffect)
+	{
+		if (const auto weapController = skyrim_cast<WeaponEnchantmentController*>(a_referenceEffect->controller)) {
+			if (!weapController->shader) {  // missing nullptr check in GetAttachRoot -> crash
+				return nullptr;
+			}
+		}
+		return a_referenceEffect->GetAttachRoot();
+	}
+
+    template <class T>
+    struct Init
+    {
+        static bool thunk(T* a_this);
+
+        static inline REL::Relocation<decltype(thunk)> func;
+
+        static constexpr std::size_t idx{ 0x36 };
+
+        static void Install();
+    };
+}
+
 //attach light to static objects, allows light merging and partial mesh path search
 struct TESObjectREFRLoad3D {
 

@@ -574,3 +574,78 @@ void Activate::Install()
 		.write_vfunc(idx, thunk);
 	logger::info("Hooked TESObjectACTI::Activate");
 }
+
+// attach lights to ShaderReferenceEffect on Init
+namespace ReferenceEffect
+{
+    template <class T>
+    bool Init<T>::thunk(T* a_this)
+    {
+        auto result = func(a_this);
+
+        if (result) {
+            RE::FormID formID = 0;
+            if constexpr (std::is_same_v<RE::ShaderReferenceEffect, T>) {
+                if (!a_this->effectData) return result; 
+                    formID = a_this->effectData->GetFormID();
+
+                    const auto ref = a_effect->target.get();
+	if (!ref) {
+		return;
+	}
+
+	auto root = RE::GetReferenceAttachRoot(a_effect);
+	if (!root) {
+		return;
+	}
+
+if (const auto thirdPersonRoot = ref->Get3D(false) ? ref->Get3D(false)->GetObjectByName(root->name) : nullptr) {
+			root = thirdPersonRoot;
+		}
+	}
+
+	const auto base = RE::GetReferenceEffectBase(ref, a_effect);
+	if (!base) {
+		return;
+	}
+
+	if (auto invMgr = RE::Inventory3DManager::GetSingleton(); invMgr && invMgr->tempRef == ref.get()) {
+		return;
+	}
+                
+
+    // Find config using the appropriate FormID and isBaseID flag
+    auto configs = LightData::findConfigsByFormID(base->GetFormID(), true, true);
+    bool configExists = configs != nullptr && !configs->empty();
+
+    if (configExists) {
+
+        for (auto& cfg : *configs) {
+                auto* light = LightManager::AttachLight(
+                cfg, root, a_this, cfg.menuName, refFormID, dontAttachedDebugMarker);
+
+                if (!light) {
+                    logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
+                }
+        }
+        return result;
+    }
+
+
+        return result;
+    }
+
+    template <class T>
+    void Init<T>::Install()
+    {
+        func = REL::Relocation<std::uintptr_t>(T::VTABLE[0])
+            .write_vfunc(idx, thunk);
+
+        logger::info("Hooked {}::Init", typeid(T).name());
+    }
+}
+
+void ReferenceEffect::Install()
+{
+    Init<RE::ShaderReferenceEffect>::Install();
+}
