@@ -81,7 +81,7 @@ SKSEPluginLoad(const SKSE::LoadInterface* skse) {
    CraftingMenu::Install();
    TreeActivateHook::Install(); 
    Activate::Install(); 
-   ReferenceEffect::Install();
+   ReferenceEffect::Init::Install();
    NiLightFlickerHook::Install();
    return true;
 }

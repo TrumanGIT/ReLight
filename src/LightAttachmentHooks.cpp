@@ -578,74 +578,197 @@ void Activate::Install()
 // attach lights to ShaderReferenceEffect on Init
 namespace ReferenceEffect
 {
-    template <class T>
-    bool Init<T>::thunk(T* a_this)
+    bool Init::thunk(RE::ShaderReferenceEffect* a_this)
     {
         auto result = func(a_this);
 
-        if (result) {
-            RE::FormID formID = 0;
-            if constexpr (std::is_same_v<RE::ShaderReferenceEffect, T>) {
-                if (!a_this->effectData) return result; 
-                    formID = a_this->effectData->GetFormID();
+        if (!result || !a_this || !a_this->effectData) {
+            return result;
+        }
 
-                    const auto ref = a_effect->target.get();
-	if (!ref) {
-		return;
-	}
+        const auto ref = a_this->target.get();
+        if (!ref) {
+            return result;
+        }
 
-	auto root = RE::GetReferenceAttachRoot(a_effect);
-	if (!root) {
-		return;
-	}
+        auto rootNiAV = GetReferenceAttachRoot(a_this);
+        if (!rootNiAV) {
+            return result;
+        }
 
-if (const auto thirdPersonRoot = ref->Get3D(false) ? ref->Get3D(false)->GetObjectByName(root->name) : nullptr) {
-			root = thirdPersonRoot;
-		}
-	}
+        // Match the first-person attach root to the third-person weapon root
+        // when available.
+        if (const auto thirdPerson3D = ref->Get3D(false)) {
+            if (const auto thirdPersonRoot =
+                thirdPerson3D->GetObjectByName(rootNiAV->name)) {
+                rootNiAV = thirdPersonRoot;
+            }
+        }
 
-	const auto base = RE::GetReferenceEffectBase(ref, a_effect);
-	if (!base) {
-		return;
-	}
+        auto root = netimmerse_cast<RE::NiNode*>(rootNiAV);
+        if (!root) {
+            return result;
+        }
 
-	if (auto invMgr = RE::Inventory3DManager::GetSingleton(); invMgr && invMgr->tempRef == ref.get()) {
-		return;
-	}
-                
+        // Ignore temporary inventory references.
+        if (auto invMgr = RE::Inventory3DManager::GetSingleton();
+            invMgr && invMgr->tempRef == ref.get()) {
+            return result;
+        }
 
-    // Find config using the appropriate FormID and isBaseID flag
-    auto configs = LightData::findConfigsByFormID(base->GetFormID(), true, true);
-    bool configExists = configs != nullptr && !configs->empty();
+       bool dontAttachDebugMarker = true;
 
-    if (configExists) {
+        // ------------------------------------------------------------
+        // The ShaderReferenceEffect's effectData is the actual
+        // TESEffectShader responsible for the visual effect.
+        //
+        // Example:
+        //   FrostChillrendFXShader
+        //
+        // This is what we want to use for the fallback EditorID lookup.
+        // ------------------------------------------------------------
 
-        for (auto& cfg : *configs) {
+        const RE::FormID formID = a_this->effectData->GetFormID();
+
+        auto effectEditorID =
+            clib_util::editorID::get_editorID(a_this->effectData);
+
+        logger::info(
+            "ShaderReferenceEffect: shader FormID={:08X}, EditorID='{}'",
+            formID,
+            effectEditorID);
+
+        // ------------------------------------------------------------
+        // PATH 1:
+        // Match the effect shader directly by FormID.
+        // ------------------------------------------------------------
+
+        if (auto configs = LightData::findConfigsByFormID(
+            formID,
+            true,
+            true);
+            configs && !configs->empty()) {
+
+            logger::info(
+                "Found {} config(s) for effect shader FormID {:08X}",
+                configs->size(),
+                formID);
+
+            for (auto& cfg : *configs) {
                 auto* light = LightManager::AttachLight(
-                cfg, root, a_this, cfg.menuName, refFormID, dontAttachedDebugMarker);
+                    cfg,
+                    root,
+                    ref.get(),
+                    cfg.menuName,
+                    formID,
+                    dontAttachDebugMarker);
 
                 if (!light) {
-                    logger::warn("AttachLight failed for ref {:08X} with light '{}'", refFormID, cfg.menuName);
+                    logger::warn(
+                        "AttachLight failed for ref {:08X} with light '{}'",
+                        ref->GetFormID(),
+                        cfg.menuName);
                 }
+            }
+
+            return result;
         }
+
+        // ------------------------------------------------------------
+        // PATH 2:
+        // Match the effect shader by EditorID.
+        //
+        // Example:
+        //   FrostChillrendFXShader
+        //
+        // We reuse findConfigsForMeshPath() because the existing config
+        // system already stores these string keys there.
+        // ------------------------------------------------------------
+
+        if (effectEditorID.empty()) {
+            logger::warn(
+                "Effect shader {:08X} has no EditorID",
+                formID);
+
+            return result;
+        }
+
+        toLower(effectEditorID);
+
+        logger::info(
+            "No FormID config found. Trying shader EditorID '{}'",
+            effectEditorID);
+
+        auto cell = ref->GetParentCell();
+
+        if (!cell) {
+            logger::warn(
+                "ShaderReferenceEffect {:08X}: target has no parent cell",
+                formID);
+
+            return result;
+        }
+
+        const bool isInterior = cell->IsInteriorCell();
+
+        logger::info(
+            "Looking for '{}' config as {}",
+            effectEditorID,
+            isInterior ? "interior" : "exterior");
+
+        const auto& configs =
+            findConfigsForMeshPath(effectEditorID, isInterior);
+
+        if (configs.empty()) {
+            logger::info(
+                "No configs found for shader EditorID '{}'",
+                effectEditorID);
+
+            return result;
+        }
+
+        logger::info(
+            "Found {} config(s) for shader EditorID '{}'",
+            configs.size(),
+            effectEditorID);
+
+        for (auto& cfg : configs) {
+            auto* light = LightManager::AttachLight(
+                cfg,
+                root,
+                ref.get(),
+                effectEditorID,
+                formID,
+                dontAttachDebugMarker);
+
+            if (!light) {
+                logger::warn(
+                    "AttachLight failed for ref {:08X} with shader '{}'",
+                    ref->GetFormID(),
+                    effectEditorID);
+            }
+        }
+
         return result;
     }
 
 
-        return result;
-    }
 
-    template <class T>
-    void Init<T>::Install()
+    void Init::Install()
     {
-        func = REL::Relocation<std::uintptr_t>(T::VTABLE[0])
+        func = REL::Relocation<std::uintptr_t>(
+            RE::ShaderReferenceEffect::VTABLE[0])
             .write_vfunc(idx, thunk);
 
-        logger::info("Hooked {}::Init", typeid(T).name());
+        logger::info("Hooked RE::ShaderReferenceEffect::Init");
+    }
+
+    void Install()
+    {
+        Init::Install();
     }
 }
 
-void ReferenceEffect::Install()
-{
-    Init<RE::ShaderReferenceEffect>::Install();
-}
+
+
+ 

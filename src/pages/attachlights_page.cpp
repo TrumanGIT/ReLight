@@ -53,7 +53,6 @@ void __stdcall RenderAttachRemove()
     static int selectedIndex = -1;
     static std::vector<LightConfig> selectedCfgs;
     static std::size_t entryCount = 0;
-    static bool showPluginLights = true;
 
     static RE::TESObject* baseObject = nullptr;
     static RE::TESModel* model = nullptr;
@@ -570,40 +569,6 @@ void __stdcall RenderAttachRemove()
         centerNextItem(120.0f);
         ImGuiMCP::Text("Select a template.");
 
-        ImGuiMCP::Spacing();
-        ImGuiMCP::Dummy({ 0.0f, 10.0f });
-
-        // toggle: plugin lights vs relight templates
-        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Button,
-            showPluginLights ? ImGuiMCP::ImVec4{0.60F, 0.50F, 0.10F, 0.80F} : ImGuiMCP::ImVec4{0.35F, 0.35F, 0.35F, 0.5F});
-        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
-            showPluginLights ? ImGuiMCP::ImVec4{1.0F, 0.95F, 0.9F, 1.0F} : ImGuiMCP::ImVec4{0.6F, 0.6F, 0.6F, 0.8F});
-        if (ImGuiMCP::Button("Plugin Lights", ImGuiMCP::ImVec2(130, 0))) {
-            if (!showPluginLights) {
-                showPluginLights = true;
-                selectedIndex = -1;
-                configDisplay.clear();
-            }
-        }
-        ImGuiMCP::PopStyleColor(2);
-        ImGuiMCP::SameLine();
-        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Button,
-            !showPluginLights ? ImGuiMCP::ImVec4{0.60F, 0.50F, 0.10F, 0.80F} : ImGuiMCP::ImVec4{0.35F, 0.35F, 0.35F, 0.5F});
-        ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
-            !showPluginLights ? ImGuiMCP::ImVec4{1.0F, 0.95F, 0.9F, 1.0F} : ImGuiMCP::ImVec4{0.6F, 0.6F, 0.6F, 0.8F});
-        if (ImGuiMCP::Button("Relight Templates", ImGuiMCP::ImVec2(130, 0))) {
-            if (showPluginLights) {
-                showPluginLights = false;
-                selectedIndex = -1;
-                configDisplay.clear();
-            }
-        }
-        ImGuiMCP::PopStyleColor(2);
-        ImGuiMCP::SameLine();
-        ImGuiMCP::Text("%s", showPluginLights ? "Showing: Plugin Lights" : "Showing: Relight Templates");
-
-        ImGuiMCP::Spacing();
-
         if (configDisplay.empty()) {
 
             seenMenuNames.clear();
@@ -659,8 +624,6 @@ void __stdcall RenderAttachRemove()
 
         for (int i = 0; i < static_cast<int>(configDisplay.size()); i++) {
             const auto& [key, cfg, isExterior] = configDisplay[i];
-
-            if (cfg.isPluginLight != showPluginLights) continue;
 
             if (ImGuiMCP::Selectable(cfg.menuName.c_str(), selectedIndex == i)) {
                 selectedIndex = i;

@@ -812,7 +812,7 @@ inline void RenderLightList(
     desiredHeight += static_cast<float>(groupData.byCategory.size()) * categoryHeight;
     desiredHeight += static_cast<float>(groupData.uncategorized.size()) * itemHeight;
 
-    constexpr float minListHeight = 150.0f;
+    constexpr float minListHeight = 175.0f;
     desiredHeight = std::clamp(desiredHeight, minListHeight, maxListHeight);
 
     if (ImGuiMCP::BeginChild("LightListChild", ImGuiMCP::ImVec2(0, desiredHeight), true))

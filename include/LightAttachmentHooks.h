@@ -25,36 +25,40 @@ namespace ObjectReference
 // hook ShaderReferenceEffect::Init vfunc to attach lights to reference effects
 namespace ReferenceEffect
 {
-inline TESBoundObject* GetReferenceEffectBase(const TESObjectREFRPtr& a_ref, const ReferenceEffect* a_referenceEffect)
-	{
-		if (const auto weapController = skyrim_cast<WeaponEnchantmentController*>(a_referenceEffect->controller)) {
-			return weapController->lastWeapon;
-		}
+    inline RE::TESBoundObject* GetReferenceEffectBase(
+        const RE::TESObjectREFRPtr& a_ref,
+        const RE::ReferenceEffect* a_referenceEffect)
+    {
+        if (const auto weapController =
+            skyrim_cast<RE::WeaponEnchantmentController*>(a_referenceEffect->controller)) {
+            return weapController->lastWeapon;
+        }
 
-		if (auto modelEffect = a_referenceEffect->As<ModelReferenceEffect>()) {
-			return modelEffect->artObject;
-		}
-		if (auto shaderReferenceEffect = a_referenceEffect->As<ShaderReferenceEffect>(); shaderReferenceEffect && shaderReferenceEffect->wornObject) {
-			return shaderReferenceEffect->wornObject;
-		}
+        if (auto shaderReferenceEffect =
+            a_referenceEffect->As<RE::ShaderReferenceEffect>();
+            shaderReferenceEffect && shaderReferenceEffect->wornObject) {
+            return shaderReferenceEffect->wornObject;
+        }
 
-		return a_ref->GetBaseObject();
-	}
+        return a_ref->GetBaseObject();
+    }
 
-    NiAVObject* GetReferenceAttachRoot(ReferenceEffect* a_referenceEffect)
-	{
-		if (const auto weapController = skyrim_cast<WeaponEnchantmentController*>(a_referenceEffect->controller)) {
-			if (!weapController->shader) {  // missing nullptr check in GetAttachRoot -> crash
-				return nullptr;
-			}
-		}
-		return a_referenceEffect->GetAttachRoot();
-	}
+    inline RE::NiAVObject* GetReferenceAttachRoot(
+        RE::ReferenceEffect* a_referenceEffect)
+    {
+        if (const auto weapController =
+            skyrim_cast<RE::WeaponEnchantmentController*>(a_referenceEffect->controller)) {
+            if (!weapController->shader) {
+                return nullptr;
+            }
+        }
 
-    template <class T>
+        return a_referenceEffect->GetAttachRoot();
+    }
+
     struct Init
     {
-        static bool thunk(T* a_this);
+        static bool thunk(RE::ShaderReferenceEffect* a_this);
 
         static inline REL::Relocation<decltype(thunk)> func;
 
@@ -62,9 +66,10 @@ inline TESBoundObject* GetReferenceEffectBase(const TESObjectREFRPtr& a_ref, con
 
         static void Install();
     };
+
+    void Install();
 }
 
-//attach light to static objects, allows light merging and partial mesh path search
 struct TESObjectREFRLoad3D {
 
     static RE::NiAVObject* thunk(RE::TESObjectREFR* a_this, bool a_backgroundLoading);
@@ -75,7 +80,6 @@ struct TESObjectREFRLoad3D {
 
     static void Install();
 };
-
 
 //PO3's hook used to disable and or edit vanilla / modded esp,esm,esl plugin lights
 struct TESObjectLIGH_GenDynamic {

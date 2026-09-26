@@ -263,20 +263,28 @@ void __stdcall RenderLightEditor() {
             showPluginLights = true;
         }
     }
+
+    if (ImGuiMCP::IsItemHovered()) {
+        ImGuiMCP::SetTooltip("Any light from an ESP, ESL, or ESM plugin.");
+    }
+
     ImGuiMCP::PopStyleColor(2);
     ImGuiMCP::SameLine();
     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Button,
         !showPluginLights ? ImGuiMCP::ImVec4{0.60F, 0.50F, 0.10F, 0.80F} : ImGuiMCP::ImVec4{0.35F, 0.35F, 0.35F, 0.5F});
     ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
         !showPluginLights ? ImGuiMCP::ImVec4{1.0F, 0.95F, 0.9F, 1.0F} : ImGuiMCP::ImVec4{0.6F, 0.6F, 0.6F, 0.8F});
-    if (ImGuiMCP::Button("Relight Templates", ImGuiMCP::ImVec2(130, 0))) {
+    if (ImGuiMCP::Button("Relight Lights", ImGuiMCP::ImVec2(130, 0))) {
         if (showPluginLights) {
             showPluginLights = false;
         }
     }
+
+    if (ImGuiMCP::IsItemHovered()) {
+        ImGuiMCP::SetTooltip("Lights attached using the Relight framework.");
+    }
+
     ImGuiMCP::PopStyleColor(2);
-    ImGuiMCP::SameLine();
-    ImGuiMCP::Text("%s", showPluginLights ? "Showing: Plugin Lights" : "Showing: Relight Templates");
 
     RenderLightList(filteredLights, displaySelectedIndex, "Loaded Lights");
 
