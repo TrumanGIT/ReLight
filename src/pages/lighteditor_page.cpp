@@ -206,19 +206,114 @@ void __stdcall RenderLightEditor() {
     }
 
     // ---------------------------------------------------------------------
-    // LOADED TEMPLATES LISTS — relight, then plugin. Mutual exclusivity
-    // enforced by clearing the other index whenever one changes.
+    // LOADED TEMPLATES LIST  single list, toggled between plugin lights
+    // and relight templates via showPluginLights
     // ---------------------------------------------------------------------
-    int prevRelight = relightSelectedIndex;
-    RenderLightList(relightLights, relightSelectedIndex, "Loaded ReLight Templates");
-    if (relightSelectedIndex != prevRelight && relightSelectedIndex != -1) {
-        pluginSelectedIndex = -1;
+
+    static bool showPluginLights = false;
+
+    // capture currently selected light before refresh (indices get reset on tick)
+    RE::NiPointer<RE::BSLight> capturedSelected;
+    if (relightSelectedIndex >= 0 && relightSelectedIndex < (int)relightLights.size())
+        capturedSelected = relightLights[relightSelectedIndex];
+    else if (pluginSelectedIndex >= 0 && pluginSelectedIndex < (int)pluginLights.size())
+        capturedSelected = pluginLights[pluginSelectedIndex];
+
+    if (lightRefreshTicker.shouldTick()) {
+        refreshAllLights(relightSelectedIndex, relightLights, "RL");
+        refreshAllLights(pluginSelectedIndex, pluginLights, "ol");
+        didRefreshThisFrame = !didRefreshThisFrame;
     }
 
-    int prevPlugin = pluginSelectedIndex;
-    RenderLightList(pluginLights, pluginSelectedIndex, "Loaded Plugin Lights");
-    if (pluginSelectedIndex != prevPlugin && pluginSelectedIndex != -1) {
+    // combine both lists every frame
+    std::vector<RE::NiPointer<RE::BSLight>> allLights;
+    allLights.reserve(relightLights.size() + pluginLights.size());
+    allLights.insert(allLights.end(), relightLights.begin(), relightLights.end());
+    allLights.insert(allLights.end(), pluginLights.begin(), pluginLights.end());
+
+    // build filtered list every frame
+    std::vector<RE::NiPointer<RE::BSLight>> filteredLights;
+    filteredLights.reserve(allLights.size());
+    for (const auto& l : allLights) {
+        if (!l || !l->light) continue;
+        auto configID = l->light->GetLightRuntimeData().unk138;
+        auto it = LightData::configIDToJsonCfg.find(configID);
+        bool isPlugin = it != LightData::configIDToJsonCfg.end() && it->second.isPluginLight;
+        if (isPlugin == showPluginLights)
+            filteredLights.push_back(l);
+    }
+
+    int displaySelectedIndex = -1;
+    if (!filteredLights.empty() && capturedSelected) {
+        for (int i = 0; i < (int)filteredLights.size(); ++i) {
+            if (filteredLights[i] == capturedSelected) {
+                displaySelectedIndex = i;
+                break;
+            }
+        }
+    }
+
+    // toggle: plugin lights vs relight templates
+    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Button,
+        showPluginLights ? ImGuiMCP::ImVec4{0.60F, 0.50F, 0.10F, 0.80F} : ImGuiMCP::ImVec4{0.35F, 0.35F, 0.35F, 0.5F});
+    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+        showPluginLights ? ImGuiMCP::ImVec4{1.0F, 0.95F, 0.9F, 1.0F} : ImGuiMCP::ImVec4{0.6F, 0.6F, 0.6F, 0.8F});
+    if (ImGuiMCP::Button("Plugin Lights", ImGuiMCP::ImVec2(130, 0))) {
+        if (!showPluginLights) {
+            showPluginLights = true;
+        }
+    }
+    ImGuiMCP::PopStyleColor(2);
+    ImGuiMCP::SameLine();
+    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Button,
+        !showPluginLights ? ImGuiMCP::ImVec4{0.60F, 0.50F, 0.10F, 0.80F} : ImGuiMCP::ImVec4{0.35F, 0.35F, 0.35F, 0.5F});
+    ImGuiMCP::PushStyleColor(ImGuiMCP::ImGuiCol_Text,
+        !showPluginLights ? ImGuiMCP::ImVec4{1.0F, 0.95F, 0.9F, 1.0F} : ImGuiMCP::ImVec4{0.6F, 0.6F, 0.6F, 0.8F});
+    if (ImGuiMCP::Button("Relight Templates", ImGuiMCP::ImVec2(130, 0))) {
+        if (showPluginLights) {
+            showPluginLights = false;
+        }
+    }
+    ImGuiMCP::PopStyleColor(2);
+    ImGuiMCP::SameLine();
+    ImGuiMCP::Text("%s", showPluginLights ? "Showing: Plugin Lights" : "Showing: Relight Templates");
+
+    RenderLightList(filteredLights, displaySelectedIndex, "Loaded Lights");
+
+    // translate post-render display index back to the correct original list
+    if (displaySelectedIndex >= 0 && displaySelectedIndex < (int)filteredLights.size()) {
+        auto& selected = filteredLights[displaySelectedIndex];
+        if (!selected || !selected->light) {
+            relightSelectedIndex = -1;
+            pluginSelectedIndex = -1;
+        } else {
+            bool found = false;
+            for (int i = 0; i < (int)pluginLights.size(); ++i) {
+                if (pluginLights[i] == selected) {
+                    pluginSelectedIndex = i;
+                    relightSelectedIndex = -1;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                for (int i = 0; i < (int)relightLights.size(); ++i) {
+                    if (relightLights[i] == selected) {
+                        relightSelectedIndex = i;
+                        pluginSelectedIndex = -1;
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) {
+                relightSelectedIndex = -1;
+                pluginSelectedIndex = -1;
+            }
+        }
+    } else {
         relightSelectedIndex = -1;
+        pluginSelectedIndex = -1;
     }
 
     // re-resolve after list rendering, since selection may have changed this frame
