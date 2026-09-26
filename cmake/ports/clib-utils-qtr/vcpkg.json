@@ -1,7 +1,46 @@
 {
   "name": "clib-utils-qtr",
-  "version-string": "1.0.4",
+  "version-string": "2.5.1",
   "homepage": "https://github.com/QTR-Modding/CLibUtilsQTR",
   "license": "MIT",
-  "dependencies": ["clib-util"]
+  "default-features": [
+    "hooks",
+    "json",
+    "skyrim",
+    "yaml-skyrim"
+  ],
+  "features": {
+    "hooks": {
+      "description": "Windows prologue hooks using Microsoft Detours.",
+      "dependencies": [
+        "detours"
+      ]
+    },
+    "json": {
+      "description": "Game-independent JSON preset fields and getters.",
+      "dependencies": [
+        "rapidjson"
+      ]
+    },
+    "skyrim": {
+      "description": "Skyrim forms, animation, logging, Papyrus, serialization, drawing, and text presets.",
+      "dependencies": [
+        "clib-util",
+        "spdlog"
+      ]
+    },
+    "yaml-skyrim": {
+      "description": "YAML presets for Skyrim forms.",
+      "dependencies": [
+        {
+          "name": "clib-utils-qtr",
+          "default-features": false,
+          "features": [
+            "skyrim"
+          ]
+        },
+        "yaml-cpp"
+      ]
+    }
+  }
 }

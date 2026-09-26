@@ -47,6 +47,75 @@ bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::s
 	return true;
 }
 
+RE::BSEventNotifyControl WeaponSheatheEventHandler::ProcessEvent(
+    const SKSE::ActionEvent* a_event,
+    RE::BSTEventSource<SKSE::ActionEvent>*)
+{
+    if (!a_event || !a_event->actor) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    if (a_event->type != SKSE::ActionEvent::Type::kEndSheathe) {
+        return RE::BSEventNotifyControl::kContinue;
+    }
+
+    RE::Actor* actor = a_event->actor;
+
+    auto cullLights = [](RE::NiAVObject* root3D) {
+        if (!root3D) {
+            return;
+        }
+
+        std::function<void(RE::NiAVObject*)> findLight =
+            [&](RE::NiAVObject* node) {
+            if (!node) {
+                return;
+            }
+
+            if (auto* light = netimmerse_cast<RE::NiPointLight*>(node)) {
+                const char* name = light->name.c_str();
+
+                if (name &&
+                    name[0] == 'R' &&
+                    name[1] == 'L' &&
+                    //fade amount is a free float i mark enchantment lights with
+                    light->fadeAmount == 5.0f) {
+
+                    logger::debug(
+                        "[Sheathe Event] Culling enchantment light: {}",
+                        name);
+
+                    light->SetAppCulled(true);
+                }
+            }
+
+            if (auto* niNode = node->AsNode()) {
+                for (auto& child : niNode->children) {
+                    findLight(child.get());
+                }
+            }
+            };
+
+        findLight(root3D);
+        };
+
+    // Third-person actor model.
+    cullLights(actor->Get3D(false));
+
+    // Only the player has a first-person model.
+    if (actor->IsPlayerRef()) {
+        cullLights(actor->Get3D(true));
+    }
+
+    return RE::BSEventNotifyControl::kContinue;
+}
+
+void WeaponSheatheEventHandler::Install()
+{
+    SKSE::GetActionEventSource()->AddEventSink(GetSingleton());
+}
+
+
 //used to disable lights from flora once they are picked.
 bool TreeActivateHook::Activate(
     RE::TESObjectTREE* a_this,

@@ -12,6 +12,25 @@ struct BSLightingShaderProperty_IsLightAffectingSurface
     static void Install();
 };
 
+
+// Used to shut off enchantment lights
+class WeaponSheatheEventHandler : public RE::BSTEventSink<SKSE::ActionEvent>
+{
+public:
+    static WeaponSheatheEventHandler* GetSingleton()
+    {
+        static WeaponSheatheEventHandler singleton;
+        return std::addressof(singleton);
+    }
+
+
+    static void Install();
+
+    RE::BSEventNotifyControl ProcessEvent(
+        const SKSE::ActionEvent* a_event,
+        RE::BSTEventSource<SKSE::ActionEvent>* a_eventSource) override;
+};;
+
 // for plants like dragontongue or deathbell so when player picks it the light goes away. 
 struct TreeActivateHook
 {

@@ -101,8 +101,6 @@ namespace ObjectReference
     template struct Load3D<RE::Hazard>;
     template struct Load3D<RE::Explosion>;
     template struct Load3D<RE::ArrowProjectile>;
-    template struct Load3D<RE::Explosion>;
-    template struct Load3D<RE::ArrowProjectile>;
     template struct Load3D<RE::GrenadeProjectile>;
 
     void InstallLoad3DHooks()
@@ -576,6 +574,7 @@ void Activate::Install()
 }
 
 // attach lights to ShaderReferenceEffect on Init
+// attach lights to ShaderReferenceEffect on Init
 namespace ReferenceEffect
 {
     bool Init::thunk(RE::ShaderReferenceEffect* a_this)
@@ -616,32 +615,55 @@ namespace ReferenceEffect
             return result;
         }
 
-       bool dontAttachDebugMarker = true;
+        bool dontAttachDebugMarker = true;
 
-        // ------------------------------------------------------------
-        // The ShaderReferenceEffect's effectData is the actual
-        // TESEffectShader responsible for the visual effect.
-        //
-        // Example:
-        //   FrostChillrendFXShader
-        //
-        // This is what we want to use for the fallback EditorID lookup.
-        // ------------------------------------------------------------
+        // Look for an existing enchantment light.
+        auto findExistingLight = [](RE::NiAVObject* root3D) -> RE::NiPointLight* {
+            if (!root3D) {
+                return nullptr;
+            }
+
+            // see if light exists already we dont wanna attach like 30 lights after player has seathed/ equipped alot of times
+            std::function<RE::NiPointLight* (RE::NiAVObject*)> findLight =
+                [&](RE::NiAVObject* node) -> RE::NiPointLight* {
+                if (!node) {
+                    return nullptr;
+                }
+
+                if (auto* light = netimmerse_cast<RE::NiPointLight*>(node)) {
+                    const char* name = light->name.c_str();
+
+                    if (name &&
+                        name[0] == 'R' &&
+                        name[1] == 'L' &&
+                        light->fadeAmount == 5.0f) {
+                        return light;
+                    }
+                }
+
+                if (auto* niNode = node->AsNode()) {
+                    for (auto& child : niNode->children) {
+                        if (auto* light = findLight(child.get())) {
+                            return light;
+                        }
+                    }
+                }
+
+                return nullptr;
+                };
+
+            return findLight(root3D);
+            };
 
         const RE::FormID formID = a_this->effectData->GetFormID();
 
         auto effectEditorID =
             clib_util::editorID::get_editorID(a_this->effectData);
 
-        logger::info(
+        logger::debug(
             "ShaderReferenceEffect: shader FormID={:08X}, EditorID='{}'",
             formID,
             effectEditorID);
-
-        // ------------------------------------------------------------
-        // PATH 1:
-        // Match the effect shader directly by FormID.
-        // ------------------------------------------------------------
 
         if (auto configs = LightData::findConfigsByFormID(
             formID,
@@ -655,6 +677,17 @@ namespace ReferenceEffect
                 formID);
 
             for (auto& cfg : *configs) {
+
+                if (auto* existingLight = findExistingLight(root)) {
+                    logger::debug(
+                        "Reusing existing enchantment light '{}' on ref {:08X}",
+                        existingLight->name.c_str(),
+                        ref->GetFormID());
+
+                    existingLight->SetAppCulled(false);
+                    continue;
+                }
+
                 auto* light = LightManager::AttachLight(
                     cfg,
                     root,
@@ -662,6 +695,10 @@ namespace ReferenceEffect
                     cfg.menuName,
                     formID,
                     dontAttachDebugMarker);
+
+                if (light) {
+                    light->fadeAmount = 5;
+                }
 
                 if (!light) {
                     logger::warn(
@@ -674,17 +711,6 @@ namespace ReferenceEffect
             return result;
         }
 
-        // ------------------------------------------------------------
-        // PATH 2:
-        // Match the effect shader by EditorID.
-        //
-        // Example:
-        //   FrostChillrendFXShader
-        //
-        // We reuse findConfigsForMeshPath() because the existing config
-        // system already stores these string keys there.
-        // ------------------------------------------------------------
-
         if (effectEditorID.empty()) {
             logger::warn(
                 "Effect shader {:08X} has no EditorID",
@@ -695,7 +721,7 @@ namespace ReferenceEffect
 
         toLower(effectEditorID);
 
-        logger::info(
+        logger::debug(
             "No FormID config found. Trying shader EditorID '{}'",
             effectEditorID);
 
@@ -711,16 +737,12 @@ namespace ReferenceEffect
 
         const bool isInterior = cell->IsInteriorCell();
 
-        logger::info(
-            "Looking for '{}' config as {}",
-            effectEditorID,
-            isInterior ? "interior" : "exterior");
-
+        //lazy implememntation we use editor id as mesh path as i never implemented a editor ID json entry for relight
         const auto& configs =
             findConfigsForMeshPath(effectEditorID, isInterior);
 
         if (configs.empty()) {
-            logger::info(
+            logger::warn(
                 "No configs found for shader EditorID '{}'",
                 effectEditorID);
 
@@ -733,6 +755,17 @@ namespace ReferenceEffect
             effectEditorID);
 
         for (auto& cfg : configs) {
+
+            if (auto* existingLight = findExistingLight(root)) {
+                logger::debug(
+                    "Reusing existing enchantment light '{}' on ref {:08X}",
+                    existingLight->name.c_str(),
+                    ref->GetFormID());
+
+                existingLight->SetAppCulled(false);
+                continue;
+            }
+
             auto* light = LightManager::AttachLight(
                 cfg,
                 root,
@@ -740,6 +773,10 @@ namespace ReferenceEffect
                 effectEditorID,
                 formID,
                 dontAttachDebugMarker);
+
+            if (light) {
+                light->fadeAmount = 5;
+            }
 
             if (!light) {
                 logger::warn(
@@ -751,8 +788,6 @@ namespace ReferenceEffect
 
         return result;
     }
-
-
 
     void Init::Install()
     {

@@ -91,6 +91,7 @@ file(
 )
 
 find_path(ClibUtilsQTR_INCLUDE_DIRS "ClibUtilsQTR/utils.hpp")
+find_library(DETOURS_LIBRARY detours REQUIRED)
 
 source_group(
   TREE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -105,6 +106,9 @@ add_commonlibsse_plugin(
   AUTHOR AUTHOR_NAME
   SOURCES ${headers} ${sources}
 )
+
+target_link_libraries(${PROJECT_NAME} PRIVATE ${DETOURS_LIBRARY})
+
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_23) 
 target_precompile_headers(${PROJECT_NAME} PRIVATE include/plugin.hpp)
 target_compile_definitions(${PROJECT_NAME}  PRIVATE BEAUTIFUL_NAME="${BEAUTIFUL_NAME}" IMGUI_DEFINE_MATH_OPERATORS)

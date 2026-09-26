@@ -54,6 +54,8 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
         LightManager::registerEventSink();
 
+        WeaponSheatheEventHandler::Install();
+
         DebugAPI_IMPL::DebugOverlayMenu::Register();
         break;
     }
