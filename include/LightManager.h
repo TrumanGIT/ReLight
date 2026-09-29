@@ -34,6 +34,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
   static void HandleSkyHavenTempleScriptedFires(RE::TESObjectREFR* a_targetRef);
 
   static bool HasRelightLight(RE::NiAVObject* a_root);
+  
+  static std::vector<RE::NiPointLight*> findEnchantmentLights(RE::NiAVObject* root3D);
 
   static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::TESObjectREFR* a_this);
 
@@ -44,6 +46,8 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
   static bool processByFilePath(RE::TESObjectREFR* a_this, std::string meshName, RE::NiNode* a_root, bool isInterior, bool skipExcludes = false);
 
   static void reinitializeLightsWithinRange(RE::PlayerCharacter* player); 
+
+  static void ReinitializeEnchantmentLights(RE::Actor* player);
 
   static void fillPendingMerges(RE::TESObjectREFR* a_this,
       RE::NiPointLight* childLight, const LightConfig& cfg, RE::NiNode* a_root,

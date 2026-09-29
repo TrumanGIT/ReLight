@@ -47,6 +47,8 @@ bool shouldDisableLight(RE::TESObjectLIGH* light, RE::TESObjectREFR* ref, std::s
 	return true;
 }
 
+
+//used to put out enchantment lights when sheathed
 RE::BSEventNotifyControl WeaponSheatheEventHandler::ProcessEvent(
     const SKSE::ActionEvent* a_event,
     RE::BSTEventSource<SKSE::ActionEvent>*)
@@ -66,37 +68,19 @@ RE::BSEventNotifyControl WeaponSheatheEventHandler::ProcessEvent(
             return;
         }
 
-        std::function<void(RE::NiAVObject*)> findLight =
-            [&](RE::NiAVObject* node) {
-            if (!node) {
-                return;
+        auto lights = LightManager::findEnchantmentLights(root3D);
+
+        for (auto* light : lights) {
+            if (!light) {
+                continue;
             }
 
-            if (auto* light = netimmerse_cast<RE::NiPointLight*>(node)) {
-                const char* name = light->name.c_str();
+            logger::debug(
+                "[Sheathe Event] Culling enchantment light: {}",
+                light->name.c_str());
 
-                if (name &&
-                    name[0] == 'R' &&
-                    name[1] == 'L' &&
-                    //fade amount is a free float i mark enchantment lights with
-                    light->fadeAmount == 5.0f) {
-
-                    logger::debug(
-                        "[Sheathe Event] Culling enchantment light: {}",
-                        name);
-
-                    light->SetAppCulled(true);
-                }
-            }
-
-            if (auto* niNode = node->AsNode()) {
-                for (auto& child : niNode->children) {
-                    findLight(child.get());
-                }
-            }
-            };
-
-        findLight(root3D);
+            light->SetAppCulled(true);
+        }
         };
 
     // Third-person actor model.
@@ -189,8 +173,8 @@ bool BSLightingShaderProperty_IsLightAffectingSurface::thunk(
     // return here or crash on effect shaders idk why
     if (p->GetMaterialType() == RE::BSShaderMaterial::Type::kEffect) return true;
 
-    // torches spells we marked in attachlight hooks so they can bypass here
-    if (light->light->fadeAmount == 4) return true;
+    // torches spells (4) and enchantment lights (5) we marked in attachlight hooks so they can bypass here
+    if (light->light->fadeAmount == 4 || light->light->fadeAmount == 5) return true;
 
     if (!globals::secondAfterCellFullyLoaded.load() || !globals::enableLightFlickerPreventionMeasures || globals::unDesiredMenuOpen.load()) return true;
 

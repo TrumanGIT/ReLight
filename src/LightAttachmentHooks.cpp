@@ -174,6 +174,8 @@ RE::NiAVObject* TESObjectREFRLoad3D::thunk(RE::TESObjectREFR* a_this, bool a_bac
 
     const auto baseFormID = baseObject->GetFormID();
 
+
+
     //skips fires with base ids below with animations off 
     // 1. Sky Haven chain activated fires
     // 2. Castle Volkihar fires that turn on
@@ -454,6 +456,9 @@ RE::NiPointLight* TESObjectLIGH_GenDynamic::magicLightThunk(
     auto configs = LightData::findConfigsByFormID(formID, true, true);
     bool configExists = configs != nullptr && !configs->empty();
 
+    //this vanilla mesh already has a relight light, lets let it win and return here.
+    if (LightManager::HasRelightLight(node)) return nullptr;
+
     if (!configExists && shouldDisableLight(light, ref, edid, modName, false))
         return nullptr;
 
@@ -519,12 +524,13 @@ void TESObjectLIGH_GenDynamic::MagicLightThunkInstall()
          RELOCATION_ID(33603, 34381),
          REL::VariantOffset{ 0xAC, 0xE2, 0xE2 }),
 
+         //candle light ? 
      std::make_pair(
          RELOCATION_ID(33391, 34151),
          REL::VariantOffset{ 0x86, 0xCD, 0x86 }),
 
          //14074ddc0 called for flame spell 
-       std::make_pair(RELOCATION_ID(42965, 44222), REL::VariantOffset{ 0x58, 0x36D, 0x58 }),
+      std::make_pair(RELOCATION_ID(42965, 44222), REL::VariantOffset{ 0x58, 0x36D, 0x58 }),
 
            //  std::make_pair(RELOCATION_ID(33603, 34379), 0xAC), //1405BAB10
   //std::make_pair(RELOCATION_ID(0, 34381), 0xE2),// 1405BACD0
@@ -573,8 +579,7 @@ void Activate::Install()
 	logger::info("Hooked TESObjectACTI::Activate");
 }
 
-// attach lights to ShaderReferenceEffect on Init
-// attach lights to ShaderReferenceEffect on Init
+// enchantment lights
 namespace ReferenceEffect
 {
     bool Init::thunk(RE::ShaderReferenceEffect* a_this)
@@ -588,6 +593,28 @@ namespace ReferenceEffect
         const auto ref = a_this->target.get();
         if (!ref) {
             return result;
+        } 
+
+        if (ref->IsDynamicForm()) {
+            const auto base = ref->GetBaseObject();
+
+            if (!base) {
+                return result;
+            }
+
+            const auto formID = base->GetFormID();
+
+            if (formID != 0x000F8313 &&
+                formID != 0x000F8314 &&
+                formID != 0x000F8315 &&
+                formID != 0x000F8316 &&
+                formID != 0x000F8317 &&
+                formID != 0x000F8318 && 
+                formID != 0x0002ACD2 &&
+                formID != 0x0004E4EE) {
+
+                return result;
+            }
         }
 
         auto rootNiAV = GetReferenceAttachRoot(a_this);
@@ -617,44 +644,6 @@ namespace ReferenceEffect
 
         bool dontAttachDebugMarker = true;
 
-        // Look for an existing enchantment light.
-        auto findExistingLight = [](RE::NiAVObject* root3D) -> RE::NiPointLight* {
-            if (!root3D) {
-                return nullptr;
-            }
-
-            // see if light exists already we dont wanna attach like 30 lights after player has seathed/ equipped alot of times
-            std::function<RE::NiPointLight* (RE::NiAVObject*)> findLight =
-                [&](RE::NiAVObject* node) -> RE::NiPointLight* {
-                if (!node) {
-                    return nullptr;
-                }
-
-                if (auto* light = netimmerse_cast<RE::NiPointLight*>(node)) {
-                    const char* name = light->name.c_str();
-
-                    if (name &&
-                        name[0] == 'R' &&
-                        name[1] == 'L' &&
-                        light->fadeAmount == 5.0f) {
-                        return light;
-                    }
-                }
-
-                if (auto* niNode = node->AsNode()) {
-                    for (auto& child : niNode->children) {
-                        if (auto* light = findLight(child.get())) {
-                            return light;
-                        }
-                    }
-                }
-
-                return nullptr;
-                };
-
-            return findLight(root3D);
-            };
-
         const RE::FormID formID = a_this->effectData->GetFormID();
 
         auto effectEditorID =
@@ -664,6 +653,26 @@ namespace ReferenceEffect
             "ShaderReferenceEffect: shader FormID={:08X}, EditorID='{}'",
             formID,
             effectEditorID);
+
+        // check for existing lights to reuse rather then attach a new 
+        auto existingLights = LightManager::findEnchantmentLights(root);
+
+        if (!existingLights.empty()) {
+            for (auto* existingLight : existingLights) {
+                if (!existingLight) {
+                    continue;
+                }
+
+                logger::debug(
+                    "Reusing existing enchantment light '{}' on ref {:08X}",
+                    existingLight->name.c_str(),
+                    ref->GetFormID());
+
+                existingLight->SetAppCulled(false);
+            }
+
+            return result;
+        }
 
         if (auto configs = LightData::findConfigsByFormID(
             formID,
@@ -677,16 +686,6 @@ namespace ReferenceEffect
                 formID);
 
             for (auto& cfg : *configs) {
-
-                if (auto* existingLight = findExistingLight(root)) {
-                    logger::debug(
-                        "Reusing existing enchantment light '{}' on ref {:08X}",
-                        existingLight->name.c_str(),
-                        ref->GetFormID());
-
-                    existingLight->SetAppCulled(false);
-                    continue;
-                }
 
                 auto* light = LightManager::AttachLight(
                     cfg,
@@ -755,16 +754,6 @@ namespace ReferenceEffect
             effectEditorID);
 
         for (auto& cfg : configs) {
-
-            if (auto* existingLight = findExistingLight(root)) {
-                logger::debug(
-                    "Reusing existing enchantment light '{}' on ref {:08X}",
-                    existingLight->name.c_str(),
-                    ref->GetFormID());
-
-                existingLight->SetAppCulled(false);
-                continue;
-            }
 
             auto* light = LightManager::AttachLight(
                 cfg,

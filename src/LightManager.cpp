@@ -236,6 +236,38 @@ bool LightManager::HasRelightLight(RE::NiAVObject* a_root)
 	return false;
 }
 
+// Look for an existing enchantment light.
+std::vector<RE::NiPointLight*> LightManager::findEnchantmentLights(RE::NiAVObject* node)
+{
+	std::vector<RE::NiPointLight*> lights;
+
+	if (!node) {
+		return lights;
+	}
+
+	if (auto* light = netimmerse_cast<RE::NiPointLight*>(node)) {
+		const char* name = light->name.c_str();
+
+		if (name &&
+			name[0] == 'R' &&
+			name[1] == 'L' &&
+			light->fadeAmount == 5.0f) {
+			lights.push_back(light);
+		}
+	}
+
+	if (auto* niNode = node->AsNode()) {
+		for (auto& child : niNode->children) {
+			auto childLights = findEnchantmentLights(child.get());
+			lights.insert(lights.end(), childLights.begin(), childLights.end());
+		}
+	}
+
+	return lights;
+}
+
+
+
 //ATTACH LIGHTS AT CORRECT MESH INDEX, USEFULL FOR TORCHES WHERE LIGHT MUST BE INSERTED TO SPECIFIC SPOT
 void LightManager::attachLightUsingAttachPath(
 	const LightConfig& cfg,
@@ -454,6 +486,8 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 
 		LightManager::reinitializeLightsWithinRange(player);
 
+		LightManager::ReinitializeEnchantmentLights(player);
+
 		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
 		globals::cellFullyLoaded.store(true);
 
@@ -470,6 +504,8 @@ if (!event || event->flags == RE::BGSActorCellEvent::CellFlag::kLeave) {
 		logger::debug("new cell detected.. islightaffectingsurface hook stopped");
 
 		LightManager::reinitializeLightsWithinRange(player);
+
+		LightManager::ReinitializeEnchantmentLights(player); 
 
 		// start timer and say cell fully loaded is true
 		globals::cellFullyLoadedTimerStart = std::chrono::steady_clock::now();
@@ -610,6 +646,85 @@ void LightManager::reinitializeLightsWithinRange(RE::PlayerCharacter* player) {
 	
 		std::scoped_lock mergedLock(globals::mergedRefsMutex);
 		{ globals::mergedRefs.clear(); }
+}
+
+void LightManager::ReinitializeEnchantmentLights(RE::Actor* player)
+{
+	if (!player) {
+		return;
+	}
+
+	auto* player3D = player->Get3D(false);
+	if (!player3D) {
+		return;
+	}
+
+	auto lights = LightManager::findEnchantmentLights(player3D);
+
+	if (lights.empty()) {
+		return;
+	}
+
+	auto* ssNode = RE::BSShaderManager::State::GetSingleton().shadowSceneNode[0];
+	if (!ssNode) {
+		logger::warn("ShadowSceneNode[0] is null!");
+		return;
+	}
+
+	for (auto* light : lights) {
+		if (!light) {
+			continue;
+		}
+
+		bool lightExists = false;
+
+		for (RE::NiPointer<RE::BSLight> bsLight : ssNode->activeLights) {
+			if (bsLight && bsLight->light.get() == light) {
+				lightExists = true;
+				break;
+			}
+		}
+
+		if (!lightExists) {
+			for (RE::NiPointer<RE::BSShadowLight> bsLight : ssNode->activeShadowLights) {
+				if (bsLight && bsLight->light.get() == light) {
+					lightExists = true;
+					break;
+				}
+			}
+		}
+
+		if (lightExists) {
+			continue;
+		}
+
+		auto it = LightData::configIDToJsonCfg.find(
+			light->GetLightRuntimeData().unk138);
+
+		if (it == LightData::configIDToJsonCfg.end()) {
+			logger::warn(
+				"attempted to reinitialize light {} but its config ID {} wasn't found.",
+				light->name,
+				light->GetLightRuntimeData().unk138);
+			continue;
+		}
+
+		const auto& config = it->second;
+
+		logger::debug(
+			"Reinitializing enchantment light {} for player {:08X}",
+			light->name,
+			player->GetFormID());
+
+		auto p = LightData::makeLightParams(config);
+		auto reattachedBSLight = ssNode->AddLight(light, p);
+
+		if (!reattachedBSLight) {
+			logger::warn(
+				"Failed to reinitialize enchantment light {} for player",
+				light->name);
+		}
+	}
 }
 
 //used to merge a light with same ref base object within a set distance to help prevent flickering. 

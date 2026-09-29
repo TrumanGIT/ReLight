@@ -29,7 +29,7 @@ public:
     RE::BSEventNotifyControl ProcessEvent(
         const SKSE::ActionEvent* a_event,
         RE::BSTEventSource<SKSE::ActionEvent>* a_eventSource) override;
-};;
+};
 
 // for plants like dragontongue or deathbell so when player picks it the light goes away. 
 struct TreeActivateHook
