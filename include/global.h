@@ -112,6 +112,9 @@ namespace globals
 
     inline int loggingLevel = 0;
 
+    inline float interiorBrightness = 1.0f;
+    inline float exteriorBrightness = 1.0f;
+
     inline std::vector<std::string> meshPaths{};
     inline std::vector<std::string> whitelist{};
     inline std::vector<std::string> meshPathExclusionList{};

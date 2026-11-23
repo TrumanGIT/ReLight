@@ -6,12 +6,12 @@
 #include "menu.h"
 #include "global.h"
 #include "LightData.h"
-#include "LightManager.h"
 #include "everyFrame.h"
 #include "disableLights.h"
 #include "LightAttachmentHooks.h"
 #include "vanillaMenus.h"
 #include "ini.h"
+#include "PlayerCellChangeEvent.h"
 
 
 static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
@@ -52,7 +52,7 @@ static void MessageHandler(SKSE::MessagingInterface::Message* msg) {
         LightData::masterNiPointLight = NiPointLight::NiPointLight();
 
         // EVENT SINK IS USED TO REINITIALIZE LIGHTS CLEANED BY THE ENGINE 
-        LightManager::registerEventSink();
+        CellChangeEvent::registerEventSink();
 
         WeaponSheatheEventHandler::Install();
 

@@ -2,6 +2,7 @@
 #include "../global.h"
 #include "../ticker.h"
 #include "../ini.h"
+#include "../Utility.h"
 
 using namespace UI;
 
@@ -136,6 +137,27 @@ void __stdcall RenderSettings() {
         ImGuiMCP::Text("This only works on cell reset");
         ImGuiMCP::EndTooltip();
     }
+
+    if (ImGuiMCP::SliderFloat(
+        "Interior Brightness",
+        &globals::interiorBrightness,
+        0.1f,
+        2.0f,
+        "%.2f")) {
+        SetBaseGameBrightness(globals::interiorBrightness);
+    }
+    ImGuiMCP::SetTooltip("Sets the base game's global brightness setting while indoors.");
+
+    if (ImGuiMCP::SliderFloat(
+        "Exterior Brightness",
+        &globals::exteriorBrightness,
+        0.1f,
+        2.0f,
+        "%.2f")) {
+        SetBaseGameBrightness(globals::exteriorBrightness);
+    }
+
+    ImGuiMCP::SetTooltip("Sets the base game's global brightness setting while outdoors.");
 
     if (ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3)) {
         spdlog::level::level_enum lvl;

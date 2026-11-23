@@ -373,3 +373,9 @@ inline void UpdateRegionEmittance(RE::NiColor& a_color, RE::TESRegion* a_region)
 		logger::debug("Updated Region Emittance Color");
 	}
 }
+
+inline void SetBaseGameBrightness(float a_brightness)
+{
+	const auto command = std::format("sg {:.2f}", a_brightness);
+	RE::Console::ExecuteCommand(command.c_str());
+}

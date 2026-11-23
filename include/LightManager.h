@@ -4,7 +4,7 @@
 #include "LightData.h"
 
 
-struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
+struct LightManager {
 
     struct PendingMerge {
 
@@ -21,12 +21,6 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
     static inline std::vector<PendingMerge> pendingMerges;
     static inline std::mutex pendingMergesMutex;
 
-    	static LightManager* GetSingleton()
-    {
-        static LightManager singleton;
-        return &singleton;
-    }
-
   static bool IsAnimationsOn(RE::TESObjectREFR* a_this, RE::FormID baseFormID);
 
   static void HandleDLC1VCDungeonScriptedFires(RE::TESObjectREFR* a_targetRef);
@@ -39,7 +33,6 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
 
   static void attachNiPointLightToShadowSceneNode(RE::NiLight* niPointLight, const LightConfig& cfg, RE::TESObjectREFR* a_this);
 
-  static void registerEventSink();
 
   static void attachLightUsingAttachPath(const LightConfig& cfg, RE::NiNode* root, RE::NiPointLight* light, RE::FormID refFormID);
 
@@ -72,10 +65,6 @@ struct LightManager : RE::BSTEventSink<RE::BGSActorCellEvent> {
       const std::string& meshName,
       RE::FormID refFormID,
       bool& attachedDebugMarker);
-
-  private:
-    RE::BSEventNotifyControl ProcessEvent(const RE::BGSActorCellEvent* a_event, RE::BSTEventSource<RE::BGSActorCellEvent>*) override;
-
 };
 
 

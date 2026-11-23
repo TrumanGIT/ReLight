@@ -21,7 +21,7 @@ B(affectLand, true) \
 B(affectWater, true) \
 B(neverFades, true) \
 B(isPluginLight, false) \
-B(randomAnimStart, true) \
+B(randomAnimStart, false) \
 
 #define FOREACH_FLOAT(F) \
 F(brightness, 2.0f) \

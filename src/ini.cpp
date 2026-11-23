@@ -470,6 +470,19 @@ namespace ini {
 			continue;
 		}
 
+		//brightness values
+		if (key == "interiorbrightness") {
+			globals::interiorBrightness = std::stof(value);
+			logger::info("interiorBrightness = {}", globals::interiorBrightness);
+			continue;
+		}
+
+		if (key == "exteriorbrightness") {
+			globals::exteriorBrightness = std::stof(value);
+			logger::info("exteriorBrightness = {}", globals::exteriorBrightness);
+			continue;
+		}
+
 	}
 
 	iniFile.close();
@@ -509,6 +522,10 @@ namespace ini {
 	outFile << "disableGameLights=" << (globals::disableGameLights ? "true" : "false") << "\n\n";
 	outFile << "; enable light flicker prevention (Not for CS users)\n";
 	outFile << "enableLightFlickerPrevention=" << (globals::enableLightFlickerPreventionMeasures ? "true" : "false") << "\n\n";
+	outFile << ";Game's default brightness setting for interior cells\n";
+	outFile << "interiorBrightness=" << globals::interiorBrightness << "\n\n";
+	outFile << ";Game's default brightness setting for exterior cells\n";
+	outFile << "exteriorBrightness=" << globals::exteriorBrightness << "\n\n";
 	outFile << ";Change brightness of all Relight lights\n";
 	outFile << "lightBrightnessMultiplier=" << std::clamp(globals::brightnessModifier, 0.1f, 2.0f) << "\n\n";
 	outFile << ";Change brightness of all non SKSE lights\n";
