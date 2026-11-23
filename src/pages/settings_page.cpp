@@ -146,7 +146,7 @@ void __stdcall RenderSettings() {
         "%.2f")) {
         SetBaseGameBrightness(globals::interiorBrightness);
     }
-    ImGuiMCP::SetTooltip("Sets the base game's global brightness setting while indoors.");
+    if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Sets the base game's global brightness setting while indoors.");
 
     if (ImGuiMCP::SliderFloat(
         "Exterior Brightness",
@@ -157,7 +157,7 @@ void __stdcall RenderSettings() {
         SetBaseGameBrightness(globals::exteriorBrightness);
     }
 
-    ImGuiMCP::SetTooltip("Sets the base game's global brightness setting while outdoors.");
+    if (ImGuiMCP::IsItemHovered()) ImGuiMCP::SetTooltip("Sets the base game's global brightness setting while outdoors.");
 
     if (ImGuiMCP::SliderInt("Logging Level", &globals::loggingLevel, 0, 3)) {
         spdlog::level::level_enum lvl;
